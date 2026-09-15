@@ -1,0 +1,3146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E0B18">
+<title>覚醒 — TRPGキャラクター コマンドバトル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ===== 10-core.css ===== */
+:root{
+  --ink:#0E0B18; --panel:rgba(38,30,62,.72); --panel2:rgba(28,22,48,.86);
+  --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.18);
+  --ivory:#F2EDE4; --dim:#A99DBE;
+  --me:#4FD6C8; --foe:#F2566A; --gold:#F0C550; --violet:#9B7BE8; --jade:#4FD6C8;
+  --r:18px;
+  --sans:"Zen Kaku Gothic New",-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  --serif:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{background:#0E0B18;color:var(--ivory);font-family:var(--sans);font-size:15px;line-height:1.6;
+  -webkit-text-size-adjust:100%;overflow-x:hidden}
+#bg{position:fixed;inset:0;z-index:-2;background:
+  radial-gradient(90% 60% at 20% 0%,#38246B 0%,rgba(14,11,24,0) 55%),
+  radial-gradient(80% 60% at 90% 15%,#1F4E63 0%,rgba(14,11,24,0) 50%),
+  radial-gradient(90% 70% at 50% 100%,#3A1C42 0%,rgba(14,11,24,0) 60%),#0E0B18}
+#bg::after{content:"";position:absolute;width:70vmax;height:70vmax;left:10%;top:8%;
+  background:radial-gradient(closest-side,rgba(155,123,232,.20),transparent 70%);
+  filter:blur(30px);animation:drift 22s ease-in-out infinite alternate}
+@keyframes drift{from{transform:translate3d(-8%,-4%,0) scale(1)}to{transform:translate3d(12%,10%,0) scale(1.18)}}
+.app{max-width:480px;margin:0 auto;padding:14px 14px calc(22px + var(--safe-b));min-height:100%}
+.screen{display:none}
+.screen.on{display:block;animation:screenIn .3s cubic-bezier(.2,.8,.2,1) both}
+@keyframes screenIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+button:active{transform:scale(.97)}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btn{position:relative;display:block;width:100%;border-radius:var(--r);padding:15px 18px;text-align:center;
+  font-weight:700;letter-spacing:.06em;color:#F2EDE4;
+  background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.03)),var(--panel2);
+  border:1px solid var(--line2);box-shadow:0 6px 18px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18);
+  transition:transform .09s,filter .15s}
+.btn:hover{filter:brightness(1.12)}
+.btn:disabled{opacity:.4;box-shadow:none}
+.btn-gold{color:#2A1C00;border-color:rgba(255,235,170,.55);
+  background:linear-gradient(180deg,#FFE08A,#E2A92C 60%,#C98A18);
+  box-shadow:0 8px 22px rgba(224,169,44,.35),inset 0 1px 0 rgba(255,255,255,.6)}
+.btn-line{background:rgba(255,255,255,.04);border:1px solid var(--line2);box-shadow:none;font-weight:500}
+.btn-ghost{background:none;border:none;box-shadow:none;color:var(--dim);font-weight:500;padding:10px}
+.btn-ghost:hover{color:var(--ivory)}
+.btn .ic{font-size:19px;margin-right:9px;vertical-align:-2px}
+.btn-sub{display:block;font-size:11.5px;font-weight:400;color:rgba(255,255,255,.55);letter-spacing:0;margin-top:2px}
+.btn-gold .btn-sub{color:rgba(50,32,0,.62)}
+.h-rule{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:11px;letter-spacing:.2em;margin:22px 0 10px}
+.h-rule::after{content:"";flex:1;height:1px;background:var(--line)}
+.note{color:var(--dim);font-size:12.5px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin:2px 0 10px}
+.topbar .tt{font-family:var(--serif);font-size:20px;letter-spacing:.06em}
+.glass{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.stack{display:flex;flex-direction:column;gap:9px}
+.rowbtns{display:flex;gap:9px}.rowbtns .btn{flex:1}
+
+.hero{position:relative;text-align:center;padding:11vh 0 0}
+.hero .ring{position:absolute;left:50%;top:calc(11vh + 52px);width:250px;height:250px;margin:-125px 0 0 -125px;
+  border-radius:50%;border:1px solid rgba(240,197,80,.25);
+  box-shadow:0 0 70px rgba(240,197,80,.16),inset 0 0 60px rgba(240,197,80,.08);
+  animation:ringIn 1.5s cubic-bezier(.2,.8,.2,1) both}
+.hero .ring::after{content:"";position:absolute;inset:14px;border-radius:50%;border:1px solid rgba(240,197,80,.12)}
+@keyframes ringIn{from{opacity:0;transform:scale(.72)}to{opacity:1;transform:none}}
+.logo{position:relative;font-family:var(--serif);font-weight:800;font-size:clamp(62px,22vw,108px);line-height:1;
+  letter-spacing:.16em;margin:0;background:linear-gradient(170deg,#FFF3CE 6%,var(--gold) 45%,#8A5F0C 98%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 6px 26px rgba(240,197,80,.35));animation:logoIn 1.4s cubic-bezier(.2,.8,.2,1) both}
+@keyframes logoIn{from{opacity:0;letter-spacing:.55em;filter:blur(12px)}to{opacity:1;letter-spacing:.16em;filter:blur(0)}}
+.logo-sub{position:relative;color:rgba(240,197,80,.75);letter-spacing:.32em;font-size:10.5px;margin-top:14px}
+.title-lead{color:#CDC3DC;font-size:13.5px;max-width:23em;margin:20px auto 0;text-align:center}
+.title-actions{display:flex;flex-direction:column;gap:11px;margin:30px auto 0}
+
+.slot-tabs{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+.slot{border-radius:14px;padding:9px 12px;text-align:left;background:rgba(255,255,255,.04);
+  border:1px solid var(--line);transition:.18s}
+.slot.active{border-color:rgba(240,197,80,.7);background:linear-gradient(180deg,rgba(240,197,80,.16),rgba(240,197,80,.04));
+  box-shadow:0 6px 18px rgba(240,197,80,.14)}
+.slot .who{font-size:10.5px;color:var(--dim);letter-spacing:.16em}
+.slot .pick{font-family:var(--serif);font-size:17px;margin-top:1px}
+.preview{padding:16px;margin-bottom:12px;position:relative;overflow:hidden}
+.preview::before{content:"";position:absolute;right:-30px;top:-40px;width:180px;height:180px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(155,123,232,.30),transparent);filter:blur(6px)}
+.pv-head{display:flex;gap:14px;align-items:center;position:relative}
+.av{position:relative;flex:0 0 auto;display:grid;place-items:center;border-radius:22px;
+  background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.02));
+  border:1px solid var(--line2);box-shadow:0 8px 24px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.25)}
+.av-72{width:72px;height:72px;font-size:34px}
+.av-84{width:84px;height:84px;font-size:40px}
+.av-64{width:64px;height:64px;font-size:30px}
+.av-44{width:44px;height:44px;font-size:21px;border-radius:15px}
+.av.hasimg{background:#0B0813;overflow:hidden}
+.avimg{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
+.upload{display:flex;gap:12px;align-items:center}
+.upload .hint{font-size:11.5px;color:var(--dim);flex:1}
+.filebtn{display:inline-block;width:auto;padding:10px 14px;font-size:13px;cursor:pointer}
+.av.me{border-color:rgba(79,214,200,.5);box-shadow:0 8px 24px rgba(79,214,200,.22),inset 0 1px 0 rgba(255,255,255,.25)}
+.av.foe{border-color:rgba(242,86,106,.5);box-shadow:0 8px 24px rgba(242,86,106,.22),inset 0 1px 0 rgba(255,255,255,.25)}
+.av.awake{border-color:rgba(240,197,80,.85);animation:aura 2.2s ease-in-out infinite}
+@keyframes aura{0%,100%{box-shadow:0 0 22px rgba(240,197,80,.35),inset 0 1px 0 rgba(255,255,255,.35)}
+  50%{box-shadow:0 0 46px rgba(240,197,80,.75),inset 0 1px 0 rgba(255,255,255,.45)}}
+.pv-name{font-family:var(--serif);font-size:22px;letter-spacing:.04em}
+.pv-desc{font-size:12.5px;color:var(--dim);margin-top:2px}
+.bars{margin-top:14px;display:flex;flex-direction:column;gap:7px}
+.bar{display:flex;align-items:center;gap:9px;font-size:11px;color:var(--dim)}
+.bar .bl{width:30px;letter-spacing:.1em}
+.bar .bt{flex:1;height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.bar .bf{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--violet),var(--jade));
+  transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.bar .bv{width:36px;text-align:right;color:var(--ivory);font-weight:500}
+.awk-note{margin-top:13px;border-radius:14px;padding:10px 12px;font-size:12px;
+  background:linear-gradient(180deg,rgba(240,197,80,.14),rgba(240,197,80,.04));
+  border:1px solid rgba(240,197,80,.3);color:#F5E3B0}
+.awk-note b{font-family:var(--serif);letter-spacing:.06em}
+.tray{display:flex;gap:9px;overflow-x:auto;padding:2px 2px 8px}
+.tray::-webkit-scrollbar{display:none}
+.thumb{flex:0 0 auto;width:78px;text-align:center;padding:8px 4px;border-radius:16px;
+  border:1px solid transparent;transition:.16s;display:flex;flex-direction:column;align-items:center}
+.thumb.on{border-color:rgba(240,197,80,.65);background:rgba(240,197,80,.10)}
+.thumb .tn{font-size:11px;margin-top:5px;color:var(--dim);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;max-width:70px}
+.thumb.on .tn{color:var(--ivory)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.seg button{border:1px solid var(--line);border-radius:13px;padding:11px 4px;font-size:13.5px;
+  background:rgba(255,255,255,.04);font-weight:500}
+.seg button.on{border-color:rgba(240,197,80,.7);color:#F5E3B0;
+  background:linear-gradient(180deg,rgba(240,197,80,.2),rgba(240,197,80,.05))}
+.sticky-cta{position:sticky;bottom:calc(8px + var(--safe-b));margin-top:14px;z-index:5}
+
+/* ===== 20-battle.css ===== */
+#s-battle.on{display:flex;flex-direction:column;min-height:calc(100vh - 36px);min-height:calc(100dvh - 36px)}
+.hud{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+#btn-speed,#btn-mute{cursor:pointer;white-space:nowrap}
+.arena{cursor:pointer}
+.pill{font-size:11px;letter-spacing:.12em;padding:5px 12px;border-radius:99px;background:rgba(255,255,255,.07);
+  border:1px solid var(--line);color:#D9CFE8}
+.pill.turn{font-family:var(--serif);letter-spacing:.16em;color:#F5E3B0;border-color:rgba(240,197,80,.35);
+  background:rgba(240,197,80,.10)}
+.arena{position:relative;flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:10px;
+  padding:14px 13px;border-radius:24px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(242,86,106,.10),rgba(14,11,24,0) 34%,rgba(14,11,24,0) 64%,rgba(79,214,200,.10)),
+             var(--panel);border:1px solid var(--line);
+  box-shadow:0 14px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07)}
+.arena::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent)}
+.unit{display:flex;gap:12px;align-items:center;position:relative;z-index:2}
+.unit.foe{flex-direction:row-reverse;text-align:right}
+.unit .info{flex:1;min-width:0}
+.unit .nmrow{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.unit.foe .nmrow{justify-content:flex-end}
+.unit .nm{font-family:var(--serif);font-size:17px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.unit .owner{font-size:10px;letter-spacing:.18em;color:var(--dim);display:block}
+.badge{font-size:10px;letter-spacing:.08em;border-radius:99px;padding:2px 9px;font-weight:700;white-space:nowrap}
+.b-gold{color:#2A1C00;background:linear-gradient(180deg,#FFE79E,#E5AE31);box-shadow:0 2px 10px rgba(229,174,49,.45)}
+.b-jade{color:#052B28;background:linear-gradient(180deg,#8FF0E4,#3FC2B4)}
+.b-pulse{animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.78;transform:scale(1.06)}}
+.hpline{margin-top:7px}
+.hpbar{position:relative;height:13px;border-radius:99px;background:rgba(0,0,0,.45);overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+.hpghost{position:absolute;inset:0 auto 0 0;height:100%;background:rgba(255,255,255,.45);border-radius:99px;
+  transition:width .75s cubic-bezier(.4,0,.2,1) .3s}
+.hpfill{position:absolute;inset:0 auto 0 0;height:100%;border-radius:99px;transition:width .3s cubic-bezier(.4,0,.2,1);
+  background:linear-gradient(180deg,#7BE8D8,#2FA99C);box-shadow:0 0 12px rgba(79,214,200,.5)}
+.unit.foe .hpfill{background:linear-gradient(180deg,#FF8797,#D23A50);box-shadow:0 0 12px rgba(242,86,106,.45)}
+.hpfill.awake{background:linear-gradient(180deg,#FFE79E,#E0A62A);box-shadow:0 0 16px rgba(240,197,80,.6)}
+.hpfill.low{animation:lowPulse 1.2s ease-in-out infinite}
+@keyframes lowPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.5)}}
+.hpnum{display:flex;gap:6px;justify-content:space-between;font-size:11px;color:#C6BBD6;margin-top:3px}
+.unit.foe .hpnum{flex-direction:row-reverse}
+.hpnum b{color:var(--ivory);font-weight:700}
+.spbar{display:flex;gap:3px;margin-top:6px}
+.unit.foe .spbar{flex-direction:row-reverse}
+.pip{flex:1;max-width:17px;height:5px;border-radius:99px;background:rgba(255,255,255,.12);transition:.25s}
+.pip.on{background:linear-gradient(90deg,#7BE8D8,#3FC2B4);box-shadow:0 0 6px rgba(79,214,200,.6)}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.unit.foe .chips{justify-content:flex-end}
+.chip{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;padding:2px 8px;border-radius:99px;
+  background:rgba(255,255,255,.08);border:1px solid var(--line);color:#D6CCE4}
+.chip .ci{font-size:11px}
+.chip.good{color:#9DF0E4;border-color:rgba(79,214,200,.4);background:rgba(79,214,200,.12)}
+.chip.bad{color:#FFA9B6;border-color:rgba(242,86,106,.4);background:rgba(242,86,106,.12)}
+.chip.gold{color:#F8DE9E;border-color:rgba(240,197,80,.45);background:rgba(240,197,80,.14)}
+.avwrap{position:relative}
+.unit.act .avwrap{animation:lunge .5s cubic-bezier(.3,.9,.3,1)}
+.unit.foe.act .avwrap{animation:lungeFoe .5s cubic-bezier(.3,.9,.3,1)}
+@keyframes lunge{30%{transform:translateY(-16px) scale(1.07)}100%{transform:none}}
+@keyframes lungeFoe{30%{transform:translateY(16px) scale(1.07)}100%{transform:none}}
+.unit.hurt .avwrap{animation:shake .4s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{10%,90%{transform:translateX(-3px)}20%,80%{transform:translateX(5px)}
+  30%,50%,70%{transform:translateX(-8px)}40%,60%{transform:translateX(8px)}}
+.unit.hurt .av::after{content:"";position:absolute;inset:0;border-radius:22px;background:rgba(255,120,140,.5);
+  animation:flashOut .45s ease forwards}
+@keyframes flashOut{to{opacity:0}}
+.float{position:absolute;left:50%;top:-8px;font-family:var(--serif);font-weight:800;font-size:30px;color:#FFB3BE;
+  pointer-events:none;z-index:6;white-space:nowrap;
+  text-shadow:0 2px 0 rgba(0,0,0,.55),0 0 18px rgba(255,90,110,.75);
+  animation:floatUp 1.05s cubic-bezier(.2,.8,.2,1) forwards}
+.float.heal{color:#A6F5CE;text-shadow:0 2px 0 rgba(0,0,0,.55),0 0 18px rgba(80,230,160,.7)}
+.float.crit{color:#FFDD8C;font-size:40px}
+@keyframes floatUp{0%{opacity:0;transform:translate(-50%,14px) scale(.7)}
+  22%{opacity:1;transform:translate(-50%,-4px) scale(1.12)}
+  100%{opacity:0;transform:translate(-50%,-46px) scale(1)}}
+.banner{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:5}
+.banner span{font-family:var(--serif);font-size:26px;letter-spacing:.36em;color:#F7EDD6;
+  text-shadow:0 0 24px rgba(0,0,0,.9);animation:bannerSweep 1s ease forwards}
+@keyframes bannerSweep{0%{opacity:0;transform:translateX(-26px)}28%{opacity:1;transform:none}
+  68%{opacity:1}100%{opacity:0;transform:translateX(26px)}}
+
+.logstrip{margin-top:10px;border-radius:14px;padding:9px 13px;min-height:58px;display:flex;flex-direction:column;
+  justify-content:center;gap:2px;background:rgba(0,0,0,.35);border:1px solid var(--line);cursor:pointer;
+  width:100%;text-align:left}
+.logstrip .ll{font-size:13px;color:#D9CFE8;animation:lineIn .25s ease both}
+.logstrip .ll.old{opacity:.45;font-size:12px}
+@keyframes lineIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.ll.dmg{color:#FFA9B6}.ll.heal{color:#A6F5CE}.ll.crit{color:#FFDD8C;font-weight:700}
+.ll.awaken{color:var(--gold);font-family:var(--serif)}.ll.miss{color:var(--dim)}
+.ll.status{color:#C4B0EE}.ll.sys{color:var(--dim);font-size:12px}
+.ll.turn{color:#8E82A8;font-size:11px;letter-spacing:.2em}
+.ll.win{color:var(--gold);font-family:var(--serif)}
+
+.dock{margin-top:10px;display:flex;flex-direction:column;gap:9px}
+.cmd-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.cbtn{border-radius:var(--r);padding:14px 10px;text-align:center;font-weight:700;letter-spacing:.08em;
+  background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.03)),var(--panel2);
+  border:1px solid var(--line2);box-shadow:0 6px 16px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.2);
+  transition:transform .09s,filter .15s}
+.cbtn:hover{filter:brightness(1.15)}
+.cbtn .ci{display:block;font-size:21px;margin-bottom:2px;line-height:1}
+.cbtn .cl{font-size:14.5px}
+.cbtn.wide{grid-column:1/-1}
+.cbtn.awaken{color:#2A1C00;border-color:rgba(255,236,178,.6);position:relative;overflow:hidden;
+  background:linear-gradient(180deg,#FFE79E,#E2A92C 62%,#C98A18);animation:awkBtn 1.8s ease-in-out infinite}
+@keyframes awkBtn{0%,100%{box-shadow:0 8px 20px rgba(226,169,44,.35),inset 0 1px 0 rgba(255,255,255,.65)}
+  50%{box-shadow:0 12px 34px rgba(255,214,110,.7),inset 0 1px 0 rgba(255,255,255,.75)}}
+.cbtn.awaken::after{content:"";position:absolute;top:0;bottom:0;width:55%;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.5),rgba(255,255,255,0));
+  animation:sweep 2.2s linear infinite}
+@keyframes sweep{from{left:-55%}to{left:110%}}
+.waiting{border-radius:var(--r);padding:20px;text-align:center;color:var(--dim);font-size:13px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.dots::after{content:"…";animation:dots 1.1s steps(3) infinite}
+@keyframes dots{0%{content:"."}33%{content:".."}66%{content:"…"}}
+
+/* ===== 30-overlays.css ===== */
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:60;max-height:84vh;display:flex;flex-direction:column;
+  transform:translateY(102%);transition:transform .32s cubic-bezier(.2,.9,.25,1);
+  background:linear-gradient(180deg,#221A3C,#150F27);border-top:1px solid var(--line2);
+  border-radius:26px 26px 0 0;box-shadow:0 -14px 50px rgba(0,0,0,.6)}
+.sheet.on{transform:translateY(0)}
+.sheet-in{max-width:480px;margin:0 auto;width:100%;padding:8px 14px calc(16px + var(--safe-b));overflow-y:auto}
+.grab{width:42px;height:4px;border-radius:99px;background:rgba(255,255,255,.28);margin:6px auto 10px}
+.sheet-title{font-family:var(--serif);font-size:17px;letter-spacing:.06em;margin-bottom:10px;display:flex;
+  justify-content:space-between;align-items:center}
+.scrim{position:fixed;inset:0;background:rgba(6,4,12,.6);z-index:55;opacity:0;pointer-events:none;transition:opacity .28s}
+.scrim.on{opacity:1;pointer-events:auto}
+.skill-list{display:flex;flex-direction:column;gap:9px}
+.skl{position:relative;display:block;width:100%;text-align:left;border-radius:16px;padding:12px 13px 12px 17px;
+  background:rgba(255,255,255,.05);border:1px solid var(--line);transition:.15s}
+.skl:hover:not(:disabled){background:rgba(255,255,255,.09)}
+.skl:disabled{opacity:.42}
+.skl::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:99px;background:var(--violet)}
+.skl.t-ATTACK::before{background:#F2566A}.skl.t-DEFENSE::before{background:#4FD6C8}
+.skl.t-SUPPORT::before{background:var(--gold)}.skl.t-SPECIAL::before{background:var(--violet)}
+.skl .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.skl .snm{font-weight:700;font-size:15px;letter-spacing:.03em}
+.skl .cost{font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;
+  background:rgba(79,214,200,.16);color:#9DF0E4;border:1px solid rgba(79,214,200,.35);white-space:nowrap}
+.skl .cost.no{background:rgba(242,86,106,.14);color:#FFA9B6;border-color:rgba(242,86,106,.35)}
+.skl .sds{font-size:12px;color:var(--dim);margin-top:4px}
+.skl .meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.mchip{font-size:10.5px;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.07);color:#CDC2DE;
+  border:1px solid var(--line)}
+.mchip.hot{color:#FFC9A0;border-color:rgba(255,160,90,.35);background:rgba(255,160,90,.12)}
+.logfull{max-height:62vh;overflow-y:auto;font-size:13.5px}
+.le{padding:2.5px 0;color:#CBC1D9}
+.le.dmg{color:#FFA9B6}.le.heal{color:#A6F5CE}.le.miss{color:var(--dim)}.le.crit{color:#FFDD8C;font-weight:700}
+.le.sys{color:#9E93B1;font-size:12.5px}.le.status{color:#C4B0EE}.le.action{color:var(--ivory)}
+.le.awaken{color:var(--gold);font-family:var(--serif);letter-spacing:.06em}
+.le.turn{color:#7E729A;font-size:11px;letter-spacing:.2em;margin-top:8px;padding-top:6px;
+  border-top:1px solid rgba(255,255,255,.08)}
+.le.win{color:var(--gold);font-family:var(--serif);font-size:16px}
+
+.veil{position:fixed;inset:0;background:rgba(10,7,18,.96);display:none;place-items:center;text-align:center;
+  padding:24px;z-index:70}
+.veil.on{display:grid}
+.veil .vt{font-family:var(--serif);font-size:26px;letter-spacing:.14em}
+.veil .vs{color:var(--dim);font-size:13px;margin:10px 0 26px}
+.awk{position:fixed;inset:0;display:none;place-items:center;z-index:80;overflow:hidden;
+  background:radial-gradient(60% 60% at 50% 50%,rgba(240,197,80,.26),rgba(10,7,18,.97) 74%)}
+.awk.on{display:grid;animation:awkFade 2s ease forwards}
+@keyframes awkFade{0%{opacity:0}10%{opacity:1}76%{opacity:1}100%{opacity:0}}
+.awk .rays{position:absolute;width:170vmax;height:170vmax;
+  background:repeating-conic-gradient(from 0deg,rgba(255,226,160,.16) 0deg 3deg,rgba(255,226,160,0) 3deg 12deg);
+  animation:spin 9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.awk .big{position:relative;font-family:var(--serif);font-weight:800;font-size:clamp(66px,23vw,124px);
+  letter-spacing:.22em;color:#FFF6DC;text-shadow:0 0 60px rgba(240,197,80,.8);
+  animation:awkKanji 2s cubic-bezier(.2,.8,.2,1) both}
+@keyframes awkKanji{0%{opacity:0;transform:scale(1.6);filter:blur(16px)}
+  20%{opacity:1;transform:scale(1);filter:blur(0)}100%{opacity:1;transform:scale(1.05)}}
+.awk .who2{position:relative;text-align:center;color:#F3E3B4;letter-spacing:.2em;font-size:14px;margin-top:8px}
+.shockwave{position:fixed;inset:0;z-index:79;pointer-events:none;display:none;background:rgba(255,244,214,.55)}
+.shockwave.on{display:block;animation:flashBang .5s ease forwards}
+@keyframes flashBang{to{opacity:0}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+  transition-duration:.01ms !important}}
+
+.result{text-align:center;padding:7vh 0 0}
+.rw{font-family:var(--serif);font-size:40px;letter-spacing:.2em;animation:winIn .9s cubic-bezier(.2,.8,.2,1) both}
+.rw.win{color:var(--gold);text-shadow:0 0 40px rgba(240,197,80,.5)}
+.rw.lose{color:#A99DBE}
+@keyframes winIn{from{opacity:0;transform:scale(.88);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
+.rname{font-family:var(--serif);font-size:20px;margin-top:14px}
+.rs{color:var(--dim);font-size:13px;margin-top:6px}
+
+.status{border-radius:16px;padding:13px 14px;font-size:13px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.status.wait{border-color:rgba(240,197,80,.4);color:#F5E3B0;background:rgba(240,197,80,.08)}
+.status.ok{border-color:rgba(79,214,200,.4);color:#9DF0E4;background:rgba(79,214,200,.08)}
+.status.bad{border-color:rgba(242,86,106,.4);color:#FFA9B6;background:rgba(242,86,106,.08)}
+.word{font-family:var(--serif);font-size:26px;letter-spacing:.24em;text-align:center;padding:8px 0;color:#FFF0C4}
+
+/* ===== 40-forms.css ===== */
+
+.form{display:flex;flex-direction:column;gap:12px}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label{font-size:11.5px;color:var(--dim);letter-spacing:.08em}
+input[type=text],input[type=number],select,textarea{
+  background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:13px;color:var(--ivory);
+  padding:11px 12px;font:inherit;font-size:14px;width:100%}
+textarea{min-height:120px;font-size:12.5px;line-height:1.5;border-radius:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pickrow{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:13px;
+  padding:10px 12px;background:rgba(255,255,255,.04);font-size:13px}
+.pickrow input{width:auto;flex:0 0 auto;accent-color:#E2A92C;transform:scale(1.15)}
+.pickrow .pn{flex:1}
+.pickrow .pc{font-size:11px;color:#9DF0E4}
+.effrow{border:1px solid var(--line);border-radius:14px;padding:11px 12px;background:rgba(255,255,255,.04)}
+.effrow .eh{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;gap:8px}
+.effrow .ed{font-size:11.5px;color:var(--dim);margin-top:3px}
+.err{color:#FFA9B6;font-size:12.5px}
+.meter .mrow{display:flex;justify-content:space-between;font-size:11.5px;color:var(--dim);margin-bottom:5px}
+.meter .mrow b{color:var(--ivory);font-weight:700}
+.meter .mtrack{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.meter .mfill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--jade),var(--gold));
+  transition:width .3s ease}
+.meter.over .mfill{background:linear-gradient(90deg,#F2566A,#FF8797)}
+.meter.over .mrow b{color:#FFA9B6}
+.upload{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.upload .hint{font-size:11.5px;color:var(--dim);flex:1;min-width:120px}
+.filebtn{display:inline-block;width:auto;padding:11px 14px;font-size:13px;cursor:pointer}
+.cropper{position:fixed;inset:0;z-index:90;display:none;place-items:center;padding:18px;
+  background:rgba(8,5,16,.92);backdrop-filter:blur(8px)}
+.cropper.on{display:grid}
+.crop-panel{width:100%;max-width:340px;text-align:center}
+.crop-head{font-family:var(--serif);font-size:17px;letter-spacing:.08em;margin-bottom:12px}
+.crop-box{position:relative;width:280px;height:280px;margin:0 auto;overflow:hidden;border-radius:22px;
+  border:2px solid rgba(240,197,80,.75);box-shadow:0 0 0 9999px rgba(8,5,16,.55),0 12px 40px rgba(0,0,0,.6);
+  touch-action:none;cursor:grab;background:#0B0813}
+.crop-box img{position:absolute;max-width:none;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.crop-grid{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,transparent 33.3%,rgba(255,255,255,.18) 33.3% 33.6%,transparent 33.6% 66.6%,rgba(255,255,255,.18) 66.6% 66.9%,transparent 66.9%),
+             linear-gradient(0deg,transparent 33.3%,rgba(255,255,255,.18) 33.3% 33.6%,transparent 33.6% 66.6%,rgba(255,255,255,.18) 66.6% 66.9%,transparent 66.9%)}
+.crop-zoomrow{display:flex;align-items:center;gap:10px;margin:16px 0 14px;font-size:11.5px;color:var(--dim)}
+.crop-zoomrow input{accent-color:#E2A92C}
+#btn-mute{cursor:pointer}
+.editcard{display:flex;gap:12px;align-items:center;border-radius:16px;padding:11px 12px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div class="app">
+  <section id="s-title" class="screen on">
+    <div class="hero"><div class="ring"></div>
+      <h1 class="logo">覚醒</h1>
+      <div class="logo-sub">TRPG COMMAND BATTLE</div>
+    </div>
+    <p class="title-lead">数字ではなく、覚醒を切る一瞬の判断で決まる1対1のコマンドバトル。</p>
+    <div class="title-actions">
+      <button class="btn btn-gold" data-mode="local"><span class="ic">⚔</span>ローカル対戦<span class="btn-sub">1台を2人で回して遊ぶ</span></button>
+      <button class="btn" data-mode="ai"><span class="ic">✦</span>AI対戦<span class="btn-sub">相手と強さを選んで挑む</span></button>
+      <button class="btn" data-mode="online"><span class="ic">⇄</span>オンライン対戦<span class="btn-sub">あいことばで合流する</span></button>
+      <button class="btn btn-line" data-go="roster"><span class="ic">✎</span>キャラクターを作る</button>
+      <button class="btn btn-ghost" data-go="howto">遊び方</button>
+    </div>
+  </section>
+  <section id="s-howto" class="screen">
+    <div class="topbar"><span class="tt">遊び方</span><button class="btn btn-ghost" data-go="title" style="width:auto">閉じる</button></div>
+    <div id="howto-body"></div>
+  </section>
+  <section id="s-select" class="screen">
+    <div class="topbar"><span class="tt" id="select-title">キャラクター選択</span><button class="btn btn-ghost" data-go="title" style="width:auto">戻る</button></div>
+    <div class="slot-tabs">
+      <button class="slot active" id="slot0"><span class="who" id="who0">プレイヤー1</span><div class="pick">未選択</div></button>
+      <button class="slot" id="slot1"><span class="who" id="who1">プレイヤー2</span><div class="pick">未選択</div></button>
+    </div>
+    <div class="glass preview" id="preview"></div>
+    <div class="tray" id="select-tray"></div>
+    <div id="select-options"></div>
+    <div class="sticky-cta"><button class="btn btn-gold" id="btn-start" disabled>戦闘開始</button></div>
+  </section>
+  <section id="s-online" class="screen">
+    <div class="topbar"><span class="tt">オンライン対戦</span><button class="btn btn-ghost" id="online-back" style="width:auto">戻る</button></div>
+    <p class="note">同じ「あいことば」を入れた2人がつながります。片方が部屋を作り、もう片方が参加してください。</p>
+    <div class="h-rule">あいことば</div>
+    <input type="text" id="net-word" placeholder="例：しろよる" autocomplete="off">
+    <div class="h-rule">使うキャラクター</div>
+    <div class="glass preview" id="online-preview"></div>
+    <div class="tray" id="online-tray"></div>
+    <div style="height:8px"></div>
+    <button class="btn btn-gold" id="btn-connect">あいことばでつながる</button>
+    <div style="height:9px"></div>
+    <button class="btn btn-ghost" id="btn-cancel-net" style="display:none">接続をやめる</button>
+    <div style="height:12px"></div>
+    <div class="status" id="net-status" style="display:none"></div>
+    <p class="note" style="margin-top:10px">二人とも同じあいことばを入れて、このボタンを押すだけです。先に押した方が待ち受け、あとから押した方が合流します。</p>
+  </section>
+  <section id="s-battle" class="screen">
+    <div class="hud">
+      <span class="pill turn" id="turn-label">ターン 1</span>
+      <span style="display:flex;gap:6px;align-items:center">
+        <span class="pill" id="phase-label"></span>
+        <button class="pill" id="btn-speed" title="演出の速さ">⏩ はやい</button>
+        <button class="pill" id="btn-mute" title="BGMの入り切り">♪ ON</button>
+      </span>
+    </div>
+    <div class="arena" id="arena">
+      <div class="unit foe" id="view1"></div>
+      <div class="unit" id="view0"></div>
+    </div>
+    <button class="logstrip" id="logstrip"></button>
+    <div class="dock" id="cmd-area"></div>
+  </section>
+  <section id="s-result" class="screen">
+    <div class="result">
+      <div class="rw" id="result-win"></div>
+      <div id="result-av" style="display:flex;justify-content:center;margin-top:18px"></div>
+      <div class="rname" id="result-name"></div>
+      <div class="rs" id="result-sub"></div>
+    </div>
+    <div class="title-actions">
+      <button class="btn btn-gold" id="btn-rematch">もう一度たたかう</button>
+      <button class="btn" id="btn-reselect">キャラクターを選び直す</button>
+      <button class="btn btn-ghost" id="btn-reviewlog">戦闘ログを見る</button>
+    </div>
+  </section>
+  <section id="s-roster" class="screen">
+    <div class="topbar"><span class="tt">キャラクター</span><button class="btn btn-ghost" data-go="title" style="width:auto">戻る</button></div>
+    <div class="stack" id="edit-roster"></div>
+    <div class="h-rule">追加</div>
+    <div class="stack">
+      <button class="btn" id="btn-new-char"><span class="ic">✚</span>新しいキャラクターを作る</button>
+      <button class="btn btn-line" id="btn-new-skill"><span class="ic">✧</span>技をつくる</button>
+    </div>
+    <div class="h-rule">データの保存</div>
+    <div class="stack">
+      <button class="btn btn-line" id="btn-save-file"><span class="ic">⤓</span>ファイルに保存</button>
+      <label class="btn btn-line filebtn" for="data-file" style="width:100%"><span class="ic">⤒</span>ファイルから読み込む
+        <input type="file" id="data-file" accept="application/json,.json" style="display:none"></label>
+      <div id="io-msg"></div>
+      <button class="btn btn-ghost" id="btn-text-io">文字でやりとりする</button>
+    </div>
+    <div id="io-area"></div>
+  </section>
+  <section id="s-edit" class="screen">
+    <div class="topbar"><span class="tt" id="edit-title">キャラクター編集</span><button class="btn btn-ghost" data-go="roster" style="width:auto">戻る</button></div>
+    <div id="edit-body" class="form"></div>
+  </section>
+  <section id="s-skill" class="screen">
+    <div class="topbar"><span class="tt">技をつくる</span><button class="btn btn-ghost" data-go="roster" style="width:auto">戻る</button></div>
+    <div id="skill-body" class="form"></div>
+  </section>
+
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"><div class="sheet-in">
+  <div class="grab"></div>
+  <div class="sheet-title"><span id="sheet-title">技</span><button class="btn btn-ghost" id="sheet-close" style="width:auto;padding:4px 8px">閉じる</button></div>
+  <div id="sheet-body"></div>
+</div></div>
+
+<div class="veil" id="veil">
+  <div>
+    <div class="vt" id="veil-title"></div>
+    <div class="vs" id="veil-sub">画面を見られないように端末を渡してください。</div>
+    <button class="btn btn-gold" id="veil-ok" style="min-width:230px">準備できた</button>
+  </div>
+</div>
+
+<div class="cropper" id="cropper">
+  <div class="crop-panel">
+    <div class="crop-head">切り抜く範囲を決める</div>
+    <div class="crop-box" id="crop-box"><img id="crop-img" alt=""><div class="crop-grid"></div></div>
+    <div class="crop-zoomrow"><span>拡大</span><input type="range" id="crop-zoom" min="100" max="300" value="100"></div>
+    <div class="rowbtns"><button class="btn btn-gold" id="crop-ok">これで決定</button>
+      <button class="btn btn-line" id="crop-cancel">やめる</button></div>
+  </div>
+</div>
+<div class="shockwave" id="shockwave"></div>
+<div class="awk" id="awk">
+  <div class="rays"></div>
+  <div><div class="big">覚醒</div><div class="who2" id="awk-who"></div></div>
+</div>
+<script>
+/* ===== 00-version.js ===== */
+"use strict";
+const APP_VERSION="1.5";
+const NET_PROTOCOL=2;
+
+/* ===== 01-balance.js ===== */
+/* =========================================================================
+   01. BALANCE — 数値バランスはここに集約する（コード中に直接書かない）
+   ========================================================================= */
+const BALANCE = {
+  defendMultiplier: 0.5,   // 防御時のダメージ倍率
+  critMultiplier: 1.5,     // クリティカル倍率
+  baseCritRate: 0.05,      // 技側で上書き可能
+  accuracyMin: 25,         // 命中率の下限（運ゲー化を防ぐ）
+  accuracyMax: 100,        // 命中率の上限
+  damageVariance: 0,       // 0 = 乱数なし。0.05 なら ±5%
+  minDamage: 1,
+  sp: { max: 8, start: 2, regenPerTurn: 2, defendBonus: 1 }, // 技コスト用のリソース
+  build: {                 // キャラクター作成時のポイント配分
+    budget:480,            // 通常形態に使える合計ポイント
+    hpPerPoint:10,         // HP10ごとに1ポイント
+    minHp:400, minStat:30,
+    awakenBonus:150        // 覚醒形態はATK+DEF+SPDの合計にこれだけ上乗せできる
+  },
+  ruleset: "competitive",  // 将来 "casual" を追加できるよう保持
+  permanentDuration: 99    // これ以上の持続ターンは「永続」として扱う
+};
+
+/* ===== 02-skills.js ===== */
+/* =========================================================================
+   02. SkillData — 技はすべてデータ。エンジンは技IDを知らない。
+   formula: standard / fixed / ignoreDef / maxHpRatio / currentHpRatio / spdBased
+   ========================================================================= */
+const SKILLS = {
+  /* --- 共通 --- */
+  basic_attack:{id:"basic_attack",name:"攻撃",type:"ATTACK",power:0,accuracy:95,cost:0,priority:0,
+    description:"基本の一撃。コストなしで撃てる。",effects:[]},
+
+  /* --- 剣士 通常形態 --- */
+  sw_slash:{id:"sw_slash",name:"斬撃",type:"ATTACK",power:40,accuracy:95,cost:1,priority:0,
+    description:"踏み込んで斬る。安定した主力。",effects:[]},
+  sw_helm:{id:"sw_helm",name:"兜割り",type:"SPECIAL",power:68,accuracy:85,cost:3,priority:0,
+    guardBreak:true,defPierce:0.3,
+    description:"防御ごと断ち割る。相手の防御を半ば無視する。",effects:[]},
+  sw_read:{id:"sw_read",name:"見切り",type:"DEFENSE",power:0,accuracy:100,cost:2,priority:1,
+    description:"構えて相手の一撃を待つ。このターン防御が上がり、殴られると斬り返す。",
+    effects:[{target:"self",kind:"STAT",stat:"def",mult:1.5,duration:1,name:"見切り",icon:"◆",tone:"good"},
+             {target:"self",kind:"COUNTER",ratio:0.5,duration:1,name:"斬り返し",icon:"↩",tone:"good"}]},
+  sw_swift:{id:"sw_swift",name:"疾風突き",type:"ATTACK",power:22,accuracy:100,cost:2,priority:2,
+    description:"必ず先に届く刺突。威力は低い。",effects:[]},
+
+  /* --- 剣士 覚醒形態 --- */
+  sw_issen:{id:"sw_issen",name:"絶刀・一閃",type:"ATTACK",power:95,accuracy:90,cost:3,priority:0,
+    guardBreak:true,critRate:0.15,
+    description:"防御を意味のないものにする一閃。",effects:[]},
+  sw_rensan:{id:"sw_rensan",name:"連斬",type:"ATTACK",power:30,accuracy:90,cost:4,priority:0,hits:3,
+    description:"三連撃。命中判定は一回ずつ行う。",effects:[]},
+  sw_stance:{id:"sw_stance",name:"無音の構え",type:"DEFENSE",power:0,accuracy:100,cost:2,priority:3,
+    description:"呼吸を消す。受けた攻撃をそのまま返す。",
+    effects:[{target:"self",kind:"STAT",stat:"def",mult:1.6,duration:1,name:"無音",icon:"◆",tone:"good"},
+             {target:"self",kind:"COUNTER",ratio:1.0,duration:1,name:"返し刃",icon:"↩",tone:"good"}]},
+  sw_shuen:{id:"sw_shuen",name:"終焉斬",type:"SPECIAL",power:150,accuracy:85,cost:6,priority:0,
+    oncePerBattle:true,guardBreak:true,
+    description:"残った力を一太刀に乗せる。戦闘中1回だけ。",effects:[]},
+
+  /* --- 魔法使い 通常形態 --- */
+  mg_bolt:{id:"mg_bolt",name:"魔力弾",type:"SPECIAL",power:55,accuracy:95,cost:1,priority:0,
+    description:"素早く撃ち出す魔力の弾。",effects:[]},
+  mg_flame:{id:"mg_flame",name:"炎撃",type:"SPECIAL",power:68,accuracy:85,cost:3,priority:0,
+    description:"当たれば3ターン燃え続ける。",
+    effects:[{target:"enemy",kind:"DOT",value:55,duration:3,name:"火傷",icon:"✹",tone:"bad"}]},
+  mg_ice:{id:"mg_ice",name:"氷結",type:"SPECIAL",power:25,accuracy:90,cost:2,priority:0,
+    description:"相手の速度を奪う。行動順を取り返す一手。",
+    effects:[{target:"enemy",kind:"STAT",stat:"spd",mult:0.6,duration:3,name:"凍結",icon:"❄",tone:"bad"}]},
+  mg_focus:{id:"mg_focus",name:"魔力集中",type:"SUPPORT",power:0,accuracy:100,cost:1,priority:1,
+    description:"2ターン攻撃力が上がり、SPも2回復する。隙は大きい。",
+    effects:[{target:"self",kind:"STAT",stat:"atk",mult:1.25,duration:2,name:"集中",icon:"▲",tone:"good"},
+             {target:"self",kind:"SP",value:2,name:"魔力回復"}]},
+
+  /* --- 魔法使い 覚醒形態 --- */
+  mg_stardust:{id:"mg_stardust",name:"星屑の雨",type:"SPECIAL",power:28,accuracy:90,cost:4,priority:0,hits:4,
+    description:"四発の流星。防御されても手数で削る。",effects:[]},
+  mg_gravity:{id:"mg_gravity",name:"重力崩壊",type:"SPECIAL",power:30,accuracy:90,cost:4,priority:0,
+    formula:"currentHpRatio",guardBreak:true,
+    description:"相手の現在HPの30%を直接削る。防御も無視する。",effects:[]},
+  mg_barrier:{id:"mg_barrier",name:"魔弾障壁",type:"DEFENSE",power:0,accuracy:100,cost:2,priority:3,
+    description:"障壁を張る。このターンの被弾を跳ね返す。",
+    effects:[{target:"self",kind:"STAT",stat:"def",mult:2.0,duration:1,name:"障壁",icon:"⛨",tone:"good"},
+             {target:"self",kind:"COUNTER",ratio:0.5,duration:1,name:"反射",icon:"↩",tone:"good"}]},
+  /* --- 電子 独 通常形態 --- */
+  dd_glitch:{id:"dd_glitch",name:"Glitch",type:"ATTACK",power:76,accuracy:95,cost:1,priority:0,
+    selfHpCost:{minPercent:1,maxPercent:4,of:"current"},
+    description:"自身を代償に捧げ、相手を喰らい尽くす。使用時に自分の現在HPの1〜4%を失う。",effects:[]},
+  dd_upset:{id:"dd_upset",name:"{upset}",type:"SUPPORT",power:0,accuracy:100,cost:3,priority:0,
+    description:"執念が生み出した【番狂わせ】。3ターンのあいだ、相手の防御・防御バフを無視して攻撃が通る。",
+    effects:[{target:"self",kind:"PIERCE",duration:3,name:"{upset}",icon:"➶",tone:"good"}]},
+  dd_setup:{id:"dd_setup",name:"SETUP",type:"DEFENSE",power:0,accuracy:100,cost:4,priority:1,
+    cleanse:true,healPercent:24,
+    description:"自分にかかった効果を良い物も悪い物もすべて解除し、最大HPの24%を回復する。",effects:[]},
+  dd_ramune:{id:"dd_ramune",name:"ラムネ",type:"SUPPORT",power:0,accuracy:100,cost:0,priority:0,
+    uses:3,healPercent:11,
+    description:"彼の大好物。最大HPの11%を回復する。戦闘中3回まで。",effects:[]},
+
+  /* --- 電子 独 覚醒形態 --- */
+  dd_jiga:{id:"dd_jiga",name:"自我",type:"ATTACK",power:115,accuracy:85,cost:4,priority:0,
+    guardBreak:true,
+    description:"幻想郷の名残。防御を貫通する。",effects:[]},
+  dd_origin:{id:"dd_origin",name:"オリジンオブエラー",type:"SPECIAL",power:40,accuracy:80,cost:3,priority:0,hits:3,
+    description:"三連撃。命中した相手に【欠如】を刻む。以後その相手は命中率が10%下がり、ターン経過では消えない。",
+    effects:[{target:"enemy",kind:"ACC",value:-10,duration:99,name:"欠如",icon:"◐",tone:"bad"}]},
+  dd_aegis:{id:"dd_aegis",name:"AEGIS",type:"ATTACK",power:-40,accuracy:100,cost:2,priority:3,hits:3,
+    description:"神の盾よ、迎撃せよ。このターンの相手の攻撃を無効化し、通常攻撃を3回叩き込む。",
+    effects:[{target:"self",kind:"NEGATE",duration:1,name:"AEGIS",icon:"⛉",tone:"good"}]},
+  dd_genten:{id:"dd_genten",name:"原点",type:"SPECIAL",power:160,accuracy:75,cost:5,priority:0,
+    oncePerBattle:true,guardBreak:true,buffPierce:true,
+    description:"彼そのもの。防御もバフも意味をなさない。戦闘中1回だけ。",effects:[]},
+
+  mg_end:{id:"mg_end",name:"終焉の理",type:"SPECIAL",power:140,accuracy:80,cost:6,priority:0,
+    oncePerBattle:true,formula:"ignoreDef",
+    description:"理を書き換える。防御力を無視。戦闘中1回だけ。",effects:[]}
+};
+
+/* ===== 03-status.js ===== */
+/* =========================================================================
+   02b. STATUS — 状態異常カタログ。技エディタの選択肢もここから作られる。
+   新しい状態異常を足したいときは、この表に1行足すだけでよい。
+   ========================================================================= */
+const STATUS = {
+  poison:   {name:"毒",      icon:"☠", kind:"DOT",      tone:"bad",  percent:7, duration:3, note:"毎ターン最大HPの{percent}%のダメージ"},
+  burn:     {name:"火傷",    icon:"✹", kind:"DOT",      tone:"bad",  value:55,  duration:3, note:"毎ターン{value}の固定ダメージ"},
+  bleed:    {name:"出血",    icon:"❦", kind:"DOT",      tone:"bad",  percent:4, duration:5, note:"長く続く弱い継続ダメージ"},
+  regen:    {name:"再生",    icon:"✚", kind:"REGEN",    tone:"good", percent:7, duration:3, note:"毎ターン最大HPの{percent}%を回復"},
+  stun:     {name:"スタン",  icon:"✸", kind:"STUN",     tone:"bad",  duration:1, chance:0.35, note:"そのターン行動できない"},
+  freeze:   {name:"氷漬け",  icon:"❄", kind:"STUN",     tone:"bad",  duration:1, chance:0.3,  note:"そのターン行動できない"},
+  paralyze: {name:"麻痺",    icon:"⚡", kind:"PARALYZE", tone:"bad",  value:35,  duration:3, note:"毎ターン{value}%の確率で行動できない"},
+  silence:  {name:"沈黙",    icon:"✖", kind:"SILENCE",  tone:"bad",  duration:2, note:"技が使えず、攻撃と防御しか選べない"},
+  confuse:  {name:"混乱",    icon:"✧", kind:"CONFUSE",  tone:"bad",  value:35,  duration:2, note:"{value}%の確率で自分を殴ってしまう"},
+  blind:    {name:"目くらまし",icon:"◐", kind:"ACC",     tone:"bad",  value:-20, duration:3, note:"命中率が{value}%される"},
+  curse:    {name:"呪縛",    icon:"⊘", kind:"HEALBLOCK",tone:"bad",  duration:3, note:"回復ができなくなる"},
+  shield:   {name:"障壁",    icon:"⛨", kind:"SHIELD",   tone:"good", value:250, duration:3, note:"合計{value}ダメージを肩代わりする"},
+  focus:    {name:"研ぎ澄まし",icon:"✦", kind:"CRIT",    tone:"good", value:25,  duration:2, note:"クリティカル率が{value}%上がる"},
+  counter:  {name:"反撃",    icon:"↩", kind:"COUNTER",  tone:"good", ratio:0.5, duration:1, note:"受けたダメージの{ratio}倍を返す"},
+  pierce:   {name:"貫通",    icon:"➶", kind:"PIERCE",   tone:"good", duration:2, note:"相手の防御と防御バフを無視する"},
+  negate:   {name:"無効化",  icon:"⛉", kind:"NEGATE",   tone:"good", duration:1, note:"次に受ける攻撃を丸ごと打ち消す"},
+  atkUp:    {name:"攻撃上昇",icon:"▲", kind:"STAT", stat:"atk", tone:"good", mult:1.3, duration:3, note:"攻撃力が{mult}倍"},
+  atkDown:  {name:"攻撃低下",icon:"▽", kind:"STAT", stat:"atk", tone:"bad",  mult:0.7, duration:3, note:"攻撃力が{mult}倍"},
+  defUp:    {name:"防御上昇",icon:"◆", kind:"STAT", stat:"def", tone:"good", mult:1.4, duration:3, note:"防御力が{mult}倍"},
+  defDown:  {name:"防御低下",icon:"◇", kind:"STAT", stat:"def", tone:"bad",  mult:0.65,duration:3, note:"防御力が{mult}倍"},
+  spdUp:    {name:"俊敏",    icon:"≫", kind:"STAT", stat:"spd", tone:"good", mult:1.35,duration:3, note:"素早さが{mult}倍"},
+  spdDown:  {name:"鈍足",    icon:"≪", kind:"STAT", stat:"spd", tone:"bad",  mult:0.65,duration:3, note:"素早さが{mult}倍"},
+  /* --- 時間と重力にまつわる特殊な状態 --- */
+  timestop: {name:"時止め",  icon:"⏳", kind:"TIMESTOP",tone:"bad", duration:2, chance:0.3,
+             note:"止まっているあいだ、ずっと行動できない"},
+  timeskip: {name:"時飛ばし",icon:"⏩", kind:"TIMESKIP",tone:"bad", value:2, duration:0,
+             note:"相手の時間を{value}ターン進める。バフは早く切れ、継続ダメージは即座に起きる"},
+  haste:    {name:"加速",    icon:"⇉", kind:"EXTRA",   tone:"good",duration:2,
+             note:"行動したあとに通常攻撃をもう1回叩き込む"},
+  gravity:  {name:"反転重力",icon:"⇅", kind:"INVERT",  tone:"bad", duration:0,
+             note:"かかっている能力変化の上下をひっくり返す"},
+  sleep:    {name:"眠り",    icon:"☾", kind:"SLEEP",   tone:"bad", duration:3, chance:0.45,
+             note:"行動できないが、ダメージを受けると目を覚ます"},
+  petrify:  {name:"石化",    icon:"◘", kind:"PETRIFY", tone:"bad", duration:2, chance:0.3,
+             note:"行動できないが、受けるダメージが半分になる"},
+  endure:   {name:"不屈",    icon:"✜", kind:"ENDURE",  tone:"good",duration:3,
+             note:"倒れるはずの一撃を一度だけHP1で耐える"},
+  venom:    {name:"猛毒",    icon:"☣", kind:"DOT",     tone:"bad", percent:14, duration:2,
+             note:"毎ターン最大HPの{percent}%のダメージ"}
+};
+/* 付与ではなくその場で起こる効果 */
+const INSTANT_KINDS = ["TIMESKIP","INVERT"];
+function statusNote(st){
+  return String(st.note||"")
+    .replace("{percent}",st.percent).replace("{value}",Math.abs(st.value))
+    .replace("{mult}",st.mult).replace("{ratio}",st.ratio);
+}
+
+/* ===== 04-bgm.js ===== */
+/* =========================================================================
+   02c. BGM — キャラクターごとの対戦曲。音声ファイルを持たずその場で鳴らす。
+   ========================================================================= */
+const BGM = {
+  none:   {name:"なし"},
+  tension:{name:"静かな緊張", bpm:84,  root:45, scale:[0,2,3,5,7,8,10], prog:[0,5,3,4], wave:"triangle", hat:false, padGain:.05},
+  rush:   {name:"疾走",       bpm:152, root:50, scale:[0,2,3,5,7,8,10], prog:[0,3,5,4], wave:"sawtooth", hat:true,  padGain:.035},
+  grand:  {name:"荘厳",       bpm:72,  root:43, scale:[0,2,4,5,7,9,11], prog:[0,4,5,3], wave:"triangle", hat:false, padGain:.07},
+  chaos:  {name:"狂騒",       bpm:138, root:46, scale:[0,1,3,6,7,8,11], prog:[0,6,1,5], wave:"square",   hat:true,  padGain:.03},
+  sorrow: {name:"哀愁",       bpm:64,  root:48, scale:[0,2,3,5,7,8,10], prog:[0,5,6,4], wave:"sine",     hat:false, padGain:.06},
+  resolve:{name:"決意",       bpm:104, root:47, scale:[0,2,3,5,7,9,10], prog:[0,4,2,5], wave:"triangle", hat:true,  padGain:.05}
+};
+
+/* ===== 05-characters.js ===== */
+/* =========================================================================
+   03. CharacterData — キャラクター固有データ。エンジンから完全に独立。
+   ========================================================================= */
+const CHARACTERS = {
+  swordsman:{
+    id:"swordsman", name:"剣士", portrait:"⚔", bgm:"resolve",
+    description:"追い詰められてから本気を出す前衛。",
+    stats:{hp:1400,atk:114,def:88,spd:95},
+    skills:["sw_slash","sw_helm","sw_read","sw_swift"],
+    passives:[],
+    awakening:{
+      enabled:true, name:"剣聖・開眼", conditionMode:"ANY",
+      conditions:[
+        {type:"HP_BELOW",value:0.45,label:"HPが45%以下になる"},
+        {type:"DAMAGE_TAKEN",value:650,label:"累計650ダメージを受ける"}
+      ],
+      form:{
+        stats:{atk:180,def:100,spd:130},
+        skills:["sw_issen","sw_rensan","sw_stance","sw_shuen"],
+        effects:[]
+      },
+      duration:5, oneTime:true,
+      cost:{hpPerTurn:55, label:"5ターン持続／毎ターンHP-55／戦闘中1回だけ"},
+      afterEffects:[{kind:"STAT",stat:"atk",mult:0.7,duration:3,name:"燃え尽き"}]
+    }
+  },
+  mage:{
+    id:"mage", name:"魔法使い", portrait:"✦", bgm:"grand",
+    description:"準備を積めば積むほど届く後衛。",
+    stats:{hp:1300,atk:138,def:76,spd:105},
+    skills:["mg_bolt","mg_flame","mg_ice","mg_focus"],
+    passives:[],
+    awakening:{
+      enabled:true, name:"大魔導・開門", conditionMode:"ANY",
+      conditions:[
+        {type:"SKILL_USED",skillId:"mg_focus",value:2,label:"「魔力集中」を2回使う"},
+        {type:"HP_BELOW",value:0.35,label:"HPが35%以下になる"}
+      ],
+      form:{
+        stats:{atk:215,def:85,spd:120},
+        skills:["mg_stardust","mg_gravity","mg_barrier","mg_end"],
+        effects:[]
+      },
+      duration:4, oneTime:true,
+      cost:{hpPerTurn:50, label:"4ターン持続／毎ターンHP-50／戦闘中1回だけ"},
+      afterEffects:[{kind:"STAT",stat:"spd",mult:0.6,duration:3,name:"反動"}]
+    }
+  },
+  denshi_doku:{
+    id:"denshi_doku", name:"電子 独", portrait:"⑂", bgm:"chaos",
+    description:"【神の失敗作】自分を削るほど強くなる、番狂わせの専門家。",
+    stats:{hp:1250,atk:155,def:85,spd:102},
+    skills:["dd_glitch","dd_upset","dd_setup","dd_ramune"],
+    passives:[],
+    awakening:{
+      enabled:true, name:"自我の使者", conditionMode:"ANY",
+      conditions:[
+        {type:"HP_BELOW",value:0.7,label:"HPが70%以下になる"},
+        {type:"SKILL_USED",skillId:"dd_glitch",value:4,label:"「Glitch」を4回使う"}
+      ],
+      form:{
+        stats:{atk:215,def:45,spd:115},
+        skills:["dd_jiga","dd_origin","dd_aegis","dd_genten"],
+        effects:[]
+      },
+      duration:3, oneTime:true,
+      cost:{hpPercentPerTurn:{minPercent:12,maxPercent:28},
+            label:"3ターン持続／毎ターン最大HPの12〜28%を失う／戦闘中1回だけ"},
+      afterEffects:[{kind:"STAT",stat:"atk",mult:0.7,duration:3,name:"灼き切れ"}]
+    }
+  }
+};
+
+/* ===== 06-store.js ===== */
+/* =========================================================================
+   04. Store — 追加キャラ／技の保存。localStorage が使えない環境では
+       メモリ上に保持し、JSONの書き出し／読み込みで持ち運ぶ。
+   ========================================================================= */
+const Store = {
+  KEY:"awakening_trpg_battle_v1",
+  PKEY:"awakening_trpg_prefs_v1",
+  mem:null, memPrefs:null,
+  prefs:{speed:"fast", muted:false},
+  loadPrefs(){
+    let raw=null;
+    try{ raw=window.localStorage.getItem(this.PKEY); }catch(e){}
+    if(!raw) raw=this.memPrefs;
+    if(!raw) return;
+    try{ Object.assign(this.prefs,JSON.parse(raw)); }catch(e){}
+  },
+  savePrefs(){
+    const raw=JSON.stringify(this.prefs);
+    this.memPrefs=raw;
+    try{ window.localStorage.setItem(this.PKEY,raw); }catch(e){}
+  },
+  load(){
+    let raw=null;
+    try{ raw = window.localStorage.getItem(this.KEY); }catch(e){ raw=null; }
+    if(!raw) raw=this.mem;
+    if(!raw) return;
+    try{ this.apply(JSON.parse(raw)); }catch(e){ console.warn("保存データを読めませんでした",e); }
+  },
+  apply(data){
+    if(data.skills) Object.keys(data.skills).forEach(k=>{ SKILLS[k]=data.skills[k]; });
+    if(data.characters) Object.keys(data.characters).forEach(k=>{ CHARACTERS[k]=data.characters[k]; });
+  },
+  save(){
+    const custom={skills:{},characters:{}};
+    Object.keys(SKILLS).forEach(k=>{ if(SKILLS[k].custom) custom.skills[k]=SKILLS[k]; });
+    Object.keys(CHARACTERS).forEach(k=>{ if(CHARACTERS[k].custom) custom.characters[k]=CHARACTERS[k]; });
+    const raw=JSON.stringify(custom);
+    this.mem=raw;
+    try{ window.localStorage.setItem(this.KEY,raw); }catch(e){ /* メモリ保持のみ */ }
+  },
+  /* 自分で作った分だけを書き出す（元から入っているキャラと技はアプリ側にある） */
+  exportData(){
+    const out={format:"awakening-battle", version:1,
+      exportedAt:new Date().toISOString(), characters:{}, skills:{}};
+    Object.keys(CHARACTERS).forEach(k=>{ if(CHARACTERS[k].custom) out.characters[k]=CHARACTERS[k]; });
+    Object.keys(SKILLS).forEach(k=>{ if(SKILLS[k].custom) out.skills[k]=SKILLS[k]; });
+    return out;
+  },
+  exportAll(){ return JSON.stringify(this.exportData(),null,2); },
+
+  /* 読み込み。件数を返し、壊れたデータは弾く */
+  importData(data){
+    if(!data||typeof data!=="object") throw new Error("形式が違います");
+    const chars=data.characters||{}, skills=data.skills||{};
+    let nc=0, ns=0;
+    Object.keys(skills).forEach(k=>{
+      const s=skills[k];
+      if(!s||!s.name||k==="basic_attack") return;
+      s.custom=true; s.id=k; SKILLS[k]=s; ns++;
+    });
+    Object.keys(chars).forEach(k=>{
+      const c=chars[k];
+      if(!c||!c.name||!c.stats||!Array.isArray(c.skills)) return;
+      c.custom=true; c.id=k; CHARACTERS[k]=c; nc++;
+    });
+    if(!nc&&!ns) throw new Error("読み込めるデータがありませんでした");
+    this.save();
+    return {characters:nc, skills:ns};
+  },
+
+  /* 端末のファイルとして保存する */
+  fileName(){
+    const d=new Date(), p=n=>String(n).padStart(2,"0");
+    return `覚醒_キャラクター_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}.json`;
+  },
+  download(){
+    const json=JSON.stringify(this.exportData(),null,2);
+    const blob=new Blob([json],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=this.fileName();
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    return json.length;
+  }
+};
+
+/* ===== 07-effects.js ===== */
+/* =========================================================================
+   05. Effects — 状態効果の共通システム
+   kind: STAT / DOT / REGEN / STUN / COUNTER / SP
+   ========================================================================= */
+const Effects = {
+  /* かけたターンを記録し、そのターンは持続ターンを減らさない。
+     ただし duration=1 の効果は「このターンだけ」の構えなので、その場で切れる。 */
+  apply(fighter, def, turn){
+    if(def.kind==="SP"){ fighter.sp=Math.min(BALANCE.sp.max, fighter.sp+(def.value||0)); return null; }
+    const e={
+      id:def.name+"_"+Math.random().toString(36).slice(2,7),
+      name:def.name||"効果", kind:def.kind, stat:def.stat||null,
+      mult:def.mult!=null?def.mult:1, add:def.add||0,
+      value:def.value||0, ratio:def.ratio||0, percent:def.percent||0,
+      icon:def.icon||null, tone:def.tone||null,
+      duration:def.duration!=null?def.duration:1,
+      appliedTurn:(turn!=null?turn:-1)
+    };
+    e.fresh = (e.duration>1);
+    // 同名効果は上書き（重ねがけによる無限強化を防ぐ）
+    const i=fighter.effects.findIndex(x=>x.name===e.name);
+    if(i>=0) fighter.effects[i]=e; else fighter.effects.push(e);
+    return e;
+  },
+  stat(fighter, stat){
+    let v=fighter.base[stat]||0;
+    fighter.effects.forEach(e=>{ if(e.kind==="STAT"&&e.stat===stat){ v=v*e.mult+e.add; } });
+    return Math.max(1, Math.round(v));
+  },
+  amount(fighter, e){
+    return e.percent ? Math.max(1,Math.floor(fighter.maxHp*e.percent/100)) : (e.value||0);
+  },
+  has(fighter, kind){ return fighter.effects.some(e=>e.kind===kind); },
+  accMod(fighter){
+    let v=0; fighter.effects.forEach(e=>{ if(e.kind==="ACC") v+=e.value; }); return v;
+  },
+  remove(fighter, effect){
+    const i=fighter.effects.indexOf(effect); if(i>=0) fighter.effects.splice(i,1);
+  },
+  clear(fighter){ const n=fighter.effects.length; fighter.effects=[]; return n; },
+  find(fighter, kind){ return fighter.effects.find(e=>e.kind===kind)||null; },
+  isFresh(e, turn){ return e.fresh && e.appliedTurn===turn; },
+  tickDurations(fighter, turn){
+    fighter.effects.forEach(e=>{
+      if(Effects.isFresh(e,turn)){ e.fresh=false; return; }   // かけたターンは減らさない
+      e.duration--;
+    });
+    fighter.effects=fighter.effects.filter(e=>e.duration>0);
+  }
+};
+
+/* ===== 08-awakening.js ===== */
+/* =========================================================================
+   06. AwakeningSystem — 覚醒条件の判定・覚醒形態への移行・代償の処理
+   ========================================================================= */
+const AwakeningSystem = {
+  conditionMet(fighter, c){
+    switch(c.type){
+      case "HP_BELOW":      return fighter.hp <= fighter.maxHp*c.value;
+      case "DAMAGE_TAKEN":  return fighter.damageTaken >= c.value;
+      case "SKILL_USED":    return (fighter.skillUse[c.skillId]||0) >= c.value;
+      case "TURN_REACHED":  return fighter.turnCount >= c.value;
+      case "HAS_EFFECT":    return fighter.effects.some(e=>e.name===c.name||e.kind===c.kind);
+      default: return false;
+    }
+  },
+  ready(fighter){
+    const a=fighter.char.awakening;
+    if(!a||!a.enabled) return false;
+    const list=a.conditions||[];
+    if(!list.length) return false;
+    return (a.conditionMode==="ALL") ? list.every(c=>this.conditionMet(fighter,c))
+                                     : list.some(c=>this.conditionMet(fighter,c));
+  },
+  update(fighter, engine){
+    if(fighter.awaken.state!=="LOCKED") return;
+    if(this.ready(fighter)){
+      fighter.awaken.state="AVAILABLE";
+      engine.push("sys",`${fighter.name}の覚醒条件を満たした。`);
+      engine.push("awaken",`【覚醒可能】${fighter.name}`);
+    }
+  },
+  awaken(fighter, engine){
+    const a=fighter.char.awakening, form=a.form||{};
+    fighter.form="AWAKENED";
+    fighter.formName=a.name||"覚醒形態";
+    // ステータス変更（HPは引き継ぐ。最大HPを変える形態も設定可能）
+    if(form.stats){
+      Object.keys(form.stats).forEach(k=>{
+        if(k==="hp"){ const d=form.stats.hp-fighter.maxHp; fighter.maxHp=form.stats.hp; fighter.hp=Math.min(fighter.maxHp,fighter.hp+Math.max(0,d)); }
+        else fighter.base[k]=form.stats[k];
+      });
+    }
+    // 技セットを丸ごと差し替える
+    if(form.skills&&form.skills.length) fighter.skills=form.skills.slice();
+    (form.effects||[]).forEach(e=>Effects.apply(fighter,e,engine.turn));
+    fighter.awaken.state="ACTIVE";
+    fighter.awaken.used=true;
+    fighter.awaken.turnsLeft=a.duration||0;
+    fighter.awaken.startTurn=engine.turn;
+    engine.push("awaken",`【AWAKENING】${fighter.name}が${fighter.formName}へ移行した！`,fighter.side);
+    if(a.cost&&a.cost.label) engine.push("sys",`代償：${a.cost.label}`);
+  },
+  endTurn(fighter, engine){
+    if(fighter.awaken.state!=="ACTIVE") return;
+    // 覚醒したそのターンは、持続ターンもHPの代償も進まない
+    if(fighter.awaken.startTurn===engine.turn) return;
+    const a=fighter.char.awakening;
+    let drain=(a.cost&&a.cost.hpPerTurn)||0;
+    const pc=a.cost&&a.cost.hpPercentPerTurn;
+    if(pc){
+      const pct=pc.minPercent+engine.rng()*(pc.maxPercent-pc.minPercent);
+      drain=Math.max(1,Math.floor(fighter.maxHp*pct/100));
+    }
+    if(drain>0&&fighter.hp>0){
+      fighter.hp=Math.max(0,fighter.hp-drain);
+      engine.push("dmg",`${fighter.name}は覚醒の代償で${drain}ダメージ！`);
+      engine.checkDeath(fighter);
+    }
+    if(fighter.hp<=0) return;
+    if(a.duration>0){
+      fighter.awaken.turnsLeft--;
+      if(fighter.awaken.turnsLeft<=0) this.revert(fighter,engine);
+      else if(fighter.awaken.turnsLeft<=2) engine.push("sys",`${fighter.name}の覚醒はあと${fighter.awaken.turnsLeft}ターン。`);
+    }
+  },
+  revert(fighter, engine){
+    const a=fighter.char.awakening;
+    fighter.form="NORMAL"; fighter.formName=null;
+    fighter.base={...fighter.char.stats};
+    fighter.skills=fighter.char.skills.slice();
+    fighter.awaken.state = (a.oneTime||fighter.awaken.used) ? "SPENT" : "LOCKED";
+    engine.push("sys",`${fighter.name}の覚醒が解けた。`);
+    (a.afterEffects||[]).forEach(e=>{
+      Effects.apply(fighter,e,engine.turn);
+      engine.push("sys",`${fighter.name}は「${e.name}」状態になった。`);
+    });
+  }
+};
+
+/* ===== 09-engine.js ===== */
+/* =========================================================================
+   07. BattleEngine — ルール・計算・状態管理。UIを一切知らない。
+   ========================================================================= */
+class BattleEngine{
+  constructor(charA, charB, opts){
+    this.opts=opts||{};
+    this.SK=Object.assign({},SKILLS,this.opts.skills||{});
+    this.seed=(this.opts.seed!=null)?this.opts.seed:Math.floor(Math.random()*4294967296);
+    this.rng=BattleEngine.makeRng(this.seed);
+    this.log=[];
+    this.turn=1;
+    this.over=false;
+    this.winner=null;
+    this.pending=[null,null];
+    this.fighters=[this.makeFighter(charA,0),this.makeFighter(charB,1)];
+    this.push("turn",`ターン ${this.turn}`);
+    this.push("sys",`${this.fighters[0].name} と ${this.fighters[1].name} の戦闘を開始する。`);
+  }
+  static makeRng(seed){
+    let a=seed>>>0;
+    return function(){
+      a=(a+0x6D2B79F5)>>>0;
+      let t=Math.imul(a^(a>>>15),1|a);
+      t=(t+Math.imul(t^(t>>>7),61|t))^t;
+      return ((t^(t>>>14))>>>0)/4294967296;
+    };
+  }
+  makeFighter(char, side){
+    const f={
+      side, char, name:char.name, portrait:char.portrait||"◆", portraitImage:char.portraitImage||null,
+      base:{...char.stats}, maxHp:char.stats.hp, hp:char.stats.hp,
+      sp:BALANCE.sp.start, effects:[], defending:false,
+      skills:char.skills.slice(), usedOnce:{}, skillUse:{}, usedCount:{},
+      damageTaken:0, turnCount:0,
+      form:"NORMAL", formName:null,
+      awaken:{state:(char.awakening&&char.awakening.enabled)?"LOCKED":"NONE",turnsLeft:0,used:false}
+    };
+    return f;
+  }
+  /* --- ログ：各行に状態のスナップショットを持たせ、UIが順番に再生できるようにする --- */
+  push(kind, text, actor){
+    this.log.push({kind,text,turn:this.turn,actor:(actor==null?null:actor),snap:this.snapshot()});
+  }
+  snapshot(){
+    return this.fighters.map(f=>({
+      hp:f.hp,maxHp:f.maxHp,sp:f.sp,form:f.form,formName:f.formName,
+      awaken:f.awaken.state,defending:f.defending,
+      effects:f.effects.map(e=>({name:e.name,kind:e.kind,stat:e.stat,mult:e.mult,duration:e.duration}))
+    }));
+  }
+  foe(side){ return this.fighters[side===0?1:0]; }
+
+  /* --- 選択可能なコマンドを返す（UIはこれを表示するだけ） --- */
+  options(side){
+    const f=this.fighters[side];
+    return {
+      canAwaken: f.awaken.state==="AVAILABLE",
+      silenced: Effects.has(f,"SILENCE"),
+      skills: f.skills.map(id=>{
+        const s=this.SK[id]; if(!s) return null;
+        let usable=true, reason="";
+        if(Effects.has(f,"SILENCE")){ usable=false; reason="沈黙"; }
+        if(s.cost>f.sp){ usable=false; reason="SP不足"; }
+        if(s.oncePerBattle&&f.usedOnce[id]){ usable=false; reason="使用済み"; }
+        if(s.uses){
+          const left=s.uses-(f.usedCount[id]||0);
+          if(left<=0){ usable=false; reason="使用済み"; } else reason="残り"+left+"回";
+        }
+        return {skill:s,usable,reason,
+          variable:!!s.costMax, maxSpend:this.maxSpend(f,s)};
+      }).filter(Boolean)
+    };
+  }
+  submit(side, action){ this.pending[side]=action; }
+  bothReady(){ return this.pending[0]&&this.pending[1]; }
+
+  /* --- ターン処理 --- */
+  resolveTurn(){
+    const from=this.log.length;
+    const acts=[0,1].map(s=>({side:s,f:this.fighters[s],a:this.pending[s]}));
+
+    // 防御宣言は行動順に関係なくターン開始時点で有効にする
+    acts.forEach(x=>{ x.f.defending = (x.a.type==="DEFEND"); });
+
+    // 行動順：技のpriority → SPD → ランダム
+    acts.forEach(x=>{
+      x.prio = x.a.type==="AWAKEN" ? 9 : (x.a.type==="SKILL" ? ((this.SK[x.a.skillId]||{}).priority||0) : 0);
+      x.spd = Effects.stat(x.f,"spd");
+      x.tie = this.rng();
+    });
+    acts.sort((p,q)=> q.prio-p.prio || q.spd-p.spd || q.tie-p.tie);
+
+    for(const x of acts){
+      if(this.over) break;
+      if(x.f.hp<=0) continue;
+      this.execute(x);
+    }
+
+    if(!this.over) this.endOfTurn();
+    this.pending=[null,null];
+    return this.log.slice(from);
+  }
+
+  execute(x){
+    const f=x.f, a=x.a, enemy=this.foe(f.side);
+    f.turnCount++;
+    const stun=Effects.find(f,"STUN");
+    if(stun){ this.push("status",`${f.name}は${stun.name}で動けない！`); Effects.remove(f,stun); return; }
+    const hold=Effects.find(f,"TIMESTOP")||Effects.find(f,"SLEEP")||Effects.find(f,"PETRIFY");
+    if(hold){ this.push("status",`${f.name}は${hold.name}で動けない！`); return; }
+    const para=Effects.find(f,"PARALYZE");
+    if(para&&this.rng()*100<(para.value||30)){
+      this.push("status",`${f.name}は${para.name}で体が動かない！`); return;
+    }
+    const conf=Effects.find(f,"CONFUSE");
+    if(conf&&a.type!=="AWAKEN"&&this.rng()*100<(conf.value||30)){
+      const r=this.damage(f,f,this.SK.basic_attack,{selfHit:true});
+      this.push("status",`${f.name}は${conf.name}で自分を攻撃した！ ${r.value}ダメージ！`);
+      this.checkDeath(f);
+      return;
+    }
+
+    if(a.type==="AWAKEN"){ AwakeningSystem.awaken(f,this); return; }
+    if(a.type==="DEFEND"){
+      f.sp=Math.min(BALANCE.sp.max,f.sp+BALANCE.sp.defendBonus);
+      this.push("sys",`${f.name}は身を固めた。`,f.side);
+      return;
+    }
+    const raw = a.type==="ATTACK" ? this.SK.basic_attack : this.SK[a.skillId];
+    if(!raw) return;
+    const spend = raw.costMax
+      ? Math.max(raw.cost||0, Math.min(a.spend!=null?a.spend:this.maxSpend(f,raw), this.maxSpend(f,raw)))
+      : (raw.cost||0);
+    const skill = BattleEngine.effectiveSkill(raw,spend);
+    f.sp-=spend;
+    if(raw.oncePerBattle) f.usedOnce[raw.id]=true;
+    if(raw.uses) f.usedCount[raw.id]=(f.usedCount[raw.id]||0)+1;
+    f.skillUse[raw.id]=(f.skillUse[raw.id]||0)+1;
+    f.lastSkillId=raw.id;
+    this.push("action",`${f.name}は「${raw.name}」を使用した！${raw.costMax?`（SP${spend}）`:""}`,f.side);
+
+    // 使用者自身が支払うHPコスト
+    if(skill.selfHpCost){
+      const c=skill.selfHpCost;
+      const pool=(c.of==="max")?f.maxHp:f.hp;
+      const pct=c.minPercent+this.rng()*(c.maxPercent-c.minPercent);
+      const loss=Math.max(1,Math.floor(pool*pct/100));
+      f.hp=Math.max(1,f.hp-loss); // 自傷では倒れない
+      this.push("dmg",`${f.name}は代償として${loss}のHPを支払った。`);
+    }
+    // 効果の解除と回復
+    if(skill.cleanse){
+      const n=Effects.clear(f);
+      this.push("sys", n?`${f.name}にかかっていた効果がすべて解除された。`:`${f.name}には解除する効果がなかった。`);
+    }
+    if(skill.healPercent){
+      const block=Effects.find(f,"HEALBLOCK");
+      if(block){
+        this.push("sys",`${f.name}は「${block.name}」で回復できない！`);
+      }else{
+        const before=f.hp;
+        f.hp=Math.min(f.maxHp,f.hp+Math.floor(f.maxHp*skill.healPercent/100));
+        this.push("heal",`${f.name}はHPを${f.hp-before}回復した！`);
+      }
+    }
+
+    let damaging = (skill.type==="ATTACK"||skill.type==="SPECIAL");
+    let anyHit=false;
+    // 迎撃効果：相手の攻撃を丸ごと無効化する
+    const neg=Effects.find(enemy,"NEGATE");
+    if(damaging&&neg){
+      Effects.remove(enemy,neg);
+      this.push("sys",`${enemy.name}の「${neg.name}」が${f.name}の攻撃を無効化した！`);
+      damaging=false;
+    }
+    if(damaging){
+      const hits=skill.hits||1;
+      for(let i=0;i<hits;i++){
+        if(this.over||enemy.hp<=0) break;
+        if(!this.rollHit(f,skill)){ this.push("miss",`${enemy.name}は攻撃をかわした！`); continue; }
+        anyHit=true;
+        const r=this.damage(f,enemy,skill);
+        if(r.crit) this.push("crit",`会心の一撃！`);
+        this.push("dmg",`${enemy.name}に${r.value}ダメージ！`);
+        this.checkDeath(enemy);
+        if(this.over) break;
+        this.counter(enemy,f,r.value);
+        if(this.over) break;
+      }
+    }else{
+      anyHit=true;
+    }
+
+    // 効果の適用：自分向けは常に、相手向けは命中時のみ
+    (skill.effects||[]).forEach(e=>{
+      if(e.chance!=null&&this.rng()>e.chance){
+        if(e.target==="enemy"&&anyHit) this.push("miss",`${enemy.name}には効かなかった。`);
+        return;
+      }
+      const tgt=(e.target==="enemy")?enemy:f;
+      if(INSTANT_KINDS.indexOf(e.kind)>=0){
+        if(e.target==="enemy"&&(!anyHit||enemy.hp<=0)) return;
+        this.instantEffect(tgt,e);
+        return;
+      }
+      if(e.target==="enemy"){
+        if(!anyHit||enemy.hp<=0) return;
+        Effects.apply(enemy,e,this.turn);
+        this.push("status",`${enemy.name}は「${e.name}」状態になった。`);
+      }else{
+        const applied=Effects.apply(f,e,this.turn);
+        this.push("status", applied ? `${f.name}に「${e.name}」の効果。` : `${f.name}はSPを回復した。`);
+      }
+    });
+    if(damaging||a.type==="ATTACK") this.followUp(f,enemy);
+  }
+
+  /* 時飛ばし・反転重力のような、付与せずその場で起きる効果 */
+  instantEffect(target, def){
+    if(def.kind==="TIMESKIP"){
+      const n=def.value||2;
+      this.push("status",`${target.name}の時間が${n}ターンぶん進んだ！`);
+      for(const e of target.effects.slice()){
+        if(e.kind==="DOT"){
+          const dmg=Effects.amount(target,e)*Math.min(n,e.duration);
+          target.hp=Math.max(0,target.hp-dmg); target.damageTaken+=dmg;
+          this.push("dmg",`${target.name}は「${e.name}」で${dmg}ダメージ！`);
+        }
+        e.duration-=n; e.fresh=false;
+      }
+      target.effects=target.effects.filter(e=>e.duration>0);
+      this.checkDeath(target);
+      return;
+    }
+    if(def.kind==="INVERT"){
+      const list=target.effects.filter(e=>e.kind==="STAT");
+      if(!list.length){ this.push("sys",`${target.name}には反転させる能力変化がなかった。`); return; }
+      list.forEach(e=>{ e.mult=Math.round((1/e.mult)*1000)/1000; e.tone=e.mult>=1?"good":"bad"; e.icon=e.mult>=1?"▲":"▽"; });
+      this.push("status",`${target.name}の能力変化が反転した！`);
+    }
+  }
+  /* 加速：行動のあとにもう一撃 */
+  followUp(f, enemy){
+    if(this.over||f.hp<=0||enemy.hp<=0) return;
+    const ex=Effects.find(f,"EXTRA");
+    if(!ex) return;
+    this.push("status",`${f.name}の「${ex.name}」による追撃！`,f.side);
+    if(!this.rollHit(f,this.SK.basic_attack)){ this.push("miss",`${enemy.name}はかわした！`); return; }
+    const r=this.damage(f,enemy,this.SK.basic_attack);
+    if(r.crit) this.push("crit",`会心の一撃！`);
+    this.push("dmg",`${enemy.name}に${r.value}ダメージ！`);
+    this.checkDeath(enemy);
+    if(!this.over) this.counter(enemy,f,r.value);
+  }
+
+  rollHit(attacker, skill){
+    const raw=(skill.accuracy!=null?skill.accuracy:100)+Effects.accMod(attacker);
+    const acc=Math.max(BALANCE.accuracyMin,Math.min(BALANCE.accuracyMax,raw));
+    return this.rng()*100 < acc;
+  }
+
+  /* --- ダメージ計算：技ごとに計算式を差し替えられる --- */
+  damage(attacker, target, skill, opt){
+    opt=opt||{};
+    const atk=Effects.stat(attacker,"atk");
+    const spd=Effects.stat(attacker,"spd");
+    const pierceBuff=Effects.find(attacker,"PIERCE");           // {upset} など
+    const guardBreak=skill.guardBreak||!!pierceBuff;
+    const ignoreBuff=skill.buffPierce||!!pierceBuff;
+    // バフ貫通：防御バフは無視するが、デバフはそのまま効く
+    const rawDef=ignoreBuff ? Math.min(target.base.def,Effects.stat(target,"def")) : Effects.stat(target,"def");
+    const def=Math.round(rawDef*(1-(skill.defPierce||0)));
+    const power=skill.power||0;
+    let base;
+    switch(skill.formula||"standard"){
+      case "fixed":           base=power; break;
+      case "ignoreDef":       base=atk+power; break;
+      case "maxHpRatio":      base=target.maxHp*power/100; break;
+      case "currentHpRatio":  base=target.hp*power/100; break;
+      case "spdBased":        base=spd+power-def; break;
+      default:                base=atk+power-def;
+    }
+    let critRate=(skill.critRate!=null?skill.critRate:BALANCE.baseCritRate);
+    const critEff=Effects.find(attacker,"CRIT");
+    if(critEff) critRate+=(critEff.value||0)/100;
+    const crit=this.rng()<critRate;
+    if(crit) base*=BALANCE.critMultiplier;
+    if(target.defending&&!guardBreak) base*=BALANCE.defendMultiplier;
+    if(Effects.has(target,"PETRIFY")) base*=0.5;
+    if(skill.varyPercent>0) base*=1+(this.rng()*2-1)*Math.min(60,skill.varyPercent)/100;
+    if(BALANCE.damageVariance>0){
+      base*=1+(this.rng()*2-1)*BALANCE.damageVariance;
+    }
+    let value=Math.max(BALANCE.minDamage,Math.floor(base));
+    // 眠り：殴られれば目を覚ます
+    const sl=Effects.find(target,"SLEEP");
+    if(sl&&!opt.selfHit){ Effects.remove(target,sl); this.push("status",`${target.name}は目を覚ました！`); }
+    // 障壁：HPより先に削れる
+    const shield=Effects.find(target,"SHIELD");
+    if(shield){
+      const absorbed=Math.min(shield.value,value);
+      shield.value-=absorbed; value-=absorbed;
+      if(absorbed>0) this.push("sys",`${target.name}の「${shield.name}」が${absorbed}を防いだ。`);
+      if(shield.value<=0){ Effects.remove(target,shield); this.push("sys",`${target.name}の「${shield.name}」が砕けた。`); }
+    }
+    // 不屈：倒れる一撃を一度だけ耐える
+    const end=Effects.find(target,"ENDURE");
+    if(end&&value>=target.hp&&target.hp>1){
+      value=target.hp-1;
+      Effects.remove(target,end);
+      this.push("status",`${target.name}は「${end.name}」で持ちこたえた！`);
+    }
+    target.hp=Math.max(0,target.hp-value);
+    target.damageTaken+=value;
+    // 吸収：与えたダメージの一部を自分のHPに変える
+    if(skill.drain&&value>0&&!opt.selfHit&&!Effects.has(attacker,"HEALBLOCK")){
+      const gain=Math.max(1,Math.floor(value*skill.drain));
+      const before=attacker.hp;
+      attacker.hp=Math.min(attacker.maxHp,attacker.hp+gain);
+      if(attacker.hp>before) this.push("heal",`${attacker.name}は${attacker.hp-before}吸収した！`);
+    }
+    return {value,crit};
+  }
+
+  /* --- 可変SPの技：追加で払ったSPぶん威力と持続を伸ばす --- */
+  static effectiveSkill(skill, spend){
+    const base=skill.cost||0;
+    const extra=Math.max(0,(spend!=null?spend:base)-base);
+    if(!extra||(!skill.powerPerSp&&!skill.durationPerSp)) return skill;
+    const s2=Object.assign({},skill);
+    if(skill.powerPerSp) s2.power=(skill.power||0)+extra*skill.powerPerSp;
+    if(skill.durationPerSp&&skill.effects){
+      s2.effects=skill.effects.map(e=>Object.assign({},e,{duration:(e.duration||1)+extra*skill.durationPerSp}));
+    }
+    return s2;
+  }
+  maxSpend(fighter, skill){
+    if(!skill.costMax) return skill.cost||0;
+    return Math.max(skill.cost||0, Math.min(skill.costMax, fighter.sp));
+  }
+
+  /* --- AIや表示用の期待ダメージ（状態を変えない） --- */
+  preview(attacker, target, skill){
+    if(!skill||(skill.type!=="ATTACK"&&skill.type!=="SPECIAL")) return 0;
+    const atk=Effects.stat(attacker,"atk");
+    const spd=Effects.stat(attacker,"spd");
+    const pierceBuff=Effects.find(attacker,"PIERCE");
+    const ignoreBuff=skill.buffPierce||!!pierceBuff;
+    const rawDef=ignoreBuff?Math.min(target.base.def,Effects.stat(target,"def")):Effects.stat(target,"def");
+    const def=Math.round(rawDef*(1-(skill.defPierce||0)));
+    const power=skill.power||0;
+    let base;
+    switch(skill.formula||"standard"){
+      case "fixed": base=power; break;
+      case "ignoreDef": base=atk+power; break;
+      case "maxHpRatio": base=target.maxHp*power/100; break;
+      case "currentHpRatio": base=target.hp*power/100; break;
+      case "spdBased": base=spd+power-def; break;
+      default: base=atk+power-def;
+    }
+    const acc=Math.max(BALANCE.accuracyMin,Math.min(BALANCE.accuracyMax,
+      (skill.accuracy!=null?skill.accuracy:100)+Effects.accMod(attacker)));
+    return Math.max(BALANCE.minDamage,Math.floor(base))*(skill.hits||1)*acc/100;
+  }
+
+  counter(defender, attacker, dmg){
+    const c=Effects.find(defender,"COUNTER");
+    if(!c||defender.hp<=0) return;
+    const value=Math.max(1,Math.floor(dmg*c.ratio));
+    attacker.hp=Math.max(0,attacker.hp-value);
+    attacker.damageTaken+=value;
+    this.push("dmg",`${defender.name}の「${c.name}」！ ${attacker.name}に${value}ダメージ！`);
+    this.checkDeath(attacker);
+  }
+
+  endOfTurn(){
+    // 継続ダメージ・回復
+    for(const f of this.fighters){
+      if(f.hp<=0) continue;
+      for(const e of f.effects.slice()){
+        if(Effects.isFresh(e,this.turn)) continue;
+        if(e.kind==="DOT"){
+          const dmg=Effects.amount(f,e);
+          f.hp=Math.max(0,f.hp-dmg); f.damageTaken+=dmg;
+          this.push("dmg",`${f.name}は「${e.name}」で${dmg}ダメージ！`);
+          this.checkDeath(f); if(this.over) return;
+        }else if(e.kind==="REGEN"){
+          if(Effects.has(f,"HEALBLOCK")) continue;
+          const before=f.hp; f.hp=Math.min(f.maxHp,f.hp+Effects.amount(f,e));
+          if(f.hp>before) this.push("heal",`${f.name}は${f.hp-before}回復した。`);
+        }
+      }
+    }
+    // 覚醒の代償・持続ターン
+    for(const f of this.fighters){ AwakeningSystem.endTurn(f,this); if(this.over) return; }
+    // 効果の持続ターン・防御解除・SP回復
+    for(const f of this.fighters){
+      Effects.tickDurations(f,this.turn);
+      f.defending=false;
+      f.sp=Math.min(BALANCE.sp.max,f.sp+BALANCE.sp.regenPerTurn);
+    }
+    // 覚醒条件の確認
+    for(const f of this.fighters) AwakeningSystem.update(f,this);
+    this.turn++;
+    this.push("turn",`ターン ${this.turn}`);
+  }
+
+  checkDeath(f){
+    if(f.hp>0||this.over) return;
+    this.over=true;
+    this.winner=this.foe(f.side);
+    this.push("sys",`${f.name}は戦闘不能になった。`);
+    this.push("win",`${this.winner.name} の勝利`);
+  }
+}
+
+/* ===== 10-ai.js ===== */
+/* =========================================================================
+   07b. AI — カスタムマッチ用の思考ルーチン。エンジンの公開情報だけを見る。
+   ========================================================================= */
+const AI = {
+  LEVELS:{
+    easy:{label:"ひかえめ",noise:0.55,awaken:0.35,defend:0.9},
+    normal:{label:"ふつう",noise:0.20,awaken:0.75,defend:1.0},
+    hard:{label:"本気",noise:0.03,awaken:1.0,defend:1.15}
+  },
+  choose(engine, side, level){
+    const cfg=this.LEVELS[level]||this.LEVELS.normal;
+    const me=engine.fighters[side], foe=engine.foe(side);
+    const o=engine.options(side);
+    const hpRate=me.hp/me.maxHp, foeRate=foe.hp/foe.maxHp;
+    const cand=[];
+
+    // 覚醒：条件を満たしていて、勝負どころだと判断したら切る
+    if(o.canAwaken){
+      const worth = hpRate<=0.6 || foeRate<=0.45 || me.char.awakening.duration>=5;
+      if(worth && Math.random()<cfg.awaken) return {type:"AWAKEN"};
+    }
+
+    // 基本攻撃
+    cand.push({action:{type:"ATTACK"},score:engine.preview(me,foe,engine.SK.basic_attack)});
+
+    // 防御：相手の最大火力の半分を受け止める価値 ＋ SP回復
+    const foeBest=Math.max(0,...engine.options(foe.side).skills
+      .filter(x=>x.usable).map(x=>engine.preview(foe,me,x.skill)),
+      engine.preview(foe,me,engine.SK.basic_attack));
+    let defScore=foeBest*0.35+18;
+    if(me.sp<=1) defScore+=40;
+    if(hpRate<0.25) defScore+=30;
+    cand.push({action:{type:"DEFEND"},score:defScore*cfg.defend});
+
+    const eff=x=>BattleEngine.effectiveSkill(x.skill,x.maxSpend);
+    const myBest=Math.max(engine.preview(me,foe,engine.SK.basic_attack),
+      ...o.skills.filter(x=>x.usable).map(x=>engine.preview(me,foe,eff(x))));
+
+    o.skills.forEach(x=>{
+      if(!x.usable) return;
+      const s=eff(x);
+      const damaging=(s.type==="ATTACK"||s.type==="SPECIAL");
+      let score=engine.preview(me,foe,s);
+      if(damaging&&score>=foe.hp) score+=10000;
+      if(s.healPercent){
+        const heal=Math.min(me.maxHp-me.hp,me.maxHp*s.healPercent/100);
+        score+=heal*(hpRate<0.45?1.7:0.3);
+        if(s.cleanse){
+          const bad=me.effects.filter(e=>(e.kind==="STAT"&&e.mult<1)||e.kind==="DOT"||e.kind==="ACC").length;
+          const good=me.effects.filter(e=>(e.kind==="STAT"&&e.mult>=1)||e.kind==="PIERCE").length;
+          score+=bad*50-good*70;
+        }
+      }
+      (s.effects||[]).forEach(e=>{
+        const tgt=(e.target==="enemy")?foe:me;
+        if(tgt.effects.some(x2=>x2.name===e.name)){ score-=45; return; }
+        const ch=(e.chance!=null?e.chance:1);
+        const w=v=>{ score+=v*ch; };
+        if(e.kind==="STUN"){ w(foeBest*1.1); return; }
+        if(e.kind==="TIMESTOP"){ w(foeBest*1.05*Math.max(1,e.duration)); return; }
+        if(e.kind==="SLEEP"){ w(foeBest*0.8); return; }
+        if(e.kind==="PETRIFY"){ w(foeBest*0.6*Math.max(1,e.duration)); return; }
+        if(e.kind==="EXTRA"){ w(myBest*0.55*Math.max(1,e.duration)); return; }
+        if(e.kind==="ENDURE"){ w(me.hp*0.25); return; }
+        if(e.kind==="TIMESKIP"){
+          const good=foe.effects.filter(z=>(z.kind==="STAT"&&z.mult>=1)||z.kind==="PIERCE").length;
+          const dots=foe.effects.filter(z=>z.kind==="DOT").length;
+          w(good*70+dots*90+20); return;
+        }
+        if(e.kind==="INVERT"){
+          const good=foe.effects.filter(z=>z.kind==="STAT"&&z.mult>=1).length;
+          w(good?good*120:10); return;
+        }
+        if(e.kind==="PARALYZE"){ w(foeBest*(e.value||30)/100*Math.max(1,e.duration)); return; }
+        if(e.kind==="SILENCE"){ w(foeBest*0.45*Math.max(1,e.duration)); return; }
+        if(e.kind==="CONFUSE"){ w(foeBest*(e.value||30)/120*Math.max(1,e.duration)); return; }
+        if(e.kind==="SHIELD"){ w(Math.min(e.value||0,foeBest*Math.max(1,e.duration))*0.7); return; }
+        if(e.kind==="HEALBLOCK"){ w(60); return; }
+        if(e.kind==="CRIT"){ w(myBest*0.2*Math.max(1,e.duration)); return; }
+        if(e.kind==="DOT"&&e.percent){ w(foe.maxHp*e.percent/100*Math.min(e.duration,4)*0.8); return; }
+        if(e.kind==="REGEN"){ w((e.percent?me.maxHp*e.percent/100:e.value)*Math.min(e.duration,4)*(hpRate<0.6?1:0.5)); return; }
+        if(e.kind==="PIERCE") score+=myBest*0.5;
+        else if(e.kind==="NEGATE") score+=foeBest*0.6;
+        else if(e.kind==="COUNTER") score+=foeBest*(e.ratio||0.5)*0.8;
+        else if(e.kind==="DOT") score+=e.value*Math.min(e.duration,3)*0.8;
+        else if(e.kind==="ACC") score+=45;
+        else if(e.kind==="STAT"){
+          const d=Math.max(1,e.duration);
+          if(e.target==="self"){
+            if(e.stat==="atk") score+=myBest*(e.mult-1)*d*0.8;
+            else if(e.stat==="def") score+=foeBest*(1-1/e.mult)*d*0.7;
+            else score+=30*d;
+          }else{
+            if(e.stat==="atk") score+=foeBest*(1-e.mult)*d*0.8;
+            else if(e.stat==="def") score+=myBest*(1/e.mult-1)*d*0.5;
+            else score+=28*d;
+          }
+        }else score+=25;
+      });
+      if(!damaging) score-=myBest*0.5;                     // 攻撃しないターンの損
+      if(me.lastSkillId===s.id&&!damaging) score-=70;      // 同じ構えの繰り返しを避ける
+      if(s.drain) score+=engine.preview(me,foe,s)*s.drain*(hpRate<0.6?0.9:0.4);
+      if(s.selfHpCost) score-=me.hp*(s.selfHpCost.maxPercent/100)*(hpRate<0.3?1.8:0.6);
+      if(s.cost>me.sp-1) score-=10;
+      cand.push({action:{type:"SKILL",skillId:x.skill.id,spend:x.maxSpend},score});
+    });
+
+    if(Math.random()<cfg.noise){
+      return cand[Math.floor(Math.random()*cand.length)].action;
+    }
+    cand.sort((a,b)=>b.score-a.score);
+    return cand[0].action;
+  }
+};
+
+/* ===== 11-net.js ===== */
+/* =========================================================================
+   07c. Net — あいことば方式のオンライン対戦（P2P）
+
+   つまずきやすい点をこちらで吸収する設計にしている。
+   ・「部屋を作る／参加する」を選ばせない。両者とも同じボタンでよい。
+     まず部屋を開こうとし、すでに誰かが開いていたら自動で参加側に回る。
+   ・相手が先に押していなくても、見つかるまで自動で探し直す。
+   ・携帯回線などP2Pが直接つながらない環境のために中継サーバー(TURN)も使う。
+   ・信号サーバーとの一時的な切断では対戦を止めず、裏でつなぎ直す。
+   ========================================================================= */
+const Net = {
+  peer:null, conn:null, pending:null, role:null, word:"", handlers:{},
+  closed:true, live:false, joinTries:0, swaps:0, lastSeen:0, pingTimer:null,
+
+  LIB:"https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js",
+  ICE:{iceServers:[
+    {urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"]},
+    {urls:["turn:openrelay.metered.ca:80","turn:openrelay.metered.ca:443",
+           "turn:openrelay.metered.ca:443?transport=tcp"],
+     username:"openrelayproject", credential:"openrelayproject"}
+  ]},
+
+  loadLib(){
+    if(window.Peer) return Promise.resolve();
+    if(this._loading) return this._loading;
+    this._loading=new Promise((res,rej)=>{
+      const sc=document.createElement("script");
+      sc.src=this.LIB; sc.onload=()=>res(); sc.onerror=()=>rej(new Error("no-lib"));
+      document.head.appendChild(sc);
+    });
+    return this._loading;
+  },
+  roomId(word){
+    let h=2166136261>>>0;
+    const w=String(word).trim().toLowerCase().replace(/\s+/g,"");
+    for(const ch of w){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
+    return "awkbtl"+NET_PROTOCOL+"-"+h.toString(36);
+  },
+  fire(name,arg){ const h=this.handlers[name]; if(h) h(arg); },
+  status(text,cls){ this.fire("onStatus",{text,cls}); },
+
+  /* ---------- 接続開始（役割は自動で決まる） ---------- */
+  start(word, handlers){
+    this.close();
+    this.handlers=handlers||{};
+    this.word=word; this.closed=false; this.live=false;
+    this.joinTries=0; this.swaps=0;
+    this.status("つなぐ準備をしています…","wait");
+    this.loadLib().then(()=>{ if(!this.closed) this.tryHost(); })
+      .catch(()=>this.status(this.errorText({type:"no-lib"}),"bad"));
+  },
+  dropPeer(){
+    if(this.pending){ try{ this.pending.close(); }catch(e){} this.pending=null; }
+    if(this.peer){ try{ this.peer.removeAllListeners&&this.peer.removeAllListeners(); }catch(e){}
+      try{ this.peer.destroy(); }catch(e){} this.peer=null; }
+  },
+  newPeer(id){
+    return new window.Peer(id,{debug:0,config:this.ICE});
+  },
+
+  tryHost(){
+    if(this.closed) return;
+    this.dropPeer();
+    this.role="host";
+    this.status("あいことばで待ち合わせ中…","wait");
+    let p;
+    try{ p=this.peer=this.newPeer(this.roomId(this.word)); }
+    catch(e){ this.status(this.errorText(e),"bad"); return; }
+    p.on("open",()=>{
+      if(this.closed||this.role!=="host") return;
+      this.fire("onRole","host");
+      this.status(`<div class="word">${this.word}</div>このあいことばを相手に伝えてください。相手が同じ言葉で「つながる」を押すと始まります。`,"wait");
+    });
+    p.on("connection",c=>{
+      if(this.closed||this.conn) return;
+      this.bind(c);
+    });
+    p.on("error",e=>this.onPeerError(e));
+    p.on("disconnected",()=>this.softReconnect());
+  },
+
+  tryJoin(){
+    if(this.closed) return;
+    this.dropPeer();
+    this.role="guest"; this.joinTries=0;
+    this.status("相手の部屋をさがしています…","wait");
+    let p;
+    try{ p=this.peer=this.newPeer(undefined); }
+    catch(e){ this.status(this.errorText(e),"bad"); return; }
+    p.on("open",()=>{ if(!this.closed&&this.role==="guest") this.attempt(); });
+    p.on("error",e=>this.onPeerError(e));
+    p.on("disconnected",()=>this.softReconnect());
+  },
+  attempt(){
+    if(this.closed||this.conn||!this.peer) return;
+    this.joinTries++;
+    let c;
+    try{ c=this.peer.connect(this.roomId(this.word),{reliable:true}); }
+    catch(e){ this.retryJoin(); return; }
+    this.pending=c;
+    c.on("open",()=>{
+      if(this.closed) return;
+      this.pending=null;
+      this.fire("onRole","guest");
+      this.bind(c);
+    });
+    c.on("error",()=>{});
+    // 一定時間でつながらなければ、つなぎ直す
+    setTimeout(()=>{
+      if(this.closed||this.conn) return;
+      if(this.pending===c){ try{ c.close(); }catch(e){} this.pending=null; this.retryJoin(); }
+    },4000);
+  },
+  retryJoin(){
+    if(this.closed||this.conn) return;
+    if(this.joinTries<5){
+      this.status(`相手の部屋をさがしています…（${this.joinTries}回目）`,"wait");
+      setTimeout(()=>this.attempt(),900);
+    }else this.swapRole();
+  },
+  /* 相手も同時に部屋を開こうとしていた場合や、古い部屋が残っていた場合の逃げ道 */
+  swapRole(){
+    if(this.closed||this.conn) return;
+    this.swaps++;
+    if(this.swaps>3){
+      this.status("相手が見つかりませんでした。二人とも同じあいことばで「つながる」を押しているか確認して、もう一度お試しください。","bad");
+      this.dropPeer();
+      return;
+    }
+    if(this.role==="host") this.tryJoin(); else this.tryHost();
+  },
+  onPeerError(e){
+    const t=(e&&e.type)||"";
+    if(this.closed) return;
+    if(t==="unavailable-id"){ this.tryJoin(); return; }        // 相手がすでに部屋を開いていた
+    if(t==="peer-unavailable"){ this.retryJoin(); return; }    // まだ相手が来ていない
+    if(t==="network"||t==="socket-error"||t==="server-error"||t==="socket-closed"){
+      if(this.live){ this.softReconnect(); return; }           // 対戦中は止めない
+      this.status("接続サーバーに届きませんでした。通信環境を確認して、もう一度お試しください。","bad");
+      return;
+    }
+    if(t==="browser-incompatible"){ this.status(this.errorText(e),"bad"); return; }
+    if(this.live) return;                                      // 対戦中の細かなエラーは無視する
+    this.status(this.errorText(e),"bad");
+  },
+  softReconnect(){
+    if(this.closed||!this.peer) return;
+    try{ if(this.peer.disconnected&&!this.peer.destroyed) this.peer.reconnect(); }catch(e){}
+  },
+
+  bind(conn){
+    this.conn=conn; this.live=true; this.lastSeen=Date.now();
+    conn.on("data",d=>{
+      this.lastSeen=Date.now();
+      if(d&&d.t==="ping"){ this.send({t:"pong"}); return; }
+      if(d&&d.t==="pong") return;
+      this.fire("onData",d);
+    });
+    conn.on("close",()=>{ if(!this.closed){ this.live=false; this.fire("onClose"); } });
+    conn.on("error",()=>{});
+    if(this.pingTimer) clearInterval(this.pingTimer);
+    this.pingTimer=setInterval(()=>{
+      if(!this.connected()){ return; }
+      this.send({t:"ping"});
+    },8000);
+    this.fire("onConnect",this.role);
+  },
+  send(obj){
+    try{ if(this.conn&&this.conn.open){ this.conn.send(obj); return true; } }catch(e){}
+    return false;
+  },
+  connected(){ return !!(this.conn&&this.conn.open); },
+  quiet(){ return this.live && (Date.now()-this.lastSeen)>25000; },
+  close(){
+    this.closed=true; this.live=false;
+    if(this.pingTimer){ clearInterval(this.pingTimer); this.pingTimer=null; }
+    if(this.conn){ try{ this.conn.close(); }catch(e){} this.conn=null; }
+    this.dropPeer();
+    this.role=null;
+  },
+  errorText(e){
+    const t=(e&&e.type)||"";
+    if(t==="no-lib") return "通信の部品を読み込めませんでした。インターネットにつながった状態で開いてください。";
+    if(t==="browser-incompatible") return "このブラウザはP2P通信に対応していません。Safari・Chrome・Edgeの最新版でお試しください。";
+    return "接続に失敗しました。もう一度お試しください。";
+  }
+};
+
+/* ===== 12-music.js ===== */
+/* =========================================================================
+   07d. Music — 対戦BGM。音源ファイルを持たず、その場で音を組み立てて鳴らす。
+   キャラクターに設定した曲を、相手側の曲として戦闘中に流す。
+   ========================================================================= */
+const Music = {
+  ctx:null, master:null, timer:null, key:null, bar:0, muted:false, audioEl:null,
+  pending:null, unlocked:false,
+
+  ready(){
+    if(this.ctx) return true;
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC) return false;
+    try{
+      this.ctx=new AC();
+      this.master=this.ctx.createGain();
+      this.master.gain.value=this.muted?0:0.5;
+      this.master.connect(this.ctx.destination);
+      return true;
+    }catch(e){ return false; }
+  },
+  /* ブラウザは利用者が触れた瞬間でないと音を出させてくれない。
+     画面を触ったタイミングでここを通し、待たされていた曲があれば鳴らし直す。 */
+  unlock(){
+    if(!this.ready()) return false;
+    try{
+      const b=this.ctx.createBuffer(1,1,22050);
+      const src=this.ctx.createBufferSource();
+      src.buffer=b; src.connect(this.ctx.destination); src.start(0);
+    }catch(e){}
+    if(this.ctx.state==="suspended"){
+      const p=this.ctx.resume();
+      if(p&&p.then) p.then(()=>{ this.unlocked=true; this.resume(); }).catch(()=>{});
+    }else{
+      this.unlocked=true;
+      this.resume();
+    }
+    return this.ctx.state==="running";
+  },
+  /* 鳴らせずに待たせていた曲を拾い直す */
+  resume(){
+    if(this.key||!this.pending) return;
+    const p=this.pending;
+    this.pending=null;
+    this.play(p.key,p.url);
+  },
+  freq(midi){ return 440*Math.pow(2,(midi-69)/12); },
+
+  /* 1音鳴らす */
+  note(midi,at,dur,type,gain){
+    const c=this.ctx;
+    const o=c.createOscillator(), g=c.createGain();
+    o.type=type||"triangle";
+    o.frequency.value=this.freq(midi);
+    g.gain.setValueAtTime(0.0001,at);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002,gain),at+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,at+dur);
+    o.connect(g); g.connect(this.master);
+    o.start(at); o.stop(at+dur+0.05);
+  },
+  hat(at){
+    const c=this.ctx, len=0.05;
+    const buf=c.createBuffer(1,Math.ceil(c.sampleRate*len),c.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
+    const src=c.createBufferSource(); src.buffer=buf;
+    const g=c.createGain(); g.gain.value=0.05;
+    const hp=c.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=6000;
+    src.connect(hp); hp.connect(g); g.connect(this.master);
+    src.start(at);
+  },
+
+  /* 1小節ぶんを予約する */
+  scheduleBar(p,at){
+    const beat=60/p.bpm, bar=beat*4;
+    const deg=p.prog[this.bar%p.prog.length];
+    const sc=p.scale;
+    const chordTone=i=>p.root+sc[(deg+i)%sc.length]+12*Math.floor((deg+i)/sc.length);
+    const r=chordTone(0), third=chordTone(2), fifth=chordTone(4);
+    // ベース
+    for(let i=0;i<4;i++) this.note(r-12,at+beat*i,beat*0.7,"sine",0.16);
+    // パッド
+    this.note(third+12,at,bar*0.95,p.wave,p.padGain);
+    this.note(fifth+12,at,bar*0.95,p.wave,p.padGain*0.8);
+    // アルペジオ
+    const seq=[0,2,4,2,4,6,4,2];
+    for(let i=0;i<8;i++){
+      if((this.bar%2)===1&&i%2===1) continue;
+      this.note(chordTone(seq[i])+12,at+beat*0.5*i,beat*0.45,p.wave,0.055);
+    }
+    if(p.hat) for(let i=0;i<8;i++) this.hat(at+beat*0.5*i);
+    this.bar++;
+    return bar;
+  },
+
+  play(bgmKey, customUrl){
+    this.stop();
+    if(customUrl){
+      try{
+        this.audioEl=new Audio(customUrl);
+        this.audioEl.loop=true; this.audioEl.volume=this.muted?0:0.35;
+        const pr=this.audioEl.play();
+        if(pr&&pr.catch) pr.catch(()=>{ this.pending={key:bgmKey,url:customUrl}; this.key=null; });
+        this.key="custom";
+      }catch(e){ this.pending={key:bgmKey,url:customUrl}; }
+      return;
+    }
+    if(!bgmKey||bgmKey==="none"||!BGM[bgmKey]) return;
+    if(!this.ready()){ return; }
+    const p=BGM[bgmKey];
+    const begin=()=>{
+      if(this.pending&&this.pending.key===bgmKey) this.pending=null;
+      this.key=bgmKey; this.bar=0;
+      const loop=()=>{
+        if(this.key!==bgmKey) return;
+        const len=this.scheduleBar(p,this.ctx.currentTime+0.06);
+        this.timer=setTimeout(loop,len*1000);
+      };
+      loop();
+    };
+    if(this.ctx.state!=="running"){
+      // まだ音を出す許可が下りていないので、次に画面を触ったときに鳴らす
+      this.pending={key:bgmKey,url:null};
+      const pr=this.ctx.resume?this.ctx.resume():null;
+      if(pr&&pr.then) pr.then(()=>{ if(this.ctx.state==="running") begin(); }).catch(()=>{});
+      return;
+    }
+    begin();
+  },
+  /* いま鳴っているか（鳴らせずに待っている状態と区別する） */
+  blocked(){ return !!this.pending && !this.key; },
+  stop(){
+    this.key=null; this.pending=null;
+    if(this.timer){ clearTimeout(this.timer); this.timer=null; }
+    if(this.audioEl){ try{ this.audioEl.pause(); }catch(e){} this.audioEl=null; }
+  },
+  setMuted(m){
+    this.muted=m;
+    if(!m) this.unlock();
+    if(this.master) this.master.gain.value=m?0:0.5;
+    if(this.audioEl) this.audioEl.volume=m?0:0.35;
+  },
+  /* 編集画面の試聴（数秒で止める） */
+  preview(key){
+    this.play(key);
+    if(this.previewTimer) clearTimeout(this.previewTimer);
+    this.previewTimer=setTimeout(()=>this.stop(),8000);
+  }
+};
+
+/* ===== 13-ui-core.js ===== */
+/* =========================================================================
+   08. BattleUI — 表示と入力のみ。ここで戦闘計算はしない。
+   ========================================================================= */
+const $ = s=>document.querySelector(s);
+const $$ = s=>Array.from(document.querySelectorAll(s));
+const esc = s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const TYPE_LABEL={ATTACK:"攻撃",DEFENSE:"防御",SPECIAL:"特殊",SUPPORT:"補助"};
+const KIND_ICON={DOT:"✹",REGEN:"✚",STUN:"✸",PARALYZE:"⚡",SILENCE:"✖",CONFUSE:"✧",SHIELD:"⛨",
+  HEALBLOCK:"⊘",ACC:"◐",CRIT:"✦",COUNTER:"↩",PIERCE:"➶",NEGATE:"⛉",STAT:"◆"};
+const STAT_MAX={hp:1600,atk:280,def:150,spd:160};
+
+function effTone(e){
+  if(e.tone) return e.tone;
+  if(e.kind==="STAT") return e.mult>=1?"good":"bad";
+  if(["DOT","STUN","PARALYZE","SILENCE","CONFUSE","HEALBLOCK"].includes(e.kind)) return "bad";
+  if(e.kind==="ACC") return (e.value||0)<0?"bad":"good";
+  return "good";
+}
+function effIcon(e){
+  if(e.icon) return e.icon;
+  if(e.kind==="STAT"){ return e.mult>=1?"▲":"▽"; }
+  return KIND_ICON[e.kind]||"◆";
+}
+
+const UI = {
+  mode:"local", pick:[null,null], slotFocus:0, blind:true, aiLevel:"normal",
+  mySide:0, controllers:["local","local"],
+  engine:null, chars:[null,null],
+  localSides:[], li:0, acted:[false,false], remoteBuf:{}, playing:false,
+  netStarted:false, onlinePick:null, sheetMode:null,
+  SPEEDS:{normal:{label:"ふつう",k:1},fast:{label:"はやい",k:0.5},instant:{label:"瞬時",k:0.12}},
+  speed:"fast", skip:false,
+
+  show(id){
+    this.closeSheet();
+    if(id!=="battle") Music.stop();
+    $$(".screen").forEach(s=>s.classList.remove("on"));
+    $("#s-"+id).classList.add("on");
+    window.scrollTo(0,0);
+  },
+
+  /* ---------- 共通パーツ ---------- */
+  avatar(c,size,cls){
+    const inner = c.portraitImage
+      ? `<img class="avimg" src="${c.portraitImage}" alt="">`
+      : esc(c.portrait||"◆");
+    return `<div class="av av-${size} ${cls||""}${c.portraitImage?" hasimg":""}">${inner}</div>`;
+  },
+  previewCard(c){
+    if(!c) return `<div class="note">キャラクターを選んでください。</div>`;
+    const a=c.awakening&&c.awakening.enabled?c.awakening:null;
+    const bars=["hp","atk","def","spd"].map(k=>{
+      const v=c.stats[k], pct=Math.min(100,v/STAT_MAX[k]*100);
+      return `<div class="bar"><span class="bl">${k.toUpperCase()}</span>
+        <span class="bt"><span class="bf" style="width:${pct}%"></span></span>
+        <span class="bv">${v}</span></div>`;
+    }).join("");
+    return `<div class="pv-head">${this.avatar(c,"84")}
+      <div><div class="pv-name">${esc(c.name)}</div><div class="pv-desc">${esc(c.description||"")}</div></div></div>
+      <div class="bars">${bars}</div>
+      ${a?`<div class="awk-note"><b>覚醒：${esc(a.name||"")}</b><br>
+        条件：${esc((a.conditions||[]).map(x=>x.label).join(" または "))}<br>
+        代償：${esc((a.cost&&a.cost.label)||"なし")}</div>`:""}`;
+  },
+  trayHtml(list,current){
+    return list.map(c=>`<button class="thumb${current===c.id?" on":""}" data-id="${c.id}">
+      ${this.avatar(c,"64")}<span class="tn">${esc(c.name)}</span></button>`).join("");
+  },
+};
+
+/* ===== 13b-ui-select.js ===== */
+/* ===== UI：モード選択・キャラクター選択 ===== */
+Object.assign(UI, {
+  /* ---------- モード別の準備画面 ---------- */
+  openMode(mode){
+    this.mode=mode;
+    if(mode==="online"){ this.openOnline(); return; }
+    this.mySide=0; this.slotFocus=0;
+    $("#select-title").textContent = mode==="ai" ? "AI対戦の準備" : "キャラクター選択";
+    $("#who0").textContent = mode==="ai" ? "あなた" : "プレイヤー1";
+    $("#who1").textContent = mode==="ai" ? "AI" : "プレイヤー2";
+    this.renderSelect();
+    this.show("select");
+  },
+  renderSelect(){
+    const list=Object.values(CHARACTERS);
+    const cur=this.pick[this.slotFocus];
+    const shown=cur||this.lastTapped;   // 枠が空でも直前に触ったキャラを見せておく
+    $("#preview").innerHTML=this.previewCard(shown?CHARACTERS[shown]:null);
+    const tray=$("#select-tray");
+    tray.innerHTML=this.trayHtml(list,cur);
+    tray.querySelectorAll(".thumb").forEach(b=>b.onclick=()=>{
+      this.lastTapped=b.dataset.id;
+      this.pick[this.slotFocus]=b.dataset.id;
+      if(this.pick[1]===null) this.slotFocus=1;
+      this.renderSelect();
+    });
+    [0,1].forEach(i=>{
+      const el=$("#slot"+i);
+      el.classList.toggle("active",this.slotFocus===i);
+      el.querySelector(".pick").textContent=this.pick[i]?CHARACTERS[this.pick[i]].name:"未選択";
+    });
+    const opt=$("#select-options");
+    if(this.mode==="ai"){
+      opt.innerHTML=`<div class="h-rule">AIの強さ</div><div class="seg">`+
+        Object.keys(AI.LEVELS).map(k=>`<button data-lv="${k}" class="${this.aiLevel===k?"on":""}">${AI.LEVELS[k].label}</button>`).join("")+
+        `</div><p class="note" style="margin-top:8px">「本気」は倒しきれる手を逃さず、覚醒のタイミングも計算してきます。</p>`;
+      opt.querySelectorAll("[data-lv]").forEach(b=>b.onclick=()=>{ this.aiLevel=b.dataset.lv; this.renderSelect(); });
+    }else{
+      opt.innerHTML=`<div class="h-rule">対戦設定</div>
+        <label class="pickrow"><input type="checkbox" id="opt-blind" ${this.blind?"checked":""}>
+        <span class="pn">コマンド入力を相手に見せない</span></label>`;
+      $("#opt-blind").onchange=e=>{ this.blind=e.target.checked; };
+    }
+    $("#btn-start").disabled=!(this.pick[0]&&this.pick[1]);
+  },
+});
+
+/* ===== 13c-ui-net.js ===== */
+/* ===== UI：オンライン対戦 ===== */
+Object.assign(UI, {
+  /* ---------- オンライン ---------- */
+  openOnline(){
+    const list=Object.values(CHARACTERS);
+    if(!this.onlinePick||!CHARACTERS[this.onlinePick]) this.onlinePick=list[0].id;
+    $("#online-preview").innerHTML=this.previewCard(CHARACTERS[this.onlinePick]);
+    const tray=$("#online-tray");
+    tray.innerHTML=this.trayHtml(list,this.onlinePick);
+    tray.querySelectorAll(".thumb").forEach(b=>b.onclick=()=>{ this.onlinePick=b.dataset.id; this.openOnline(); });
+    this.show("online");
+  },
+  netStatus(text,cls){
+    const el=$("#net-status");
+    el.style.display="block"; el.className="status "+(cls||""); el.innerHTML=text;
+  },
+  netBusy(on){
+    $("#btn-connect").disabled=on;
+    $("#btn-connect").textContent=on?"接続中…":"あいことばでつながる";
+    $("#btn-cancel-net").style.display=on?"block":"none";
+  },
+  /* 相手の端末に無い自作技も一緒に渡す。相手のデータは書き換えない */
+  bundleFor(charId){
+    const c=CHARACTERS[charId];
+    const o=JSON.parse(JSON.stringify(c));
+    if(o.bgmAudio&&o.bgmAudio.length>300000){ delete o.bgmAudio; delete o.bgmAudioName; }
+    const ids=[].concat(o.skills||[],(o.awakening&&o.awakening.form&&o.awakening.form.skills)||[]);
+    const skills={};
+    ids.forEach(id=>{ if(SKILLS[id]) skills[id]=SKILLS[id]; });
+    return {v:APP_VERSION, char:o, skills};
+  },
+  battleSkills(b1,b2){
+    return Object.assign({},(b1&&b1.skills)||{},(b2&&b2.skills)||{});
+  },
+
+  connect(){
+    const word=$("#net-word").value.trim();
+    if(!word){ this.netStatus("あいことばを入れてください。","bad"); return; }
+    this.mode="online"; this.netStarted=false; this.mySide=0;
+    Music.unlock();          // 開戦は相手の到着時なので、ここで音を開通させておく
+    this.netBusy(true);
+    Net.start(word,{
+      onStatus:s=>this.netStatus(s.text,s.cls),
+      onRole:role=>{ this.mySide=(role==="host")?0:1; },
+      onConnect:role=>{
+        this.netStatus("つながりました。キャラクターを送っています…","ok");
+        if(role==="guest") Net.send({t:"hello",bundle:this.bundleFor(this.onlinePick)});
+        else Net.send({t:"hello-req"});
+      },
+      onData:d=>this.onNetData(d),
+      onClose:()=>this.onNetClose()
+    });
+  },
+  cancelNet(){
+    Net.close(); this.netBusy(false);
+    this.netStatus("接続をやめました。","");
+  },
+  onNetClose(){
+    this.stopResend();
+    this.netBusy(false);
+    if($("#s-battle").classList.contains("on")||$("#s-result").classList.contains("on")){
+      this.openOnline();
+      this.netStatus("相手との接続が切れました。もう一度同じあいことばでつなぎ直せます。","bad");
+    }else{
+      this.netStatus("接続が切れました。もう一度お試しください。","bad");
+    }
+  },
+  onNetData(d){
+    if(!d||!d.t) return;
+    if(d.t==="hello-req"){ Net.send({t:"hello",bundle:this.bundleFor(this.onlinePick)}); return; }
+    if(d.t==="hello"){
+      if(Net.role!=="host"||this.netStarted) return;
+      if(d.bundle&&d.bundle.v&&d.bundle.v!==APP_VERSION){
+        this.netStatus(`相手のアプリの版が違います（相手 ${esc(d.bundle.v)} / あなた ${APP_VERSION}）。同じファイルを使ってください。`,"bad");
+        return;
+      }
+      this.netStarted=true;
+      const seed=Math.floor(Math.random()*4294967296);
+      const mine=this.bundleFor(this.onlinePick);
+      Net.send({t:"start",seed,bundles:[mine,d.bundle]});
+      this.beginOnlineBattle([mine,d.bundle],seed);
+      return;
+    }
+    if(d.t==="start"){
+      this.netStarted=true;
+      this.beginOnlineBattle(d.bundles,d.seed);
+      return;
+    }
+    if(d.t==="need-act"){
+      // 相手がこちらの行動を受け取れていない。控えから送り直す
+      const a=this.sentActions&&this.sentActions[d.turn];
+      if(a) Net.send({t:"act",turn:d.turn,action:a});
+      return;
+    }
+    if(d.t==="act"){
+      const side=1-this.mySide;
+      if(!this.engine) return;
+      if(d.turn<this.engine.turn) return;                    // 済んだターンの重複は捨てる
+      if(d.turn!==this.engine.turn||this.acted[side]) this.remoteBuf[d.turn]=d.action;
+      else this.submitSide(side,d.action);
+      return;
+    }
+    if(d.t==="rematch-req"){
+      if(Net.role!=="host") return;
+      const seed=Math.floor(Math.random()*4294967296);
+      Net.send({t:"rematch",seed});
+      this.beginOnlineBattle(this.bundles,seed);
+      return;
+    }
+    if(d.t==="rematch"){ this.beginOnlineBattle(this.bundles,d.seed); return; }
+  },
+  beginOnlineBattle(bundles,seed){
+    if(!bundles||!bundles[0]||!bundles[1]) return;
+    this.bundles=bundles;
+    this.chars=[bundles[0].char,bundles[1].char];
+    this.controllers=this.mySide===0?["local","remote"]:["remote","local"];
+    this.remoteBuf={}; this.sentActions={};
+    this.stopResend();
+    this.netBusy(false);
+    this.startBattle(this.chars[0],this.chars[1],seed,this.battleSkills(bundles[0],bundles[1]));
+  },
+  /* 通信が一度こぼれても止まらないよう、相手の行動が来るまで自分の行動を送り直す */
+  startResend(){
+    if(this.resendTimer) return;
+    this.resendTimer=setInterval(()=>{
+      if(this.mode!=="online"||!this.engine||this.engine.over) return this.stopResend();
+      if(this.playing) return;
+      const me=this.mySide, foe=1-me, t=this.engine.turn;
+      if(this.acted[me]&&!this.acted[foe]){
+        const mine=this.sentActions&&this.sentActions[t];
+        if(mine) Net.send({t:"act",turn:t,action:mine});   // 自分の分が落ちていた場合
+        Net.send({t:"need-act",turn:t});                   // 相手の分が落ちていた場合
+      }
+      if(Net.quiet()) $("#phase-label").textContent="相手と通信できていません…";
+    },1800);
+  },
+  stopResend(){ if(this.resendTimer){ clearInterval(this.resendTimer); this.resendTimer=null; } },
+});
+
+/* ===== 13d-ui-battle.js ===== */
+/* ===== UI：戦闘画面と結果 ===== */
+Object.assign(UI, {
+  /* ---------- 戦闘開始 ---------- */
+  startLocalOrAi(){
+    Music.unlock();
+    this.mySide=0;
+    this.controllers=this.mode==="ai"?["local","ai"]:["local","local"];
+    this.chars=[CHARACTERS[this.pick[0]],CHARACTERS[this.pick[1]]];
+    this.startBattle(this.chars[0],this.chars[1],null,null);
+  },
+  applyPrefs(){
+    if(this.SPEEDS[Store.prefs.speed]) this.speed=Store.prefs.speed;
+    Music.setMuted(!!Store.prefs.muted);
+    this.syncSpeed(); this.syncMute();
+  },
+  startBattle(charA,charB,seed,skills){
+    const opts={};
+    if(seed!=null) opts.seed=seed;
+    if(skills) opts.skills=skills;
+    this.engine=new BattleEngine(charA,charB,opts);
+    this.acted=[false,false];
+    this.prevSnap=this.engine.log[0].snap;
+    this.renderFighters();
+    this.strip(this.engine.log.slice(-2));
+    this.show("battle");
+    this.applyPrefs();
+    this.playBgm();
+    this.beginInput();
+  },
+
+  /* 対戦相手のキャラクターに設定された曲を流す */
+  playBgm(){
+    const foe=this.chars[1-this.mySide]||{}, mine=this.chars[this.mySide]||{};
+    const pick = (foe.bgmAudio||(foe.bgm&&foe.bgm!=="none")) ? foe : mine;
+    Music.play(pick.bgm, pick.bgmAudio);
+    this.syncMute();
+    setTimeout(()=>this.syncMute(),400);
+  },
+  syncMute(){
+    const b=$("#btn-mute");
+    if(!b) return;
+    if(Music.muted) b.textContent="♪ OFF";
+    else b.textContent=Music.blocked()?"♪ タップ":"♪ ON";
+  },
+  /* 画面を触ったら、鳴らせずに待っていた曲を拾う */
+  nudgeMusic(){
+    if(Music.muted) return;
+    if(Music.blocked()||!Music.key){ Music.unlock(); }
+    this.syncMute();
+    setTimeout(()=>this.syncMute(),350);
+  },
+  toggleMute(){
+    Music.setMuted(!Music.muted);
+    Store.prefs.muted=Music.muted; Store.savePrefs();
+    if(!Music.muted&&!Music.key&&$("#s-battle").classList.contains("on")) this.playBgm();
+    this.syncMute();
+  },
+  syncSpeed(){
+    const b=$("#btn-speed");
+    if(b) b.textContent="⏩ "+this.SPEEDS[this.speed].label;
+  },
+  cycleSpeed(){
+    const keys=Object.keys(this.SPEEDS);
+    this.speed=keys[(keys.indexOf(this.speed)+1)%keys.length];
+    Store.prefs.speed=this.speed; Store.savePrefs();
+    this.syncSpeed();
+  },
+
+  /* ---------- 盤面 ---------- */
+  sideOf(view){ return view===0 ? this.mySide : 1-this.mySide; },
+  ownerLabel(side){
+    if(this.mode==="local") return "プレイヤー"+(side+1);
+    if(this.mode==="ai") return side===this.mySide?"あなた":"AI（"+AI.LEVELS[this.aiLevel].label+"）";
+    return side===this.mySide?"あなた":"相手";
+  },
+  renderFighters(snap,turn){
+    const e=this.engine;
+    [0,1].forEach(view=>{
+      const side=this.sideOf(view);
+      const f=e.fighters[side];
+      const s=snap?snap[side]:e.snapshot()[side];
+      const pct=Math.max(0,s.hp/s.maxHp*100);
+      const awake=s.form==="AWAKENED";
+      const host=$("#view"+view);
+      host.className="unit"+(view===1?" foe":"");
+      const chips=s.effects.map(x=>{
+        const d=x.duration>=BALANCE.permanentDuration?"∞":(x.duration>1?x.duration:"");
+        return `<span class="chip ${effTone(x)}"><span class="ci">${effIcon(x)}</span>${esc(x.name)}${d?" "+d:""}</span>`;
+      }).join("");
+      const pips=Array.from({length:BALANCE.sp.max},(_,k)=>`<span class="pip${k<s.sp?" on":""}"></span>`).join("");
+      host.innerHTML=`
+        <div class="avwrap">${this.avatar(f,"84",(view===1?"foe":"me")+(awake?" awake":""))}</div>
+        <div class="info">
+          <span class="owner">${esc(this.ownerLabel(side))}</span>
+          <div class="nmrow"><span class="nm">${esc(f.name)}</span>
+            ${awake?`<span class="badge b-gold">${esc(s.formName||"覚醒")}</span>`:""}
+            ${s.awaken==="AVAILABLE"?`<span class="badge b-gold b-pulse">覚醒可能</span>`:""}
+            ${s.defending?`<span class="badge b-jade">防御</span>`:""}
+          </div>
+          <div class="hpline">
+            <div class="hpbar">
+              <div class="hpghost" style="width:${pct}%"></div>
+              <div class="hpfill${awake?" awake":""}${pct<=30?" low":""}" style="width:${pct}%"></div>
+            </div>
+            <div class="hpnum"><span>HP</span><span><b>${s.hp}</b> / ${s.maxHp}</span></div>
+          </div>
+          <div class="spbar">${pips}</div>
+          ${chips?`<div class="chips">${chips}</div>`:""}
+        </div>`;
+    });
+    $("#turn-label").textContent="ターン "+(turn||this.engine.turn);
+  },
+  popNumber(view,delta,crit){
+    const host=$("#view"+view);
+    const wrap=host.querySelector(".avwrap");
+    if(!wrap) return;
+    const d=document.createElement("div");
+    d.className="float"+(delta>0?" heal":"")+(crit?" crit":"");
+    d.textContent=(delta>0?"+":"−")+Math.abs(delta);
+    wrap.appendChild(d);
+    setTimeout(()=>d.remove(),1100);
+    if(delta<0){
+      host.classList.remove("hurt"); void host.offsetWidth; host.classList.add("hurt");
+      setTimeout(()=>host.classList.remove("hurt"),450);
+    }
+  },
+  actAnim(side){
+    if(side==null) return;
+    const host=$("#view"+(side===this.mySide?0:1));
+    host.classList.remove("act"); void host.offsetWidth; host.classList.add("act");
+    setTimeout(()=>host.classList.remove("act"),520);
+  },
+
+  /* ---------- 入力 ---------- */
+  beginInput(){
+    if(this.engine.over) return;
+    this.acted=[false,false];
+    $("#phase-label").textContent="";
+    this.localSides=[0,1].filter(s=>this.controllers[s]==="local");
+    this.li=0;
+    [0,1].forEach(s=>{
+      if(this.controllers[s]==="ai"){
+        setTimeout(()=>{ if(this.engine&&!this.acted[s]&&!this.engine.over)
+          this.submitSide(s,AI.choose(this.engine,s,this.aiLevel)); },700);
+      }
+      if(this.controllers[s]==="remote"){
+        const buf=this.remoteBuf[this.engine.turn];
+        if(buf){ delete this.remoteBuf[this.engine.turn]; this.submitSide(s,buf); }
+      }
+    });
+    if(this.mode==="online") this.startResend();
+    this.nextLocal();
+  },
+  nextLocal(){
+    if(this.li>=this.localSides.length){ this.waitRemote(); return; }
+    const side=this.localSides[this.li];
+    if(this.mode==="local"&&this.blind){
+      $("#veil-title").textContent=`プレイヤー${side+1} の番`;
+      $("#veil").classList.add("on");
+      $("#veil-ok").onclick=()=>{ $("#veil").classList.remove("on"); this.renderCommand(side); };
+    }else this.renderCommand(side);
+  },
+  waitRemote(){
+    if(this.acted[0]&&this.acted[1]) return;
+    const who=this.mode==="ai"?"AI":"相手";
+    $("#cmd-area").innerHTML=`<div class="waiting">${who}が考えています<span class="dots"></span></div>`;
+  },
+  renderCommand(side){
+    $("#phase-label").textContent=this.mode==="local"?`P${side+1} のコマンド`:"コマンドを選ぶ";
+    const o=this.engine.options(side);
+    const area=$("#cmd-area");
+    area.innerHTML=`<div class="cmd-grid">
+      <button class="cbtn" data-cmd="ATTACK"><span class="ci">⚔</span><span class="cl">攻撃</span></button>
+      <button class="cbtn" data-cmd="DEFEND"><span class="ci">⛊</span><span class="cl">防御</span></button>
+      <button class="cbtn" data-cmd="SKILLS"><span class="ci">✧</span><span class="cl">技${o.silenced?"（沈黙）":""}</span></button>
+      <button class="cbtn" data-cmd="INFO"><span class="ci">☰</span><span class="cl">状況</span></button>
+      ${o.canAwaken?`<button class="cbtn wide awaken" data-cmd="AWAKEN"><span class="cl">覚 醒</span></button>`:""}
+    </div>`;
+    area.querySelectorAll("[data-cmd]").forEach(b=>{
+      b.onclick=()=>{
+        const c=b.dataset.cmd;
+        if(c==="SKILLS") this.openSkills(side);
+        else if(c==="INFO") this.openInfo(side);
+        else this.choose(side,{type:c});
+      };
+    });
+  },
+
+  /* ---------- ボトムシート ---------- */
+  openSheet(title,html){
+    $("#sheet-title").textContent=title;
+    $("#sheet-body").innerHTML=html;
+    $("#sheet").classList.add("on"); $("#scrim").classList.add("on");
+  },
+  closeSheet(){
+    $("#sheet").classList.remove("on"); $("#scrim").classList.remove("on");
+  },
+  skillCardHtml(x,i){
+      const s=x.skill;
+      const meta=[`<span class="mchip">${TYPE_LABEL[s.type]||"技"}</span>`];
+      if(s.power>0) meta.push(`<span class="mchip">威力 ${s.power}${s.hits>1?"×"+s.hits:""}</span>`);
+      meta.push(`<span class="mchip">命中 ${s.accuracy}%</span>`);
+      if(s.priority) meta.push(`<span class="mchip hot">優先度 ${s.priority}</span>`);
+      if(s.guardBreak) meta.push(`<span class="mchip hot">防御貫通</span>`);
+      if(s.buffPierce) meta.push(`<span class="mchip hot">バフ貫通</span>`);
+      if(s.healPercent) meta.push(`<span class="mchip">回復 ${s.healPercent}%</span>`);
+      if(s.drain) meta.push(`<span class="mchip">吸収 ${Math.round(s.drain*100)}%</span>`);
+      if(s.varyPercent) meta.push(`<span class="mchip">ばらつき ±${s.varyPercent}%</span>`);
+      if(s.costMax) meta.push(`<span class="mchip hot">SP1ごとに威力+${s.powerPerSp||0}${s.durationPerSp?" 持続+"+s.durationPerSp:""}</span>`);
+      (s.effects||[]).forEach(e=>meta.push(`<span class="mchip">${effIcon(e)} ${esc(e.name)}${e.chance!=null?" "+Math.round(e.chance*100)+"%":""}</span>`));
+      const costText=x.usable
+        ? ("SP "+(x.variable?s.cost+"〜"+s.costMax:s.cost)+(x.reason?" ／ "+x.reason:""))
+        : x.reason;
+      return `<button class="skl t-${s.type}" data-i="${i}" ${x.usable?"":"disabled"}>
+        <span class="top"><span class="snm">${esc(s.name)}</span>
+        <span class="cost${x.usable?"":" no"}">${costText}</span></span>
+        <div class="sds">${esc(s.description||"")}</div>
+        <div class="meta">${meta.join("")}</div></button>`;
+  },
+  openSkills(side){
+    const o=this.engine.options(side);
+    const html=`<div class="skill-list">`+o.skills.map((x,i)=>this.skillCardHtml(x,i)).join("")+`</div>`;
+    this.openSheet("技をえらぶ",html);
+    $("#sheet-body").querySelectorAll(".skl").forEach(b=>{
+      b.onclick=()=>{
+        const x=o.skills[+b.dataset.i];
+        if(x.variable&&x.maxSpend>x.skill.cost) this.chooseSpend(side,x);
+        else { this.closeSheet(); this.choose(side,{type:"SKILL",skillId:x.skill.id}); }
+      };
+    });
+  },
+  /* 可変SPの技：いくら注ぎ込むかを選ぶ */
+  chooseSpend(side,x){
+    const me=this.engine.fighters[side], foe=this.engine.foe(side);
+    const list=[];
+    for(let sp=x.skill.cost; sp<=x.maxSpend; sp++){
+      const eff=BattleEngine.effectiveSkill(x.skill,sp);
+      const dmg=Math.round(this.engine.preview(me,foe,eff));
+      list.push(`<button class="skl t-${x.skill.type}" data-sp="${sp}">
+        <span class="top"><span class="snm">SP ${sp} で放つ</span>
+        <span class="cost">${dmg>0?"期待 "+dmg:"効果強化"}</span></span>
+        <div class="meta">${eff.power?`<span class="mchip">威力 ${eff.power}${eff.hits>1?"×"+eff.hits:""}</span>`:""}
+        ${(eff.effects||[]).map(e=>`<span class="mchip">${effIcon(e)} ${esc(e.name)} ${e.duration}T</span>`).join("")}
+        <span class="mchip">残SP ${me.sp-sp}</span></div></button>`);
+    }
+    this.openSheet(x.skill.name+"：SPを決める",
+      `<div class="skill-list">${list.join("")}</div>
+       <div style="height:9px"></div><button class="btn btn-line" id="spend-back">技をえらび直す</button>`);
+    $("#sheet-body").querySelectorAll("[data-sp]").forEach(b=>{
+      b.onclick=()=>{ this.closeSheet(); this.choose(side,{type:"SKILL",skillId:x.skill.id,spend:+b.dataset.sp}); };
+    });
+    $("#spend-back").onclick=()=>this.openSkills(side);
+  },
+  openInfo(side){
+    const f=this.engine.fighters[side], a=f.char.awakening;
+    const st=["atk","def","spd"].map(k=>`<span class="mchip">${k.toUpperCase()} ${Effects.stat(f,k)}</span>`).join("");
+    let aw="覚醒なし";
+    if(a&&a.enabled){
+      const state={LOCKED:"条件未達成",AVAILABLE:"いつでも覚醒できる",ACTIVE:`覚醒中（残り${f.awaken.turnsLeft}ターン）`,SPENT:"使用済み"}[f.awaken.state]||"";
+      aw=`<b>${esc(a.name||"覚醒")}</b>：${state}<br>条件（${a.conditionMode==="ALL"?"すべて":"いずれか"}）：${esc((a.conditions||[]).map(c=>c.label).join(" ／ "))}<br>代償：${esc((a.cost&&a.cost.label)||"なし")}`;
+    }
+    const chips=f.effects.map(e=>`<span class="chip ${effTone(e)}"><span class="ci">${effIcon(e)}</span>${esc(e.name)}（${e.duration>=BALANCE.permanentDuration?"永続":"残"+e.duration}）</span>`).join("");
+    this.openSheet(f.name+" の状況",
+      `<div class="meta" style="display:flex;gap:5px;flex-wrap:wrap">${st}<span class="mchip">SP ${f.sp}/${BALANCE.sp.max}</span></div>
+       <div class="awk-note" style="margin-top:12px">${aw}</div>
+       ${chips?`<div class="chips" style="margin-top:12px">${chips}</div>`:`<p class="note" style="margin-top:12px">かかっている効果はありません。</p>`}`);
+  },
+  logTap(){ if(!this.fastForward()) this.openLog(); },
+  openLog(){
+    const html=`<div class="logfull">`+this.engine.log.map(e=>`<div class="le ${e.kind}">${esc(e.text)}</div>`).join("")+`</div>`;
+    this.openSheet("戦闘ログ",html);
+    const box=$("#sheet-body").querySelector(".logfull");
+    box.scrollTop=box.scrollHeight;
+  },
+  strip(entries){
+    const box=$("#logstrip");
+    const last=entries.slice(-2);
+    box.innerHTML=last.map((e,i)=>`<div class="ll ${e.kind}${i===0&&last.length>1?" old":""}">${esc(e.text)}</div>`).join("");
+  },
+
+  choose(side,action){
+    this.li++;
+    if(this.mode==="online"){
+      const t=this.engine.turn;
+      this.sentActions=this.sentActions||{};
+      this.sentActions[t]=action;
+      Object.keys(this.sentActions).forEach(k=>{ if(+k<t-4) delete this.sentActions[k]; });
+      Net.send({t:"act",turn:t,action});
+      this.startResend();
+    }
+    this.submitSide(side,action,true);
+  },
+  submitSide(side,action,fromLocal){
+    if(this.acted[side]||!this.engine||this.engine.over) return;
+    this.engine.submit(side,action);
+    this.acted[side]=true;
+    if(this.acted[0]&&this.acted[1]){ this.stopResend(); this.resolve(); return; }
+    if(fromLocal) this.nextLocal();
+    else if(this.li>=this.localSides.length) this.waitRemote();
+  },
+
+  /* ---------- 解決 ---------- */
+  resolve(){
+    $("#veil").classList.remove("on");
+    this.closeSheet();
+    $("#phase-label").textContent="行動処理中 — タップで送る";
+    $("#cmd-area").innerHTML=`<div class="waiting"><span class="dots"></span></div>`;
+    const entries=this.engine.resolveTurn();
+    this.playing=true; this.skip=false;
+    const k=this.SPEEDS[this.speed].k;
+    let i=0, shown=[];
+    const step=()=>{
+      if(i>=entries.length){
+        this.playing=false;
+        this.prevSnap=this.engine.snapshot();
+        this.renderFighters();
+        if(this.engine.over) this.finish();
+        else { $("#phase-label").textContent=""; this.beginInput(); }
+        return;
+      }
+      const e=entries[i++];
+      shown.push(e); this.strip(shown);
+      [0,1].forEach(side=>{
+        const before=this.prevSnap[side].hp, after=e.snap[side].hp;
+        if(before!==after) this.popNumber(side===this.mySide?0:1,after-before,e.kind==="crit");
+      });
+      this.prevSnap=e.snap;
+      this.renderFighters(e.snap,e.turn);
+      if(e.kind==="action"||e.kind==="awaken") this.actAnim(e.actor);
+      let wait=430;
+      if(e.kind==="turn"){ if(!this.skip) this.banner(e.text); wait=640; }
+      if(e.kind==="miss"||e.kind==="sys"||e.kind==="status") wait=320;
+      const isAwk=(e.kind==="awaken"&&e.text.indexOf("AWAKENING")>=0);
+      if(isAwk){ if(!this.skip) this.awakenFlash(e.text); wait=2050; }
+      if(this.skip) wait=isAwk?120:16;          // タップ後は一気に流す
+      else wait=Math.max(16,Math.round(wait*(isAwk?Math.max(k,0.45):k)));
+      setTimeout(step,wait);
+    };
+    step();
+  },
+  /* 再生中に画面を触ったら残りを一気に流す */
+  fastForward(){
+    if(!this.playing) return false;
+    this.skip=true;
+    $("#awk").classList.remove("on");
+    $("#shockwave").classList.remove("on");
+    return true;
+  },
+  banner(text){
+    const a=$("#arena");
+    const b=document.createElement("div");
+    b.className="banner"; b.innerHTML=`<span>${esc(text)}</span>`;
+    a.appendChild(b);
+    setTimeout(()=>b.remove(),1000);
+  },
+  awakenFlash(text){
+    const sw=$("#shockwave");
+    sw.classList.remove("on"); void sw.offsetWidth; sw.classList.add("on");
+    setTimeout(()=>sw.classList.remove("on"),500);
+    const o=$("#awk");
+    $("#awk-who").textContent=text.replace("【AWAKENING】","");
+    o.classList.remove("on"); void o.offsetWidth; o.classList.add("on");
+    setTimeout(()=>o.classList.remove("on"),2000);
+  },
+  finish(){
+    const win=this.engine.winner, loser=this.engine.foe(win.side);
+    const el=$("#result-win");
+    if(this.mode==="local"){ el.className="rw win"; el.textContent="決着"; }
+    else if(win.side===this.mySide){ el.className="rw win"; el.textContent="WIN"; }
+    else { el.className="rw lose"; el.textContent="LOSE"; }
+    $("#result-av").innerHTML=this.avatar(win,"84","awake");
+    $("#result-name").textContent=win.name+" の勝利";
+    $("#result-sub").textContent=`${this.engine.turn}ターンで決着。${loser.name}は戦闘不能。`;
+    const rb=$("#btn-rematch");
+    rb.disabled=false; rb.textContent="もう一度たたかう";
+    this.show("result");
+  },
+  rematch(){
+    if(this.mode==="online"){
+      if(!Net.connected()){ this.onNetClose(); return; }
+      if(Net.role==="host"){
+        const seed=Math.floor(Math.random()*4294967296);
+        Net.send({t:"rematch",seed});
+        this.beginOnlineBattle(this.bundles,seed);
+      }else{
+        Net.send({t:"rematch-req"});
+        $("#btn-rematch").disabled=true;
+        $("#btn-rematch").textContent="相手の準備を待っています…";
+      }
+    }else this.startBattle(this.chars[0],this.chars[1],null,null);
+  },
+});
+
+/* ===== 13e-ui-roster.js ===== */
+/* ===== UI：キャラクター一覧 ===== */
+Object.assign(UI, {
+  /* ---------- キャラクター一覧 ---------- */
+  renderRoster(){
+    const wrap=$("#edit-roster"); wrap.innerHTML="";
+    Object.values(CHARACTERS).forEach(c=>{
+      const row=document.createElement("div");
+      row.className="editcard";
+      row.innerHTML=`${this.avatar(c,"44")}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:var(--serif);font-size:16px">${esc(c.name)}</div>
+          <div class="note" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.description||"")}</div>
+        </div>
+        <div style="display:flex;gap:4px;flex:0 0 auto">
+          <button class="btn btn-line" data-act="edit" style="width:auto;padding:8px 12px;font-size:12px">${c.custom?"編集":"複製"}</button>
+          ${c.custom?`<button class="btn btn-ghost" data-act="del" style="width:auto;padding:8px 10px;font-size:12px">削除</button>`:""}
+        </div>`;
+      row.querySelector('[data-act="edit"]').onclick=()=>Editor.openCharacter(c.custom?c.id:null,c.custom?null:c);
+      const del=row.querySelector('[data-act="del"]');
+      if(del) del.onclick=()=>{ if(confirm(`${c.name}を削除しますか？`)){ delete CHARACTERS[c.id]; Store.save(); this.renderRoster(); } };
+      wrap.appendChild(row);
+    });
+  }
+});
+
+/* ===== 14-cropper.js ===== */
+/* =========================================================================
+   09a. Cropper — 立ち絵の切り抜き。指でずらして拡大率を決める。
+   ========================================================================= */
+const Cropper = {
+  V:280, img:null, scale:1, zoom:1, tx:0, ty:0, done:null, drag:null,
+
+  open(dataUrl, onDone){
+    this.done=onDone;
+    const el=$("#crop-img");
+    el.onload=()=>{ this.zoom=1; this.fit(); $("#cropper").classList.add("on"); };
+    el.onerror=()=>{ this.close(); alert("画像を読み込めませんでした。"); };
+    el.src=dataUrl;
+  },
+  close(){ $("#cropper").classList.remove("on"); this.done=null; },
+  base(){
+    const el=$("#crop-img");
+    const w=el.naturalWidth||1, h=el.naturalHeight||1;
+    return this.V/Math.min(w,h);
+  },
+  fit(){
+    const el=$("#crop-img");
+    const s=this.base()*this.zoom;
+    const w=(el.naturalWidth||1)*s, h=(el.naturalHeight||1)*s;
+    // はみ出しすぎないよう位置を制限する
+    this.tx=Math.min(0,Math.max(this.V-w,this.tx||(this.V-w)/2));
+    this.ty=Math.min(0,Math.max(this.V-h,this.ty||(this.V-h)/2));
+    this.scale=s;
+    el.style.width=w+"px"; el.style.height=h+"px";
+    el.style.left=this.tx+"px"; el.style.top=this.ty+"px";
+  },
+  move(dx,dy){ this.tx+=dx; this.ty+=dy; this.fit(); },
+  setZoom(z){
+    const el=$("#crop-img");
+    const cx=(this.V/2-this.tx)/this.scale, cy=(this.V/2-this.ty)/this.scale;
+    this.zoom=z;
+    const s=this.base()*this.zoom;
+    this.tx=this.V/2-cx*s; this.ty=this.V/2-cy*s;
+    this.scale=s; this.fit();
+  },
+  confirm(){
+    const el=$("#crop-img"), S=256;
+    try{
+      const cv=document.createElement("canvas");
+      cv.width=S; cv.height=S;
+      const ctx=cv.getContext("2d");
+      const sx=-this.tx/this.scale, sy=-this.ty/this.scale, sw=this.V/this.scale;
+      ctx.drawImage(el,sx,sy,sw,sw,0,0,S,S);
+      const url=cv.toDataURL("image/jpeg",0.85);
+      const cb=this.done; this.close();
+      if(cb) cb(url);
+    }catch(e){ this.close(); alert("画像を変換できませんでした。"); }
+  },
+  bind(){
+    const box=$("#crop-box");
+    const start=(x,y)=>{ this.drag={x,y}; };
+    const move=(x,y)=>{
+      if(!this.drag) return;
+      this.move(x-this.drag.x,y-this.drag.y);
+      this.drag={x,y};
+    };
+    const end=()=>{ this.drag=null; };
+    box.addEventListener("mousedown",e=>{ e.preventDefault(); start(e.clientX,e.clientY); });
+    window.addEventListener("mousemove",e=>move(e.clientX,e.clientY));
+    window.addEventListener("mouseup",end);
+    box.addEventListener("touchstart",e=>{ const t=e.touches[0]; start(t.clientX,t.clientY); },{passive:true});
+    box.addEventListener("touchmove",e=>{ const t=e.touches[0]; e.preventDefault(); move(t.clientX,t.clientY); },{passive:false});
+    box.addEventListener("touchend",end);
+    $("#crop-zoom").oninput=e=>this.setZoom(Number(e.target.value)/100);
+    $("#crop-ok").onclick=()=>this.confirm();
+    $("#crop-cancel").onclick=()=>this.close();
+  }
+};
+
+/* ===== 15-editor.js ===== */
+/* =========================================================================
+   09b. Editor — キャラクター登録・技登録
+   ========================================================================= */
+const Editor = {
+  draft:null, editingId:null, effects:[],
+
+  /* ---- ポイント計算 ---- */
+  pointsOf(stats){
+    const B=BALANCE.build;
+    return Math.round(stats.hp/B.hpPerPoint + stats.atk + stats.def + stats.spd);
+  },
+  awakenPoints(form){ return Math.round((form.atk||0)+(form.def||0)+(form.spd||0)); },
+
+  readFile(file, onDone, onError, maxMB){
+    if(!file){ onError&&onError("ファイルが選ばれていません。"); return; }
+    if(maxMB&&file.size>maxMB*1024*1024){ onError&&onError(`ファイルが大きすぎます（${maxMB}MBまで）。`); return; }
+    const r=new FileReader();
+    r.onerror=()=>onError&&onError("ファイルを読み込めませんでした。");
+    r.onload=()=>onDone(r.result);
+    r.readAsDataURL(file);
+  },
+
+  blankChar(){
+    return {id:null,name:"",portrait:"◆",portraitImage:null,description:"",custom:true,bgm:"tension",
+      stats:{hp:1200,atk:130,def:85,spd:100},
+      skills:[], passives:[],
+      awakening:{enabled:true,name:"覚醒形態",conditionMode:"ANY",
+        conditions:[{type:"HP_BELOW",value:0.4,label:"HPが40%以下になる"}],
+        form:{stats:{atk:190,def:95,spd:125},skills:[],effects:[]},
+        duration:4,oneTime:true,cost:{hpPerTurn:50,label:""},afterEffects:[]}};
+  },
+  openCharacter(id, copyFrom){
+    if(id){ this.editingId=id; this.draft=JSON.parse(JSON.stringify(CHARACTERS[id])); }
+    else if(copyFrom){ this.editingId=null; this.draft=JSON.parse(JSON.stringify(copyFrom));
+      this.draft.id=null; this.draft.custom=true; this.draft.name=copyFrom.name+"（写し）"; }
+    else { this.editingId=null; this.draft=this.blankChar(); }
+    $("#edit-title").textContent=this.editingId?"キャラクター編集":"キャラクター作成";
+    this.renderCharacter();
+    UI.show("edit");
+  },
+  skillBoxes(selected,group){
+    return Object.values(SKILLS).filter(s=>s.id!=="basic_attack").map(s=>
+      `<label class="pickrow"><input type="checkbox" data-group="${group}" value="${s.id}" ${selected.includes(s.id)?"checked":""}>
+        <span class="pn">${esc(s.name)} <span class="mchip">${TYPE_LABEL[s.type]||"技"}</span></span>
+        <span class="pc">SP${s.cost}${s.costMax?"〜"+s.costMax:""}${s.power>0?" / 威力"+s.power:""}</span></label>`).join("");
+  },
+  renderCharacter(){
+    const d=this.draft, a=d.awakening, B=BALANCE.build;
+    $("#edit-body").innerHTML=`
+      <div class="glass preview" style="margin-bottom:0"><div class="pv-head">
+        ${UI.avatar(d,"84")}
+        <div><div class="pv-name">${esc(d.name||"名もなき者")}</div>
+        <div class="pv-desc">${esc(d.description||"")}</div></div></div></div>
+      <div class="fld"><label>名前</label><input type="text" id="e-name" value="${esc(d.name)}"></div>
+      <div class="grid2">
+        <div class="fld"><label>アイコン（画像がないとき）</label><input type="text" id="e-portrait" maxlength="2" value="${esc(d.portrait||"")}"></div>
+        <div class="fld"><label>説明</label><input type="text" id="e-desc" value="${esc(d.description||"")}"></div>
+      </div>
+      <div class="h-rule">立ち絵</div>
+      <div class="upload">
+        <label class="btn btn-line filebtn" for="e-file"><span class="ic">▣</span>画像を選ぶ
+          <input type="file" id="e-file" accept="image/*" style="display:none"></label>
+        ${d.portraitImage?`<button class="btn btn-line" id="e-file-edit" style="width:auto">切り抜き直す</button>
+          <button class="btn btn-ghost" id="e-file-clear" style="width:auto">外す</button>`:""}
+      </div>
+      <p class="note" style="margin-top:6px">選んだあと、指でずらして拡大率を決めて切り抜けます。</p>
+      <div id="e-file-err" class="err"></div>
+
+      <div class="h-rule">対戦BGM</div>
+      <p class="note">ここで設定した曲は、あなたと戦う相手の画面で流れます。</p>
+      <div class="grid2" style="margin-top:8px">
+        <div class="fld"><label>曲</label><select id="e-bgm">
+          ${Object.keys(BGM).map(k=>`<option value="${k}" ${d.bgm===k?"selected":""}>${BGM[k].name}</option>`).join("")}
+        </select></div>
+        <div class="fld" style="justify-content:flex-end">
+          <button class="btn btn-line" id="e-bgm-test" style="padding:11px">▶ 試聴（8秒）</button></div>
+      </div>
+      <div class="upload" style="margin-top:9px">
+        <label class="btn btn-line filebtn" for="e-audio"><span class="ic">♪</span>音楽ファイルを使う
+          <input type="file" id="e-audio" accept="audio/*" style="display:none"></label>
+        ${d.bgmAudio?`<button class="btn btn-ghost" id="e-audio-clear" style="width:auto">外す</button>
+          <span class="hint">${esc(d.bgmAudioName||"設定済み")}</span>`:`<span class="hint">3MBまで。端末内に保存されます。</span>`}
+      </div>
+
+      <div class="h-rule">基本ステータス</div>
+      <div id="e-meter"></div>
+      <div class="grid4" style="margin-top:10px">
+        ${["hp","atk","def","spd"].map(k=>`<div class="fld"><label>${k.toUpperCase()}</label>
+          <input type="number" class="pt" id="e-${k}" value="${d.stats[k]}"></div>`).join("")}
+      </div>
+      <p class="note">HPは${B.hpPerPoint}あたり1ポイント、ATK・DEF・SPDは1あたり1ポイントです。</p>
+
+      <div class="h-rule">通常形態の技</div>
+      <div class="stack">${this.skillBoxes(d.skills,"normal")}</div>
+
+      <div class="h-rule">覚醒</div>
+      <label class="pickrow"><input type="checkbox" id="e-awk" ${a.enabled?"checked":""}><span class="pn">覚醒を使えるようにする</span></label>
+      <div class="fld"><label>覚醒形態の名前</label><input type="text" id="e-awkname" value="${esc(a.name||"")}"></div>
+      <p class="note">覚醒条件は1つだけ設定できます（複数条件はJSONの読み込みで扱えます）。</p>
+      <div class="fld"><label>覚醒条件</label>
+        <select id="e-cond">
+          <option value="HP_BELOW" ${a.conditions[0].type==="HP_BELOW"?"selected":""}>HPが一定割合以下になる</option>
+          <option value="DAMAGE_TAKEN" ${a.conditions[0].type==="DAMAGE_TAKEN"?"selected":""}>累計ダメージを受ける</option>
+          <option value="SKILL_USED" ${a.conditions[0].type==="SKILL_USED"?"selected":""}>特定の技を指定回数使う</option>
+          <option value="TURN_REACHED" ${a.conditions[0].type==="TURN_REACHED"?"selected":""}>指定ターン数が経過する</option>
+        </select></div>
+      <div class="grid2">
+        <div class="fld"><label>条件の値（割合は 0.4 のように）</label>
+          <input type="number" step="0.05" id="e-condval" value="${a.conditions[0].value}"></div>
+        <div class="fld"><label>対象の技（技使用条件のとき）</label>
+          <select id="e-condskill">${Object.values(SKILLS).filter(s=>s.id!=="basic_attack").map(s=>
+            `<option value="${s.id}" ${a.conditions[0].skillId===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div>
+      </div>
+      <div class="h-rule">覚醒後のステータス</div>
+      <div id="e-ameter"></div>
+      <div class="grid4" style="margin-top:10px">
+        ${["atk","def","spd"].map(k=>`<div class="fld"><label>${k.toUpperCase()}</label>
+          <input type="number" class="pt" id="e-a${k}" value="${a.form.stats[k]!=null?a.form.stats[k]:d.stats[k]}"></div>`).join("")}
+        <div class="fld"><label>持続T</label><input type="number" id="e-adur" value="${a.duration}"></div>
+      </div>
+      <div class="grid2">
+        <div class="fld"><label>毎ターンのHP減少</label><input type="number" id="e-acost" value="${(a.cost&&a.cost.hpPerTurn)||0}"></div>
+        <div class="fld" style="justify-content:flex-end">
+          <label class="pickrow"><input type="checkbox" id="e-aonce" ${a.oneTime?"checked":""}><span class="pn">戦闘中1回だけ</span></label></div>
+      </div>
+      <div class="h-rule">覚醒形態の技</div>
+      <div class="stack">${this.skillBoxes(a.form.skills,"awake")}</div>
+      <div id="edit-err" class="err"></div>
+      <div class="rowbtns" style="margin-top:6px">
+        <button class="btn btn-gold" id="e-save">保存する</button>
+        <button class="btn btn-line" id="e-cancel">やめる</button>
+      </div>`;
+
+    $$("#edit-body .pt").forEach(el=>el.oninput=()=>this.updateMeters());
+    this.updateMeters();
+    $("#e-save").onclick=()=>this.saveCharacter();
+    $("#e-cancel").onclick=()=>UI.show("roster");
+    $("#e-file").onchange=ev=>{
+      const f=ev.target.files&&ev.target.files[0];
+      this.stashForm();
+      this.readFile(f,url=>{
+        this.lastPhoto=url;
+        Cropper.open(url,cropped=>{ this.draft.portraitImage=cropped; this.renderCharacter(); });
+      },msg=>{ $("#e-file-err").textContent=msg; },8);
+    };
+    const ed=$("#e-file-edit");
+    if(ed) ed.onclick=()=>{ this.stashForm();
+      Cropper.open(this.lastPhoto||this.draft.portraitImage,c=>{ this.draft.portraitImage=c; this.renderCharacter(); }); };
+    const clr=$("#e-file-clear");
+    if(clr) clr.onclick=()=>{ this.stashForm(); this.draft.portraitImage=null; this.renderCharacter(); };
+    $("#e-bgm").onchange=e=>{ this.draft.bgm=e.target.value; };
+    $("#e-bgm-test").onclick=()=>Music.preview($("#e-bgm").value);
+    $("#e-audio").onchange=ev=>{
+      const f=ev.target.files&&ev.target.files[0];
+      this.stashForm();
+      this.readFile(f,url=>{ this.draft.bgmAudio=url; this.draft.bgmAudioName=f.name; this.renderCharacter(); },
+        msg=>{ $("#e-file-err").textContent=msg; },3);
+    };
+    const ac=$("#e-audio-clear");
+    if(ac) ac.onclick=()=>{ this.stashForm(); this.draft.bgmAudio=null; this.draft.bgmAudioName=null; this.renderCharacter(); };
+  },
+  meterHtml(used,budget,label){
+    const pct=Math.min(100,used/budget*100);
+    const over=used>budget;
+    return `<div class="meter${over?" over":""}">
+      <div class="mrow"><span>${label}</span><span><b>${used}</b> / ${budget}${over?"（超過）":""}</span></div>
+      <div class="mtrack"><div class="mfill" style="width:${pct}%"></div></div></div>`;
+  },
+  updateMeters(){
+    const B=BALANCE.build, n=id=>Number($("#"+id).value)||0;
+    const st={hp:n("e-hp"),atk:n("e-atk"),def:n("e-def"),spd:n("e-spd")};
+    $("#e-meter").innerHTML=this.meterHtml(this.pointsOf(st),B.budget,"使用ポイント");
+    const baseSum=st.atk+st.def+st.spd;
+    const aSum=n("e-aatk")+n("e-adef")+n("e-aspd");
+    $("#e-ameter").innerHTML=this.meterHtml(aSum,baseSum+B.awakenBonus,"覚醒後のATK+DEF+SPD");
+  },
+  /* 画面を組み直す前に、入力途中の内容を下書きへ退避する */
+  stashForm(){
+    const d=this.draft; if(!$("#e-name")) return;
+    const v=id=>$("#"+id)?$("#"+id).value.trim():"", n=id=>$("#"+id)?Number($("#"+id).value):0;
+    d.name=v("e-name"); d.portrait=v("e-portrait")||d.portrait; d.description=v("e-desc");
+    ["hp","atk","def","spd"].forEach(k=>{ if(n("e-"+k)>0) d.stats[k]=n("e-"+k); });
+    if($("#e-bgm")) d.bgm=$("#e-bgm").value;
+    d.skills=$$('#edit-body input[data-group="normal"]:checked').map(x=>x.value);
+    const picked=$$('#edit-body input[data-group="awake"]:checked').map(x=>x.value);
+    if(picked.length) d.awakening.form.skills=picked;
+    if($("#e-awkname")) d.awakening.name=v("e-awkname");
+    ["atk","def","spd"].forEach(k=>{ if(n("e-a"+k)>0) d.awakening.form.stats[k]=n("e-a"+k); });
+  },
+  saveCharacter(){
+    const v=id=>$("#"+id).value.trim(), n=id=>Number($("#"+id).value);
+    const picked=g=>$$(`#edit-body input[data-group="${g}"]:checked`).map(x=>x.value);
+    const B=BALANCE.build, err=[];
+    if(!v("e-name")) err.push("名前を入力してください。");
+    const st={hp:n("e-hp"),atk:n("e-atk"),def:n("e-def"),spd:n("e-spd")};
+    if(st.hp<B.minHp) err.push(`HPは${B.minHp}以上にしてください。`);
+    ["atk","def","spd"].forEach(k=>{ if(st[k]<B.minStat) err.push(`${k.toUpperCase()}は${B.minStat}以上にしてください。`); });
+    const used=this.pointsOf(st);
+    if(used>B.budget) err.push(`ポイントが${used-B.budget}超過しています。`);
+    const aSum=n("e-aatk")+n("e-adef")+n("e-aspd"), cap=st.atk+st.def+st.spd+B.awakenBonus;
+    if($("#e-awk").checked&&aSum>cap) err.push(`覚醒後の合計が${aSum-cap}超過しています。`);
+    const normal=picked("normal");
+    if(!normal.length) err.push("通常形態の技を1つ以上選んでください。");
+    if(err.length){ $("#edit-err").textContent=err.join(" "); return; }
+
+    const d=this.draft;
+    d.name=v("e-name"); d.portrait=v("e-portrait")||"◆"; d.description=v("e-desc");
+    d.bgm=$("#e-bgm").value;
+    d.stats=st; d.skills=normal; d.custom=true;
+    const a=d.awakening;
+    a.enabled=$("#e-awk").checked;
+    a.name=v("e-awkname")||"覚醒形態";
+    const ct=$("#e-cond").value, cv=n("e-condval");
+    const labels={HP_BELOW:`HPが${Math.round(cv*100)}%以下になる`,DAMAGE_TAKEN:`累計${cv}ダメージを受ける`,
+      SKILL_USED:`「${SKILLS[$("#e-condskill").value].name}」を${cv}回使う`,TURN_REACHED:`${cv}ターン経過する`};
+    a.conditions=[{type:ct,value:cv,skillId:$("#e-condskill").value,label:labels[ct]}];
+    a.conditionMode="ANY";
+    a.form.stats={atk:n("e-aatk"),def:n("e-adef"),spd:n("e-aspd")};
+    a.form.skills=picked("awake").length?picked("awake"):normal;
+    a.duration=n("e-adur");
+    a.oneTime=$("#e-aonce").checked;
+    const hpc=n("e-acost");
+    const pc=(a.cost||{}).hpPercentPerTurn;
+    a.cost={hpPerTurn:hpc,
+      label:`${a.duration}ターン持続${pc?`／毎ターン最大HPの${pc.minPercent}〜${pc.maxPercent}%`:(hpc?`／毎ターンHP-${hpc}`:"")}${a.oneTime?"／戦闘中1回だけ":""}`};
+    if(pc) a.cost.hpPercentPerTurn=pc;
+
+    const id=this.editingId||("c_"+Date.now().toString(36));
+    d.id=id; CHARACTERS[id]=d; Store.save();
+    UI.renderRoster(); UI.show("roster");
+  },
+
+  /* ---------- 技エディタ ---------- */
+  openSkill(){
+    this.effects=[];
+    $("#skill-body").innerHTML=`
+      <div class="fld"><label>技名</label><input type="text" id="k-name" placeholder="例：雷撃"></div>
+      <div class="fld"><label>説明</label><input type="text" id="k-desc" placeholder="戦闘中に表示される一文"></div>
+      <div class="grid2">
+        <div class="fld"><label>タイプ</label><select id="k-type">
+          <option value="ATTACK">攻撃</option><option value="SPECIAL">特殊</option>
+          <option value="DEFENSE">防御</option><option value="SUPPORT">補助</option></select></div>
+        <div class="fld"><label>ダメージ計算</label><select id="k-formula">
+          <option value="standard">通常（ATK＋威力－DEF）</option>
+          <option value="ignoreDef">防御無視</option>
+          <option value="fixed">固定ダメージ</option>
+          <option value="maxHpRatio">最大HP割合（威力＝%）</option>
+          <option value="currentHpRatio">現在HP割合（威力＝%）</option>
+          <option value="spdBased">SPD依存</option></select></div>
+      </div>
+      <div class="grid4">
+        <div class="fld"><label>威力</label><input type="number" id="k-power" value="40"></div>
+        <div class="fld"><label>命中</label><input type="number" id="k-acc" value="95"></div>
+        <div class="fld"><label>SP</label><input type="number" id="k-cost" value="1"></div>
+        <div class="fld"><label>優先度</label><input type="number" id="k-prio" value="0"></div>
+      </div>
+      <div class="h-rule">SPの注ぎ込み</div>
+      <p class="note">最大SPを基本SPより大きくすると、使うたびに「いくら注ぎ込むか」を選べる技になります。</p>
+      <div class="grid3" style="margin-top:8px">
+        <div class="fld"><label>最大SP</label><input type="number" id="k-costmax" value="0" placeholder="0=固定"></div>
+        <div class="fld"><label>SP1ごとの威力</label><input type="number" id="k-perpow" value="0"></div>
+        <div class="fld"><label>SP1ごとの持続T</label><input type="number" id="k-perdur" value="0"></div>
+      </div>
+      <div class="grid4" style="margin-top:8px">
+        <div class="fld"><label>攻撃回数</label><input type="number" id="k-hits" value="1"></div>
+        <div class="fld"><label>ばらつき%</label><input type="number" id="k-vary" value="0"></div>
+        <div class="fld"><label>回復%</label><input type="number" id="k-heal" value="0"></div>
+        <div class="fld"><label>吸収%</label><input type="number" id="k-drain" value="0"></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div class="fld"><label>使用回数（0=無制限）</label><input type="number" id="k-uses" value="0"></div>
+        <div class="fld" style="gap:8px;justify-content:flex-end">
+          <label class="pickrow"><input type="checkbox" id="k-gb"><span class="pn">防御貫通</span></label></div>
+      </div>
+      <div class="grid2">
+        <label class="pickrow"><input type="checkbox" id="k-bp"><span class="pn">バフ貫通</span></label>
+        <label class="pickrow"><input type="checkbox" id="k-cleanse"><span class="pn">自分の効果を全解除</span></label>
+      </div>
+      <div class="h-rule">状態異常・効果</div>
+      <p class="note">好きなだけ組み合わせられます。成功率を100%未満にすると運要素のある技になります。</p>
+      <div class="stack" id="k-efflist"></div>
+      <button class="btn btn-line" id="k-addeff"><span class="ic">✚</span>効果を追加</button>
+      <div id="skill-err" class="err"></div>
+      <div class="rowbtns" style="margin-top:6px">
+        <button class="btn btn-gold" id="k-save">技を保存する</button>
+        <button class="btn btn-line" id="k-cancel">やめる</button>
+      </div>`;
+    $("#k-addeff").onclick=()=>{ this.effects.push(this.newEffect("poison")); this.renderEffects(); };
+    $("#k-save").onclick=()=>this.saveSkill();
+    $("#k-cancel").onclick=()=>UI.show("roster");
+    this.renderEffects();
+    UI.show("skill");
+  },
+  newEffect(key){
+    const st=STATUS[key];
+    return {key, target:(st.tone==="good"?"self":"enemy"),
+      chance:st.chance!=null?Math.round(st.chance*100):100, duration:null, amount:null};
+  },
+  amountField(st){
+    if(st.kind==="STAT") return {label:"倍率",step:"0.05",def:st.mult};
+    if(st.percent!=null) return {label:"最大HP%",step:"1",def:st.percent};
+    if(st.kind==="COUNTER") return {label:"返す割合",step:"0.1",def:st.ratio};
+    if(st.value!=null) return {label:"数値",step:"1",def:st.value};
+    return null;
+  },
+  renderEffects(){
+    const box=$("#k-efflist");
+    if(!this.effects.length){ box.innerHTML=`<p class="note">まだ効果はありません。</p>`; return; }
+    box.innerHTML=this.effects.map((ef,i)=>{
+      const st=STATUS[ef.key];
+      const amt=this.amountField(st);
+      const instant=INSTANT_KINDS.indexOf(st.kind)>=0;
+      const dur=ef.duration!=null?ef.duration:(st.duration||1);
+      return `<div class="effrow">
+        <div class="eh"><span>${st.icon} ${esc(st.name)}</span>
+          <button class="btn btn-ghost" data-del="${i}" style="width:auto;padding:2px 8px;font-size:12px">削除</button></div>
+        <div class="ed">${esc(statusNote(st))}</div>
+        <div class="grid2" style="margin-top:9px">
+          <div class="fld"><label>種類</label><select data-k="key" data-i="${i}">
+            ${Object.keys(STATUS).map(k=>`<option value="${k}" ${ef.key===k?"selected":""}>${STATUS[k].icon} ${STATUS[k].name}</option>`).join("")}
+          </select></div>
+          <div class="fld"><label>対象</label><select data-k="target" data-i="${i}">
+            <option value="enemy" ${ef.target==="enemy"?"selected":""}>相手</option>
+            <option value="self" ${ef.target==="self"?"selected":""}>自分</option></select></div>
+        </div>
+        <div class="grid3" style="margin-top:8px">
+          <div class="fld"><label>成功率%</label><input type="number" data-k="chance" data-i="${i}" value="${ef.chance}"></div>
+          ${instant?`<div class="fld"><label>持続T</label><input type="number" value="0" disabled></div>`
+            :`<div class="fld"><label>持続T</label><input type="number" data-k="duration" data-i="${i}" value="${dur}"></div>`}
+          ${amt?`<div class="fld"><label>${amt.label}</label>
+            <input type="number" step="${amt.step}" data-k="amount" data-i="${i}" value="${ef.amount!=null?ef.amount:amt.def}"></div>`:`<div></div>`}
+        </div></div>`;
+    }).join("");
+    box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+      this.effects.splice(+b.dataset.del,1); this.renderEffects();
+    });
+    box.querySelectorAll("[data-k]").forEach(el=>{
+      el.onchange=()=>{
+        const i=+el.dataset.i, k=el.dataset.k;
+        if(k==="key") this.effects[i]=this.newEffect(el.value);
+        else if(k==="target") this.effects[i].target=el.value;
+        else this.effects[i][k]=Number(el.value);
+        this.renderEffects();
+      };
+    });
+  },
+  buildEffects(){
+    return this.effects.map(ef=>{
+      const st=STATUS[ef.key];
+      const instant=INSTANT_KINDS.indexOf(st.kind)>=0;
+      const e={target:ef.target,kind:st.kind,name:st.name,icon:st.icon,tone:st.tone,
+        duration:instant?0:(ef.duration!=null?ef.duration:(st.duration||1))};
+      if(st.stat) e.stat=st.stat;
+      const amt=ef.amount;
+      if(st.kind==="STAT") e.mult=amt!=null?amt:st.mult;
+      else if(st.percent!=null) e.percent=amt!=null?amt:st.percent;
+      else if(st.kind==="COUNTER") e.ratio=amt!=null?amt:st.ratio;
+      else if(st.value!=null) e.value=amt!=null?amt:st.value;
+      if(ef.chance<100) e.chance=Math.max(0,Math.min(1,ef.chance/100));
+      return e;
+    });
+  },
+  saveSkill(){
+    const v=id=>$("#"+id).value.trim(), n=id=>Number($("#"+id).value);
+    if(!v("k-name")){ $("#skill-err").textContent="技名を入力してください。"; return; }
+    const cost=n("k-cost"), cmax=n("k-costmax");
+    if(cmax&&cmax<cost){ $("#skill-err").textContent="最大SPは基本SP以上にしてください。"; return; }
+    const id="s_"+Date.now().toString(36);
+    const s={id,name:v("k-name"),description:v("k-desc"),type:$("#k-type").value,
+      power:n("k-power"),accuracy:n("k-acc"),cost,priority:n("k-prio"),
+      hits:Math.max(1,n("k-hits")),formula:$("#k-formula").value,
+      guardBreak:$("#k-gb").checked,buffPierce:$("#k-bp").checked,cleanse:$("#k-cleanse").checked,
+      effects:this.buildEffects(),custom:true};
+    if(cmax>cost){ s.costMax=cmax; s.powerPerSp=n("k-perpow"); s.durationPerSp=n("k-perdur"); }
+    if(n("k-vary")>0) s.varyPercent=Math.min(60,n("k-vary"));
+    if(n("k-heal")>0) s.healPercent=n("k-heal");
+    if(n("k-drain")>0) s.drain=n("k-drain")/100;
+    if(n("k-uses")>0) s.uses=n("k-uses");
+    SKILLS[id]=s; Store.save();
+    UI.show("roster");
+  }
+};
+
+/* ===== 16-boot.js ===== */
+/* =========================================================================
+   10. 起動
+   ========================================================================= */
+const HOWTO = `
+<p>キャラクターを選んで1対1で戦うコマンドバトルです。ローカル対戦・AI対戦・オンライン対戦の3つがあります。</p>
+<div class="h-rule">1ターンの流れ</div>
+<p class="note">両者がコマンドを選ぶ → 技の優先度とSPDで行動順が決まる → 行動を処理 → 状態異常と覚醒条件を確認、の順に進みます。</p>
+<div class="h-rule">コマンド</div>
+<p><b>攻撃</b>：コストなしの基本攻撃。<br>
+<b>防御</b>：被ダメージが半分になり、SPが1多く回復します。防御貫通の技には効きません。<br>
+<b>技</b>：SPを支払って使います。優先度つきの技は相手より先に出ます。<br>
+<b>状況</b>：能力値・効果・覚醒条件の確認。ターンは消費しません。<br>
+<b>覚醒</b>：条件を満たすと光ります。</p>
+<div class="h-rule">SP</div>
+<p class="note">技のコストに使う共通リソース。毎ターン${BALANCE.sp.regenPerTurn}回復し、最大${BALANCE.sp.max}。強い技を撃つほど次が苦しくなります。</p>
+<div class="h-rule">状態異常</div>
+<p class="note">${Object.values(STATUS).map(s=>s.icon+" "+s.name).join("　")}</p>
+<p class="note">アイコンは各キャラの下に表示され、数字は残りターン、∞は永続です。技エディタから自由に組み合わせられます。</p>
+<div class="h-rule">覚醒</div>
+<p>条件を満たしても自動では発動しません。<b>いつ切るかはプレイヤーが決めます。</b>覚醒すると技セットが丸ごと入れ替わり、ステータスも変わりますが、持続ターンとHP減少という代償がついてきます。</p>
+<p class="note">早すぎれば押し切られ、遅すぎれば間に合いません。勝利ボタンではなく逆転の布石です。</p>
+<div class="h-rule">データの持ち運び</div>
+<p class="note">キャラクター画面の「ファイルに保存」で、自分で作ったキャラクターと技をJSONファイルとして端末に書き出せます。機種変更のときや友達に渡すときは、そのファイルを「ファイルから読み込む」で選ぶだけです。立ち絵も一緒に入っています。</p>
+<div class="h-rule">演出の速さ</div>
+<p class="note">戦闘画面右上の⏩で「ふつう／はやい／瞬時」を切り替えられます。再生の途中で画面をタップすると、そのターンの残りを一気に送れます。設定は次回も引き継がれます。</p>
+<div class="h-rule">対戦BGM</div>
+<p class="note">キャラクターごとに曲を設定できます。戦闘中は<b>対戦相手のキャラクターの曲</b>が流れます。画面右上の♪で切り替えられます。</p>
+<p class="note">ブラウザは画面を触るまで音を鳴らせない決まりになっています。♪が「タップ」表示のときは、画面をどこか触れば鳴りはじめます。</p>
+<div class="h-rule">キャラクター作成のポイント</div>
+<p class="note">HP・ATK・DEF・SPDは合計${BALANCE.build.budget}ポイントまで。HPは${BALANCE.build.hpPerPoint}あたり1ポイント、ほかは1あたり1ポイントです。覚醒後のATK+DEF+SPDは、通常時の合計＋${BALANCE.build.awakenBonus}までにできます。</p>
+<div class="h-rule">オンライン対戦</div>
+<p class="note">二人が同じあいことばを入れて「つながる」を押すだけです。役割を選ぶ必要はなく、先に押した方が自動的に待ち受けになります。</p>
+<p class="note">やり取りするのは選んだコマンドだけで、計算は両方の端末で行われます。相手の自作キャラは技の内容ごと接続時に受け取るので、事前の共有は要りません（受け取った技はその対戦のあいだだけ使われ、あなたの技一覧は変わりません）。</p>
+<p class="note">携帯回線など直接つながりにくい回線では中継サーバーを経由します。うまくいかないときは、二人ともWi-Fiに切り替えるか、あいことばを変えてやり直してみてください。お互いのアプリ（このファイル）の版が違うと接続できません。</p>`;
+
+function boot(){
+  Store.load();
+  Store.loadPrefs();
+  UI.applyPrefs();
+  $("#howto-body").innerHTML=HOWTO;
+  $$("[data-go]").forEach(b=>b.onclick=()=>{
+    const t=b.dataset.go;
+    if(t==="roster") UI.renderRoster();
+    if(t==="title") Net.close();
+    UI.show(t);
+  });
+  $$("[data-mode]").forEach(b=>b.onclick=()=>UI.openMode(b.dataset.mode));
+  $("#slot0").onclick=()=>{ UI.slotFocus=0; UI.renderSelect(); };
+  $("#slot1").onclick=()=>{ UI.slotFocus=1; UI.renderSelect(); };
+  $("#btn-start").onclick=()=>UI.startLocalOrAi();
+  $("#btn-connect").onclick=()=>UI.connect();
+  $("#btn-cancel-net").onclick=()=>UI.cancelNet();
+  $("#online-back").onclick=()=>{ Net.close(); UI.show("title"); };
+  $("#btn-rematch").onclick=()=>UI.rematch();
+  $("#btn-reselect").onclick=()=>{
+    if(UI.mode==="online"){ Net.close(); UI.openOnline(); }
+    else UI.openMode(UI.mode);
+  };
+  $("#btn-reviewlog").onclick=()=>UI.openLog();
+  $("#logstrip").onclick=()=>UI.logTap();
+  $("#arena").onclick=()=>UI.fastForward();
+  $("#btn-speed").onclick=()=>UI.cycleSpeed();
+  $("#sheet-close").onclick=()=>UI.closeSheet();
+  $("#btn-mute").onclick=()=>UI.toggleMute();
+  Cropper.bind();
+  ["pointerdown","touchend","keydown"].forEach(ev=>
+    document.addEventListener(ev,()=>UI.nudgeMusic(),{passive:true}));
+  $("#scrim").onclick=()=>UI.closeSheet();
+  $("#btn-new-char").onclick=()=>Editor.openCharacter(null,null);
+  $("#btn-new-skill").onclick=()=>Editor.openSkill();
+  const msg=(text,cls)=>{ $("#io-msg").innerHTML=`<div class="status ${cls||""}">${text}</div>`; };
+  $("#btn-save-file").onclick=()=>{
+    const d=Store.exportData();
+    const n=Object.keys(d.characters).length, k=Object.keys(d.skills).length;
+    if(!n&&!k){ msg("保存するデータがまだありません。まずキャラクターか技を作ってください。","bad"); return; }
+    try{
+      Store.download();
+      msg(`キャラクター${n}体・技${k}個をファイルに保存しました。`,"ok");
+    }catch(e){ msg("保存できませんでした。ブラウザの設定をご確認ください。","bad"); }
+  };
+  $("#data-file").onchange=ev=>{
+    const f=ev.target.files&&ev.target.files[0];
+    ev.target.value="";
+    if(!f) return;
+    const r=new FileReader();
+    r.onerror=()=>msg("ファイルを読み込めませんでした。","bad");
+    r.onload=()=>{
+      try{
+        const res=Store.importData(JSON.parse(r.result));
+        UI.renderRoster();
+        msg(`キャラクター${res.characters}体・技${res.skills}個を読み込みました。`,"ok");
+      }catch(e){ msg("このファイルは読み込めませんでした。書き出したJSONファイルを選んでください。","bad"); }
+    };
+    r.readAsText(f);
+  };
+  $("#btn-text-io").onclick=()=>{
+    $("#io-area").innerHTML=`<div class="h-rule">文字でやりとり</div>
+      <p class="note">上の欄をコピーすれば手で渡せます。下の欄に貼り付けて読み込むこともできます。</p>
+      <textarea id="io-out" readonly>${esc(Store.exportAll())}</textarea>
+      <div style="height:10px"></div>
+      <textarea id="io-in" placeholder="ここに貼り付け"></textarea>
+      <div style="height:8px"></div><button class="btn btn-line" id="io-run">貼り付けた内容を読み込む</button>
+      <div id="io-err" class="err"></div>`;
+    $("#io-run").onclick=()=>{
+      try{
+        const res=Store.importData(JSON.parse($("#io-in").value));
+        UI.renderRoster();
+        $("#io-err").innerHTML=`<span style="color:#9DF0E4">キャラクター${res.characters}体・技${res.skills}個を読み込みました。</span>`;
+      }catch(e){ $("#io-err").textContent="読み込めませんでした。全文が貼れているか確認してください。"; }
+    };
+  };
+  document.addEventListener("keydown",ev=>{
+    if(ev.key==="Escape"){ UI.closeSheet(); return; }
+    if(!$("#s-battle").classList.contains("on")||UI.playing) return;
+    const btns=$$("#cmd-area [data-cmd], #sheet-body .skl");
+    const i=parseInt(ev.key,10)-1;
+    if(i>=0&&i<btns.length&&!btns[i].disabled) btns[i].click();
+  });
+}
+document.addEventListener("DOMContentLoaded",boot);
+</script>
+</body>
+</html>

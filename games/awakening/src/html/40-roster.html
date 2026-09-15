@@ -1,0 +1,18 @@
+  <section id="s-roster" class="screen">
+    <div class="topbar"><span class="tt">キャラクター</span><button class="btn btn-ghost" data-go="title" style="width:auto">戻る</button></div>
+    <div class="stack" id="edit-roster"></div>
+    <div class="h-rule">追加</div>
+    <div class="stack">
+      <button class="btn" id="btn-new-char"><span class="ic">✚</span>新しいキャラクターを作る</button>
+      <button class="btn btn-line" id="btn-new-skill"><span class="ic">✧</span>技をつくる</button>
+    </div>
+    <div class="h-rule">データの保存</div>
+    <div class="stack">
+      <button class="btn btn-line" id="btn-save-file"><span class="ic">⤓</span>ファイルに保存</button>
+      <label class="btn btn-line filebtn" for="data-file" style="width:100%"><span class="ic">⤒</span>ファイルから読み込む
+        <input type="file" id="data-file" accept="application/json,.json" style="display:none"></label>
+      <div id="io-msg"></div>
+      <button class="btn btn-ghost" id="btn-text-io">文字でやりとりする</button>
+    </div>
+    <div id="io-area"></div>
+  </section>
