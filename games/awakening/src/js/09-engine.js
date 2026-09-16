@@ -12,7 +12,18 @@ class BattleEngine{
     this.over=false;
     this.winner=null;
     this.pending=[null,null];
+    this.draw=false;           // 相打ち・判定引き分け
+    this.timeUp=false;         // ターン上限による判定決着
+    this.firstActor=null;      // 1ターン目に先に動いた側（バランス計測用）
+    this.lastOrder=null;       // 直前のターンの行動順
     this.fighters=[this.makeFighter(charA,0),this.makeFighter(charB,1)];
+    // 連戦モードなどで前の戦闘からHP／SPを持ち越す
+    if(this.opts.startHp) this.opts.startHp.forEach((v,i)=>{
+      if(v!=null&&this.fighters[i]) this.fighters[i].hp=Math.max(1,Math.min(this.fighters[i].maxHp,Math.round(v)));
+    });
+    if(this.opts.startSp) this.opts.startSp.forEach((v,i)=>{
+      if(v!=null&&this.fighters[i]) this.fighters[i].sp=Math.max(0,Math.min(BALANCE.sp.max,Math.round(v)));
+    });
     this.push("turn",`ターン ${this.turn}`);
     this.push("sys",`${this.fighters[0].name} と ${this.fighters[1].name} の戦闘を開始する。`);
   }
@@ -33,7 +44,8 @@ class BattleEngine{
       skills:char.skills.slice(), usedOnce:{}, skillUse:{}, usedCount:{},
       damageTaken:0, turnCount:0,
       form:"NORMAL", formName:null,
-      awaken:{state:(char.awakening&&char.awakening.enabled)?"LOCKED":"NONE",turnsLeft:0,used:false}
+      awaken:{state:(char.awakening&&char.awakening.enabled)?"LOCKED":"NONE",turnsLeft:0,used:false,
+        bonusTurns:(this.opts.awakenBonusTurns&&this.opts.awakenBonusTurns[side])||0}
     };
     return f;
   }
@@ -54,7 +66,7 @@ class BattleEngine{
   options(side){
     const f=this.fighters[side];
     return {
-      canAwaken: f.awaken.state==="AVAILABLE",
+      canAwaken: AwakeningSystem.canAwaken(f),
       silenced: Effects.has(f,"SILENCE"),
       skills: f.skills.map(id=>{
         const s=this.SK[id]; if(!s) return null;
@@ -74,10 +86,33 @@ class BattleEngine{
   submit(side, action){ this.pending[side]=action; }
   bothReady(){ return this.pending[0]&&this.pending[1]; }
 
+  /* --- 行動の検証：撃てない技・持っていない技・切れない覚醒は通常攻撃に落とす ---
+     UI・AI・通信のどこでずれても、エンジンだけは必ず筋の通った状態で進む。 */
+  validate(side, action){
+    const f=this.fighters[side];
+    const fallback={type:"ATTACK"};
+    if(!action||typeof action.type!=="string") return fallback;
+    if(action.type==="AWAKEN") return AwakeningSystem.canAwaken(f) ? {type:"AWAKEN"} : fallback;
+    if(action.type==="DEFEND") return {type:"DEFEND"};
+    if(action.type!=="SKILL") return fallback;
+    const s=this.SK[action.skillId];
+    if(!s||f.skills.indexOf(action.skillId)<0) return fallback;
+    if(Effects.has(f,"SILENCE")) return fallback;
+    if(s.oncePerBattle&&f.usedOnce[action.skillId]) return fallback;
+    if(s.uses&&(f.usedCount[action.skillId]||0)>=s.uses) return fallback;
+    const spend=s.costMax
+      ? Math.max(s.cost||0,Math.min(Effects.num(action.spend,this.maxSpend(f,s)),this.maxSpend(f,s)))
+      : (s.cost||0);
+    if(spend>f.sp) return fallback;
+    return {type:"SKILL",skillId:action.skillId,spend};
+  }
+
   /* --- ターン処理 --- */
   resolveTurn(){
     const from=this.log.length;
-    const acts=[0,1].map(s=>({side:s,f:this.fighters[s],a:this.pending[s]}));
+    if(this.over) return [];
+    // 届いた行動は必ず検証する（通信の化け・AIの取り違え・改造対策）
+    const acts=[0,1].map(s=>({side:s,f:this.fighters[s],a:this.validate(s,this.pending[s])}));
 
     // 防御宣言は行動順に関係なくターン開始時点で有効にする
     acts.forEach(x=>{ x.f.defending = (x.a.type==="DEFEND"); });
@@ -89,6 +124,8 @@ class BattleEngine{
       x.tie = this.rng();
     });
     acts.sort((p,q)=> q.prio-p.prio || q.spd-p.spd || q.tie-p.tie);
+    this.lastOrder=acts.map(x=>x.side);
+    if(this.firstActor===null) this.firstActor=acts[0].side;
 
     for(const x of acts){
       if(this.over) break;
@@ -120,7 +157,7 @@ class BattleEngine{
       return;
     }
 
-    if(a.type==="AWAKEN"){ AwakeningSystem.awaken(f,this); return; }
+    if(a.type==="AWAKEN"){ AwakeningSystem.awaken(f,this); return; }   // 可否は validate 済み
     if(a.type==="DEFEND"){
       f.sp=Math.min(BALANCE.sp.max,f.sp+BALANCE.sp.defendBonus);
       this.push("sys",`${f.name}は身を固めた。`,f.side);
@@ -132,7 +169,7 @@ class BattleEngine{
       ? Math.max(raw.cost||0, Math.min(a.spend!=null?a.spend:this.maxSpend(f,raw), this.maxSpend(f,raw)))
       : (raw.cost||0);
     const skill = BattleEngine.effectiveSkill(raw,spend);
-    f.sp-=spend;
+    f.sp=Math.max(0,f.sp-spend);
     if(raw.oncePerBattle) f.usedOnce[raw.id]=true;
     if(raw.uses) f.usedCount[raw.id]=(f.usedCount[raw.id]||0)+1;
     f.skillUse[raw.id]=(f.skillUse[raw.id]||0)+1;
@@ -373,6 +410,8 @@ class BattleEngine{
     this.checkDeath(attacker);
   }
 
+  /* ターン終わりの処理。両者ぶんをそろえてから生死を見るので、
+     継続ダメージや覚醒の代償で同時に倒れれば相討ちになる。 */
   endOfTurn(){
     // 継続ダメージ・回復
     for(const f of this.fighters){
@@ -381,9 +420,10 @@ class BattleEngine{
         if(Effects.isFresh(e,this.turn)) continue;
         if(e.kind==="DOT"){
           const dmg=Effects.amount(f,e);
+          if(dmg<=0) continue;
           f.hp=Math.max(0,f.hp-dmg); f.damageTaken+=dmg;
           this.push("dmg",`${f.name}は「${e.name}」で${dmg}ダメージ！`);
-          this.checkDeath(f); if(this.over) return;
+          if(f.hp<=0) break;
         }else if(e.kind==="REGEN"){
           if(Effects.has(f,"HEALBLOCK")) continue;
           const before=f.hp; f.hp=Math.min(f.maxHp,f.hp+Effects.amount(f,e));
@@ -391,26 +431,65 @@ class BattleEngine{
         }
       }
     }
-    // 覚醒の代償・持続ターン
-    for(const f of this.fighters){ AwakeningSystem.endTurn(f,this); if(this.over) return; }
+    this.settle(); if(this.over) return;
+    // 覚醒の代償 → まとめて生死判定 → 持続ターン
+    for(const f of this.fighters) AwakeningSystem.drain(f,this);
+    this.settle(); if(this.over) return;
+    for(const f of this.fighters) AwakeningSystem.tick(f,this);
     // 効果の持続ターン・防御解除・SP回復
     for(const f of this.fighters){
       Effects.tickDurations(f,this.turn);
       f.defending=false;
-      f.sp=Math.min(BALANCE.sp.max,f.sp+BALANCE.sp.regenPerTurn);
+      f.sp=Math.min(BALANCE.sp.max,Math.max(0,f.sp+BALANCE.sp.regenPerTurn));
     }
     // 覚醒条件の確認
     for(const f of this.fighters) AwakeningSystem.update(f,this);
+    // ターン上限：ここを越えたら必ず決着させる
+    if(BALANCE.turnLimit>0&&this.turn>=BALANCE.turnLimit){ this.judgeByHp(); return; }
     this.turn++;
     this.push("turn",`ターン ${this.turn}`);
+    const left=BALANCE.turnLimit-this.turn+1;
+    if(BALANCE.turnLimit>0&&left>0&&left<=BALANCE.turnLimitWarn)
+      this.push("sys",`残り${left}ターンで判定になる。`);
+  }
+
+  /* 倒れている者がいれば決着させる（両者なら相討ち） */
+  settle(){
+    if(this.over) return;
+    const dead=this.fighters.filter(f=>f.hp<=0);
+    if(!dead.length) return;
+    this.checkDeath(dead[0]);
   }
 
   checkDeath(f){
     if(f.hp>0||this.over) return;
+    const other=this.foe(f.side);
     this.over=true;
-    this.winner=this.foe(f.side);
     this.push("sys",`${f.name}は戦闘不能になった。`);
+    if(other.hp<=0){        // 同時に倒れた：相討ち
+      this.winner=null; this.draw=true;
+      this.push("sys",`${other.name}もまた倒れた。`);
+      this.push("win",`相討ち — 引き分け`);
+      return;
+    }
+    this.winner=other;
     this.push("win",`${this.winner.name} の勝利`);
+  }
+
+  /* --- ターン上限：防御し合って終わらない試合を必ず終わらせる --- */
+  judgeByHp(){
+    const a=this.fighters[0], b=this.fighters[1];
+    const ra=a.hp/a.maxHp, rb=b.hp/b.maxHp;
+    this.over=true; this.timeUp=true;
+    this.push("sys",`規定の${BALANCE.turnLimit}ターンが過ぎた。残りHPの割合で決める。`);
+    this.push("sys",`${a.name} ${Math.round(ra*100)}%　／　${b.name} ${Math.round(rb*100)}%`);
+    if(Math.abs(ra-rb)<0.005){
+      this.winner=null; this.draw=true;
+      this.push("win",`引き分け`);
+      return;
+    }
+    this.winner=(ra>rb)?a:b;
+    this.push("win",`${this.winner.name} の勝利（判定）`);
   }
 }
 

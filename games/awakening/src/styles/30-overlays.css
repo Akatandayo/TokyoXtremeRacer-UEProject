@@ -1,46 +1,81 @@
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:60;max-height:84vh;display:flex;flex-direction:column;
-  transform:translateY(102%);transition:transform .32s cubic-bezier(.2,.9,.25,1);
-  background:linear-gradient(180deg,#221A3C,#150F27);border-top:1px solid var(--line2);
-  border-radius:26px 26px 0 0;box-shadow:0 -14px 50px rgba(0,0,0,.6)}
-.sheet.on{transform:translateY(0)}
-.sheet-in{max-width:480px;margin:0 auto;width:100%;padding:8px 14px calc(16px + var(--safe-b));overflow-y:auto}
-.grab{width:42px;height:4px;border-radius:99px;background:rgba(255,255,255,.28);margin:6px auto 10px}
-.sheet-title{font-family:var(--serif);font-size:17px;letter-spacing:.06em;margin-bottom:10px;display:flex;
-  justify-content:space-between;align-items:center}
-.scrim{position:fixed;inset:0;background:rgba(6,4,12,.6);z-index:55;opacity:0;pointer-events:none;transition:opacity .28s}
-.scrim.on{opacity:1;pointer-events:auto}
-.skill-list{display:flex;flex-direction:column;gap:9px}
-.skl{position:relative;display:block;width:100%;text-align:left;border-radius:16px;padding:12px 13px 12px 17px;
-  background:rgba(255,255,255,.05);border:1px solid var(--line);transition:.15s}
-.skl:hover:not(:disabled){background:rgba(255,255,255,.09)}
-.skl:disabled{opacity:.42}
-.skl::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:99px;background:var(--violet)}
-.skl.t-ATTACK::before{background:#F2566A}.skl.t-DEFENSE::before{background:#4FD6C8}
-.skl.t-SUPPORT::before{background:var(--gold)}.skl.t-SPECIAL::before{background:var(--violet)}
-.skl .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.skl .snm{font-weight:700;font-size:15px;letter-spacing:.03em}
-.skl .cost{font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;
-  background:rgba(79,214,200,.16);color:#9DF0E4;border:1px solid rgba(79,214,200,.35);white-space:nowrap}
-.skl .cost.no{background:rgba(242,86,106,.14);color:#FFA9B6;border-color:rgba(242,86,106,.35)}
-.skl .sds{font-size:12px;color:var(--dim);margin-top:4px}
-.skl .meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
-.mchip{font-size:10.5px;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.07);color:#CDC2DE;
-  border:1px solid var(--line)}
-.mchip.hot{color:#FFC9A0;border-color:rgba(255,160,90,.35);background:rgba(255,160,90,.12)}
-.logfull{max-height:62vh;overflow-y:auto;font-size:13.5px}
-.le{padding:2.5px 0;color:#CBC1D9}
-.le.dmg{color:#FFA9B6}.le.heal{color:#A6F5CE}.le.miss{color:var(--dim)}.le.crit{color:#FFDD8C;font-weight:700}
-.le.sys{color:#9E93B1;font-size:12.5px}.le.status{color:#C4B0EE}.le.action{color:var(--ivory)}
-.le.awaken{color:var(--gold);font-family:var(--serif);letter-spacing:.06em}
-.le.turn{color:#7E729A;font-size:11px;letter-spacing:.2em;margin-top:8px;padding-top:6px;
-  border-top:1px solid rgba(255,255,255,.08)}
-.le.win{color:var(--gold);font-family:var(--serif);font-size:16px}
+/* =========================================================================
+   30. 画面の上に重なるもの — ボトムシート・目隠し・覚醒演出・結果
+   ========================================================================= */
 
+/* ---------- ボトムシート（共通部品） -------------------------------------- */
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:60;max-height:86vh;max-height:86svh;
+  display:flex;flex-direction:column;
+  transform:translateY(102%);will-change:transform;
+  transition:transform var(--d-4) var(--ease-out);
+  background:var(--sheet-bg);border-top:1px solid var(--stroke-2);
+  border-radius:var(--r-5) var(--r-5) 0 0;box-shadow:var(--e-4)}
+.sheet.on{transform:translateY(0)}
+/* 指で追従させているあいだは補間を切る */
+.sheet.dragging{transition:none}
+.sheet-in{max-width:480px;margin:0 auto;width:100%;
+  padding:0 calc(var(--gutter) + var(--safe-r)) calc(var(--sp-4) + var(--safe-b))
+          calc(var(--gutter) + var(--safe-l));
+  overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+/* つまむ帯。ここを下に引けば閉じる */
+.sheet-grip{position:sticky;top:0;z-index:2;padding:var(--sp-2) 0 var(--sp-1);cursor:grab;
+  touch-action:none;background:linear-gradient(180deg,#241B41 72%,rgba(36,27,65,0))}
+.sheet.dragging .sheet-grip{cursor:grabbing}
+.grab{width:42px;height:4px;border-radius:var(--r-pill);background:rgba(255,255,255,.3);margin:0 auto;
+  transition:background var(--d-2)}
+.sheet.dragging .grab{background:rgba(255,255,255,.55)}
+.sheet-title{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);
+  min-height:var(--tap);font-family:var(--serif);font-size:var(--fs-5);letter-spacing:.06em;
+  padding:0 0 var(--sp-2)}
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:55;opacity:0;pointer-events:none;
+  transition:opacity var(--d-3) var(--ease-out);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.scrim.on{opacity:1;pointer-events:auto}
+
+/* ---------- 技の一覧（シートの中身） -------------------------------------- */
+.skill-list{display:flex;flex-direction:column;gap:var(--sp-2)}
+.skl{position:relative;display:block;width:100%;min-height:var(--tap);text-align:left;overflow:hidden;
+  border-radius:var(--r-2);padding:var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-5);
+  background:var(--surface-hi);border:1px solid var(--stroke-1);
+  transition:background var(--d-2),transform var(--d-1) var(--ease-out)}
+.skl:hover:not(:disabled){background:var(--surface-hi2)}
+.skl:active:not(:disabled){transform:scale(.985)}
+.skl:disabled{opacity:.42}
+.skl::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;
+  border-radius:var(--r-pill);background:var(--c-violet-400)}
+.skl.t-ATTACK::before{background:var(--c-crimson-400)}.skl.t-DEFENSE::before{background:var(--c-jade-400)}
+.skl.t-SUPPORT::before{background:var(--c-gold-400)}.skl.t-SPECIAL::before{background:var(--c-violet-400)}
+.skl .top{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2)}
+.skl .snm{font-weight:700;font-size:var(--fs-4);letter-spacing:.03em}
+.skl .cost{font-size:var(--fs-1);font-weight:700;padding:2px 9px;border-radius:var(--r-pill);
+  background:rgba(79,214,200,.16);color:var(--c-jade-300);border:1px solid rgba(79,214,200,.35);
+  white-space:nowrap}
+.skl .cost.no{background:rgba(242,86,106,.14);color:var(--c-crimson-300);border-color:rgba(242,86,106,.35)}
+.skl .sds{font-size:var(--fs-2);color:var(--text-3);margin-top:4px}
+.skl .meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.mchip{font-size:10.5px;padding:2px 8px;border-radius:var(--r-pill);background:rgba(255,255,255,.07);
+  color:var(--text-2);border:1px solid var(--stroke-1)}
+.mchip.hot{color:#FFC9A0;border-color:rgba(255,160,90,.35);background:rgba(255,160,90,.12)}
+
+/* ---------- 戦闘ログ ------------------------------------------------------ */
+.logfull{max-height:60vh;overflow-y:auto;overscroll-behavior:contain;font-size:var(--fs-3)}
+.le{padding:2.5px 0;color:var(--text-2)}
+.le.dmg{color:var(--c-crimson-300)}.le.heal{color:#A6F5CE}.le.miss{color:var(--text-3)}
+.le.crit{color:#FFDD8C;font-weight:700}
+.le.sys{color:var(--text-3);font-size:var(--fs-2)}.le.status{color:var(--c-violet-300)}
+.le.action{color:var(--text-1)}
+.le.awaken{color:var(--c-gold-400);font-family:var(--serif);letter-spacing:.06em}
+.le.turn{color:#8779A6;font-size:var(--fs-1);letter-spacing:var(--ls-xwide);margin-top:var(--sp-2);
+  padding-top:6px;border-top:1px solid var(--stroke-1)}
+.le.win{color:var(--c-gold-400);font-family:var(--serif);font-size:var(--fs-5)}
+
+/* ---------- 目隠し（ローカル対戦の受け渡し） ------------------------------- */
 .veil{position:fixed;inset:0;background:rgba(10,7,18,.96);display:none;place-items:center;text-align:center;
-  padding:24px;z-index:70}
-.veil.on{display:grid}
-.veil .vt{font-family:var(--serif);font-size:26px;letter-spacing:.14em}
-.veil .vs{color:var(--dim);font-size:13px;margin:10px 0 26px}
+  padding:var(--sp-6);z-index:70;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.veil.on{display:grid;animation:veilIn var(--d-3) var(--ease-out) both}
+@keyframes veilIn{from{opacity:0}to{opacity:1}}
+.veil .vt{font-family:var(--serif);font-size:var(--fs-7);letter-spacing:var(--ls-wide)}
+.veil .vs{color:var(--text-3);font-size:var(--fs-3);margin:var(--sp-3) 0 var(--sp-6)}
+
+/* ---------- 覚醒の瞬間 ---------------------------------------------------- */
 .awk{position:fixed;inset:0;display:none;place-items:center;z-index:80;overflow:hidden;
   background:radial-gradient(60% 60% at 50% 50%,rgba(240,197,80,.26),rgba(10,7,18,.97) 74%)}
 .awk.on{display:grid;animation:awkFade 2s ease forwards}
@@ -51,26 +86,37 @@
 @keyframes spin{to{transform:rotate(360deg)}}
 .awk .big{position:relative;font-family:var(--serif);font-weight:800;font-size:clamp(66px,23vw,124px);
   letter-spacing:.22em;color:#FFF6DC;text-shadow:0 0 60px rgba(240,197,80,.8);
-  animation:awkKanji 2s cubic-bezier(.2,.8,.2,1) both}
+  animation:awkKanji 2s var(--ease-emph) both}
 @keyframes awkKanji{0%{opacity:0;transform:scale(1.6);filter:blur(16px)}
   20%{opacity:1;transform:scale(1);filter:blur(0)}100%{opacity:1;transform:scale(1.05)}}
-.awk .who2{position:relative;text-align:center;color:#F3E3B4;letter-spacing:.2em;font-size:14px;margin-top:8px}
+.awk .who2{position:relative;text-align:center;color:#F3E3B4;letter-spacing:.2em;font-size:var(--fs-3);
+  margin-top:var(--sp-2)}
 .shockwave{position:fixed;inset:0;z-index:79;pointer-events:none;display:none;background:rgba(255,244,214,.55)}
 .shockwave.on{display:block;animation:flashBang .5s ease forwards}
 @keyframes flashBang{to{opacity:0}}
-@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;
-  transition-duration:.01ms !important}}
 
-.result{text-align:center;padding:7vh 0 0}
-.rw{font-family:var(--serif);font-size:40px;letter-spacing:.2em;animation:winIn .9s cubic-bezier(.2,.8,.2,1) both}
-.rw.win{color:var(--gold);text-shadow:0 0 40px rgba(240,197,80,.5)}
-.rw.lose{color:#A99DBE}
+/* ---------- 結果 ---------------------------------------------------------- */
+.result{text-align:center;padding:6vh 0 0}
+.rw{font-family:var(--serif);font-size:var(--fs-8);letter-spacing:.2em;
+  animation:winIn var(--d-5) var(--ease-out) both}
+.rw.win{color:var(--c-gold-400);text-shadow:0 0 40px rgba(240,197,80,.5)}
+.rw.lose{color:var(--text-3)}
 @keyframes winIn{from{opacity:0;transform:scale(.88);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
-.rname{font-family:var(--serif);font-size:20px;margin-top:14px}
-.rs{color:var(--dim);font-size:13px;margin-top:6px}
+.rname{font-family:var(--serif);font-size:var(--fs-6);margin-top:var(--sp-4)}
+.rs{color:var(--text-3);font-size:var(--fs-3);margin-top:6px}
 
-.status{border-radius:16px;padding:13px 14px;font-size:13px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+/* ---------- 通信の状態表示 ------------------------------------------------ */
+.status{border-radius:var(--r-2);padding:var(--sp-3) var(--sp-4);font-size:var(--fs-3);
+  background:var(--surface-hi);border:1px solid var(--stroke-1)}
 .status.wait{border-color:rgba(240,197,80,.4);color:#F5E3B0;background:rgba(240,197,80,.08)}
-.status.ok{border-color:rgba(79,214,200,.4);color:#9DF0E4;background:rgba(79,214,200,.08)}
-.status.bad{border-color:rgba(242,86,106,.4);color:#FFA9B6;background:rgba(242,86,106,.08)}
-.word{font-family:var(--serif);font-size:26px;letter-spacing:.24em;text-align:center;padding:8px 0;color:#FFF0C4}
+.status.ok{border-color:rgba(79,214,200,.4);color:var(--c-jade-300);background:rgba(79,214,200,.08)}
+.status.bad{border-color:rgba(242,86,106,.4);color:var(--c-crimson-300);background:rgba(242,86,106,.08)}
+.word{font-family:var(--serif);font-size:var(--fs-7);letter-spacing:.24em;text-align:center;
+  padding:var(--sp-2) 0;color:#FFF0C4}
+
+/* ---------- 動きを減らす設定の受け止め ------------------------------------- */
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;scroll-behavior:auto !important}
+  .logo::after,#bg::before,#bg::after{display:none}
+}

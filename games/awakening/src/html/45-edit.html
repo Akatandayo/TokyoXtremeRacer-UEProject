@@ -1,4 +1,14 @@
   <section id="s-edit" class="screen">
-    <div class="topbar"><span class="tt" id="edit-title">キャラクター編集</span><button class="btn btn-ghost" data-go="roster" style="width:auto">戻る</button></div>
+    <div class="topbar">
+      <span class="tt" id="edit-title">キャラクター作成</span>
+      <button class="btn btn-ghost" id="e-leave" style="width:auto">やめる</button>
+    </div>
+    <div class="wizbar">
+      <div class="wizprog"><i id="e-prog"></i></div>
+      <div class="wsteps" id="e-steps"></div>
+    </div>
     <div id="edit-body" class="form"></div>
+    <div class="wizfoot" id="e-foot"></div>
+    <div class="draftnote"><span id="e-draft">下書きは自動で保存されます</span>
+      <button class="btn btn-ghost" id="e-discard" style="width:auto">下書きを捨てる</button></div>
   </section>

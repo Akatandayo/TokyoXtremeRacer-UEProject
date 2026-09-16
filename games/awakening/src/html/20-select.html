@@ -1,11 +1,25 @@
-  <section id="s-select" class="screen">
-    <div class="topbar"><span class="tt" id="select-title">キャラクター選択</span><button class="btn btn-ghost" data-go="title" style="width:auto">戻る</button></div>
-    <div class="slot-tabs">
-      <button class="slot active" id="slot0"><span class="who" id="who0">プレイヤー1</span><div class="pick">未選択</div></button>
-      <button class="slot" id="slot1"><span class="who" id="who1">プレイヤー2</span><div class="pick">未選択</div></button>
+  <section id="s-select" class="screen" aria-label="キャラクター選択">
+    <div class="topbar">
+      <button class="iconbtn" data-go="title" aria-label="タイトルに戻る">‹</button>
+      <span class="tt" id="select-title">キャラクター選択</span>
+    </div>
+    <div class="vs-bar">
+      <button class="slot active" id="slot0" aria-pressed="true">
+        <span class="sav" id="sav0" aria-hidden="true">＋</span>
+        <span class="stx"><span class="who" id="who0">プレイヤー1</span><span class="pick empty">未選択</span></span>
+      </button>
+      <span class="vs" aria-hidden="true">VS</span>
+      <button class="slot" id="slot1" aria-pressed="false">
+        <span class="sav" id="sav1" aria-hidden="true">＋</span>
+        <span class="stx"><span class="who" id="who1">プレイヤー2</span><span class="pick empty">未選択</span></span>
+      </button>
     </div>
     <div class="glass preview" id="preview"></div>
-    <div class="tray" id="select-tray"></div>
+    <div class="h-rule">キャラクターを選ぶ<button class="act" id="btn-random">おまかせ</button></div>
+    <div class="picker" id="select-tray"></div>
     <div id="select-options"></div>
-    <div class="sticky-cta"><button class="btn btn-gold" id="btn-start" disabled>戦闘開始</button></div>
+    <div class="cta-dock">
+      <div class="cta-hint" id="cta-hint">上の枠を切り替えて、2人ぶん選びます</div>
+      <button class="btn btn-gold" id="btn-start" disabled>戦闘開始</button>
+    </div>
   </section>

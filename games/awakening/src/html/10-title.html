@@ -1,14 +1,27 @@
-  <section id="s-title" class="screen on">
-    <div class="hero"><div class="ring"></div>
-      <h1 class="logo">覚醒</h1>
-      <div class="logo-sub">TRPG COMMAND BATTLE</div>
+  <section id="s-title" class="screen on" aria-label="タイトル">
+    <div class="title-bar">
+      <button class="iconbtn" id="btn-settings" aria-label="設定">⚙</button>
     </div>
-    <p class="title-lead">数字ではなく、覚醒を切る一瞬の判断で決まる1対1のコマンドバトル。</p>
+    <div class="hero">
+      <div class="hero-mark">
+        <div class="ring" aria-hidden="true"></div>
+        <div class="ring2" aria-hidden="true"></div>
+        <h1 class="logo">覚醒</h1>
+        <div class="logo-sub">TRPG COMMAND BATTLE</div>
+      </div>
+      <p class="title-lead">数字ではなく、覚醒を切る一瞬の判断で決まる1対1のコマンドバトル。</p>
+    </div>
     <div class="title-actions">
-      <button class="btn btn-gold" data-mode="local"><span class="ic">⚔</span>ローカル対戦<span class="btn-sub">1台を2人で回して遊ぶ</span></button>
-      <button class="btn" data-mode="ai"><span class="ic">✦</span>AI対戦<span class="btn-sub">相手と強さを選んで挑む</span></button>
-      <button class="btn" data-mode="online"><span class="ic">⇄</span>オンライン対戦<span class="btn-sub">あいことばで合流する</span></button>
-      <button class="btn btn-line" data-go="roster"><span class="ic">✎</span>キャラクターを作る</button>
-      <button class="btn btn-ghost" data-go="howto">遊び方</button>
+      <button class="btn btn-gold" data-mode="local"><span class="ic" aria-hidden="true">⚔</span>ローカル対戦<span class="btn-sub">1台を2人で回して遊ぶ</span></button>
+      <div class="tile-row">
+        <button class="tile" data-mode="ai"><span class="ic" aria-hidden="true">✦</span><span class="tl">AI対戦</span><span class="ts">強さを選んで挑む</span></button>
+        <button class="tile" data-mode="online"><span class="ic" aria-hidden="true">⇄</span><span class="tl">オンライン対戦</span><span class="ts">あいことばで合流</span></button>
+      </div>
+      <div class="title-foot">
+        <button class="btn-ghost" data-go="roster"><span class="ic" aria-hidden="true">✎</span>キャラクター</button>
+        <span class="sep" aria-hidden="true"></span>
+        <button class="btn-ghost" data-go="howto">遊び方</button>
+      </div>
+      <div class="ver" id="title-ver"></div>
     </div>
   </section>

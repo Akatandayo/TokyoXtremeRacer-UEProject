@@ -1,16 +1,22 @@
   <section id="s-battle" class="screen">
     <div class="hud">
       <span class="pill turn" id="turn-label">ターン 1</span>
-      <span style="display:flex;gap:6px;align-items:center">
-        <span class="pill" id="phase-label"></span>
-        <button class="pill" id="btn-speed" title="演出の速さ">⏩ はやい</button>
-        <button class="pill" id="btn-mute" title="BGMの入り切り">♪ ON</button>
+      <span class="pill phase" id="phase-label"></span>
+      <span class="hud-tools">
+        <button class="tool" id="btn-speed" aria-label="演出の速さを変える"><span class="ti">⏩</span><span class="tl">はやい</span></button>
+        <button class="tool" id="btn-mute" aria-label="音の入り切り"><span class="ti">♪</span><span class="tl">ON</span></button>
       </span>
     </div>
     <div class="arena" id="arena">
+      <div class="arena-glow" id="arena-glow"></div>
       <div class="unit foe" id="view1"></div>
+      <div class="midline"></div>
       <div class="unit" id="view0"></div>
     </div>
-    <button class="logstrip" id="logstrip"></button>
+    <div class="logrow">
+      <button class="logstrip" id="logstrip" aria-label="戦闘ログ。再生中はタップで早送り"></button>
+      <button class="loghist" id="btn-loghist" aria-label="戦闘ログの履歴を開く"><span>履</span><span>歴</span></button>
+    </div>
     <div class="dock" id="cmd-area"></div>
+    <div class="ffcatch" id="ffcatch" aria-hidden="true"></div>
   </section>

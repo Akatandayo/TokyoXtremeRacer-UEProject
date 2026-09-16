@@ -1,5 +1,8 @@
 /* =========================================================================
    06. AwakeningSystem — 覚醒条件の判定・覚醒形態への移行・代償の処理
+
+   代償と持続ターンは drain()／tick() に分けてある。エンジンは両者ぶんの
+   代償をまとめて処理してから生死を判定するので、同時に倒れると相打ちになる。
    ========================================================================= */
 const AwakeningSystem = {
   conditionMet(fighter, c){
@@ -21,6 +24,7 @@ const AwakeningSystem = {
                                      : list.some(c=>this.conditionMet(fighter,c));
   },
   update(fighter, engine){
+    if(fighter.hp<=0) return;
     if(fighter.awaken.state!=="LOCKED") return;
     if(this.ready(fighter)){
       fighter.awaken.state="AVAILABLE";
@@ -28,15 +32,24 @@ const AwakeningSystem = {
       engine.push("awaken",`【覚醒可能】${fighter.name}`);
     }
   },
+  /* 覚醒できるか。倒れていたり、すでに使い切っていたら不可 */
+  canAwaken(fighter){
+    return fighter.hp>0 && fighter.awaken.state==="AVAILABLE";
+  },
   awaken(fighter, engine){
+    if(!this.canAwaken(fighter)){
+      engine.push("sys",`${fighter.name}は覚醒できなかった。`);
+      return false;
+    }
     const a=fighter.char.awakening, form=a.form||{};
     fighter.form="AWAKENED";
     fighter.formName=a.name||"覚醒形態";
     // ステータス変更（HPは引き継ぐ。最大HPを変える形態も設定可能）
     if(form.stats){
       Object.keys(form.stats).forEach(k=>{
-        if(k==="hp"){ const d=form.stats.hp-fighter.maxHp; fighter.maxHp=form.stats.hp; fighter.hp=Math.min(fighter.maxHp,fighter.hp+Math.max(0,d)); }
-        else fighter.base[k]=form.stats[k];
+        const v=Effects.num(form.stats[k],null); if(v===null) return;
+        if(k==="hp"){ const d=v-fighter.maxHp; fighter.maxHp=Math.max(1,v); fighter.hp=Math.min(fighter.maxHp,fighter.hp+Math.max(0,d)); }
+        else fighter.base[k]=v;
       });
     }
     // 技セットを丸ごと差し替える
@@ -44,33 +57,51 @@ const AwakeningSystem = {
     (form.effects||[]).forEach(e=>Effects.apply(fighter,e,engine.turn));
     fighter.awaken.state="ACTIVE";
     fighter.awaken.used=true;
-    fighter.awaken.turnsLeft=a.duration||0;
+    fighter.awaken.turnsLeft=this.duration(fighter);
     fighter.awaken.startTurn=engine.turn;
     engine.push("awaken",`【AWAKENING】${fighter.name}が${fighter.formName}へ移行した！`,fighter.side);
     if(a.cost&&a.cost.label) engine.push("sys",`代償：${a.cost.label}`);
+    return true;
   },
-  endTurn(fighter, engine){
-    if(fighter.awaken.state!=="ACTIVE") return;
-    // 覚醒したそのターンは、持続ターンもHPの代償も進まない
-    if(fighter.awaken.startTurn===engine.turn) return;
+  /* 恩恵などで持続ターンを伸ばせるようにしておく（連戦モードで使う） */
+  duration(fighter){
+    const a=fighter.char.awakening||{};
+    return Math.max(0,(a.duration||0)+(fighter.awaken.bonusTurns||0));
+  },
+  /* 代償のHP減少だけを処理する（生死の判定はエンジン側でまとめて行う） */
+  drain(fighter, engine){
+    if(fighter.awaken.state!=="ACTIVE"||fighter.hp<=0) return;
+    if(fighter.awaken.startTurn===engine.turn) return;   // 覚醒したそのターンは進まない
     const a=fighter.char.awakening;
-    let drain=(a.cost&&a.cost.hpPerTurn)||0;
+    let drain=Effects.num(a.cost&&a.cost.hpPerTurn,0);
     const pc=a.cost&&a.cost.hpPercentPerTurn;
     if(pc){
-      const pct=pc.minPercent+engine.rng()*(pc.maxPercent-pc.minPercent);
+      const lo=Effects.num(pc.minPercent,0), hi=Effects.num(pc.maxPercent,lo);
+      const pct=lo+engine.rng()*Math.max(0,hi-lo);
       drain=Math.max(1,Math.floor(fighter.maxHp*pct/100));
     }
-    if(drain>0&&fighter.hp>0){
+    if(drain>0){
       fighter.hp=Math.max(0,fighter.hp-drain);
+      fighter.damageTaken+=drain;
       engine.push("dmg",`${fighter.name}は覚醒の代償で${drain}ダメージ！`);
-      engine.checkDeath(fighter);
     }
-    if(fighter.hp<=0) return;
-    if(a.duration>0){
+  },
+  /* 持続ターンを進め、切れたら元に戻す */
+  tick(fighter, engine){
+    if(fighter.awaken.state!=="ACTIVE"||fighter.hp<=0) return;
+    if(fighter.awaken.startTurn===engine.turn) return;
+    if(this.duration(fighter)>0){
       fighter.awaken.turnsLeft--;
       if(fighter.awaken.turnsLeft<=0) this.revert(fighter,engine);
       else if(fighter.awaken.turnsLeft<=2) engine.push("sys",`${fighter.name}の覚醒はあと${fighter.awaken.turnsLeft}ターン。`);
     }
+  },
+  /* 旧来の呼び出し口（代償→生死→持続の順） */
+  endTurn(fighter, engine){
+    this.drain(fighter,engine);
+    engine.checkDeath(fighter);
+    if(fighter.hp<=0) return;
+    this.tick(fighter,engine);
   },
   revert(fighter, engine){
     const a=fighter.char.awakening;
@@ -85,4 +116,3 @@ const AwakeningSystem = {
     });
   }
 };
-

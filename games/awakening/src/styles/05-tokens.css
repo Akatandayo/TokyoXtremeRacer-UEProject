@@ -1,0 +1,147 @@
+/* =========================================================================
+   05. デザイントークン
+   色・余白・角丸・影・文字・動きの「尺度」をここに一本化する。
+   個別の画面 CSS は原則この変数だけを使い、生の値を書かない。
+   旧名（--ink / --panel / --r など）は他担当のファイルが参照しているので
+   別名として残す。新しく書くところは新しい名前を使う。
+   ========================================================================= */
+:root{
+  color-scheme:dark;
+
+  /* ---- 原色：漆黒の夜に、金と紫 ---------------------------------------- */
+  --c-night-900:#07050E;   /* いちばん奥 */
+  --c-night-800:#0E0B18;   /* 背景の基準 */
+  --c-night-700:#161029;
+  --c-night-600:#1F1738;
+  --c-night-500:#2A1F4B;
+
+  --c-gold-200:#FFF3CE;
+  --c-gold-300:#FFE08A;
+  --c-gold-400:#F0C550;    /* 主役の金 */
+  --c-gold-500:#E2A92C;
+  --c-gold-600:#C98A18;
+  --c-gold-800:#8A5F0C;
+
+  --c-violet-300:#C4B0EE;
+  --c-violet-400:#9B7BE8;
+  --c-violet-600:#5B3FA8;
+  --c-jade-300:#9DF0E4;
+  --c-jade-400:#4FD6C8;
+  --c-crimson-300:#FFA9B6;
+  --c-crimson-400:#F2566A;
+
+  /* ---- 面：数字が大きいほど手前 ---------------------------------------- */
+  --surface-0:#0E0B18;
+  --surface-1:rgba(38,30,62,.62);
+  --surface-2:rgba(38,30,62,.78);
+  --surface-3:rgba(28,22,48,.90);
+  --surface-hi:rgba(255,255,255,.055);   /* 面の上の薄い板 */
+  --surface-hi2:rgba(255,255,255,.10);   /* その押下・選択時 */
+  --sheet-bg:linear-gradient(180deg,#241B41,#150F27);
+  --scrim:rgba(6,4,12,.62);
+
+  /* ---- 線 --------------------------------------------------------------- */
+  --stroke-1:rgba(255,255,255,.10);
+  --stroke-2:rgba(255,255,255,.18);
+  --stroke-gold:rgba(240,197,80,.55);
+
+  /* ---- 文字 ------------------------------------------------------------- */
+  --text-1:#F4EFE6;
+  --text-2:#CDC3DC;
+  --text-3:#AFA3C4;        /* これ以上暗くしない（4.5:1 の下限） */
+  --text-on-gold:#2A1C00;
+
+  /* ---- 余白：4px 刻み ---------------------------------------------------- */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px;
+  --sp-6:24px; --sp-7:32px; --sp-8:40px; --sp-9:56px;
+  --gutter:16px;           /* 画面の左右余白 */
+  --tap:44px;              /* 触れる部品の最小辺 */
+
+  /* ---- 角丸 ------------------------------------------------------------- */
+  --r-1:10px; --r-2:14px; --r-3:18px; --r-4:22px; --r-5:28px; --r-pill:999px;
+
+  /* ---- 影：高さの段 ------------------------------------------------------ */
+  --e-1:0 2px 8px rgba(0,0,0,.28);
+  --e-2:0 6px 18px rgba(0,0,0,.36);
+  --e-3:0 12px 32px rgba(0,0,0,.44);
+  --e-4:0 -14px 50px rgba(0,0,0,.60);
+  --e-inset:inset 0 1px 0 rgba(255,255,255,.16);
+  --e-gold:0 8px 24px rgba(224,169,44,.34);
+  --glow-gold:0 0 44px rgba(240,197,80,.30);
+
+  /* ---- 文字サイズ -------------------------------------------------------- */
+  --fs-1:11px; --fs-2:12px; --fs-3:13px; --fs-4:15px;
+  --fs-5:17px; --fs-6:20px; --fs-7:26px; --fs-8:34px;
+  --lh-tight:1.3; --lh-body:1.65;
+  --ls-wide:.16em; --ls-xwide:.28em;
+
+  /* ---- 動き -------------------------------------------------------------- */
+  --d-1:110ms;   /* 押下など即時の反応 */
+  --d-2:180ms;   /* 小さな状態変化 */
+  --d-3:260ms;   /* 画面遷移 */
+  --d-4:380ms;   /* 大きな出入り */
+  --d-5:620ms;   /* 演出 */
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --ease-emph:cubic-bezier(.2,.8,.2,1);
+  --ease-in:cubic-bezier(.4,0,1,1);
+  --ease-spring:cubic-bezier(.34,1.4,.64,1);
+
+  /* ---- 書体 -------------------------------------------------------------- */
+  --sans:"Zen Kaku Gothic New",-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI",sans-serif;
+  --serif:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+
+  /* ---- 端末の余白 -------------------------------------------------------- */
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-l:env(safe-area-inset-left,0px);
+  --safe-r:env(safe-area-inset-right,0px);
+
+  /* ---- 旧名（他担当のファイルが参照している。消さない） -------------------- */
+  --ink:var(--c-night-800);
+  --panel:var(--surface-2);
+  --panel2:var(--surface-3);
+  --line:var(--stroke-1);
+  --line2:var(--stroke-2);
+  --ivory:var(--text-1);
+  --dim:var(--text-3);
+  --me:var(--c-jade-400);
+  --foe:var(--c-crimson-400);
+  --gold:var(--c-gold-400);
+  --violet:var(--c-violet-400);
+  --jade:var(--c-jade-400);
+  --r:var(--r-3);
+}
+
+/* 明るい場所（端末がライト設定）では、色調はそのままに輪郭と文字を強くする。
+   夜の和風という見た目は作品の identity なので白基調には倒さない。 */
+@media (prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){
+    --surface-1:rgba(44,35,72,.80);
+    --surface-2:rgba(44,35,72,.90);
+    --surface-3:rgba(32,25,55,.96);
+    --surface-hi:rgba(255,255,255,.10);
+    --surface-hi2:rgba(255,255,255,.16);
+    --stroke-1:rgba(255,255,255,.20);
+    --stroke-2:rgba(255,255,255,.30);
+    --text-2:#E0D8EC;
+    --text-3:#C6BBD8;
+    --scrim:rgba(6,4,12,.74);
+    --glow-gold:0 0 26px rgba(240,197,80,.22);
+  }
+}
+:root[data-theme="light"]{
+  --surface-1:rgba(44,35,72,.80);
+  --surface-2:rgba(44,35,72,.90);
+  --surface-3:rgba(32,25,55,.96);
+  --stroke-1:rgba(255,255,255,.20);
+  --stroke-2:rgba(255,255,255,.30);
+  --text-2:#E0D8EC;
+  --text-3:#C6BBD8;
+}
+
+/* 動きを減らす設定：尺度そのものを潰すので、個別の指定を書き直さなくて済む */
+@media (prefers-reduced-motion:reduce){
+  :root{
+    --d-1:1ms; --d-2:1ms; --d-3:1ms; --d-4:1ms; --d-5:1ms;
+  }
+}

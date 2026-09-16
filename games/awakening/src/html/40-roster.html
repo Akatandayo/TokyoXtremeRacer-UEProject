@@ -1,18 +1,40 @@
   <section id="s-roster" class="screen">
-    <div class="topbar"><span class="tt">キャラクター</span><button class="btn btn-ghost" data-go="title" style="width:auto">戻る</button></div>
-    <div class="stack" id="edit-roster"></div>
+    <div class="topbar"><span class="tt">キャラクター</span>
+      <button class="btn btn-ghost" id="roster-back" style="width:auto">戻る</button></div>
+    <div id="roster-draft"></div>
+    <div class="searchrow">
+      <span class="si" aria-hidden="true">⌕</span>
+      <input type="search" id="roster-q" placeholder="名前や説明で探す" aria-label="キャラクターを探す"
+        autocomplete="off" enterkeyhint="search">
+      <button class="qclear" id="roster-qclear" aria-label="検索を消す">✕</button>
+    </div>
+    <div class="filterrow" id="roster-tabs">
+      <button class="fchip on" data-tab="all">すべて</button>
+      <button class="fchip" data-tab="mine">自作</button>
+      <button class="fchip" data-tab="preset">最初から</button>
+      <span class="rcount" id="roster-count"></span>
+    </div>
+    <div class="seg small" id="roster-sort">
+      <button class="on" data-sort="new">新しい順</button>
+      <button data-sort="name">名前順</button>
+      <button data-sort="power">強い順</button>
+    </div>
+    <div class="stack" id="edit-roster" style="margin-top:12px"></div>
     <div class="h-rule">追加</div>
     <div class="stack">
       <button class="btn" id="btn-new-char"><span class="ic">✚</span>新しいキャラクターを作る</button>
       <button class="btn btn-line" id="btn-new-skill"><span class="ic">✧</span>技をつくる</button>
     </div>
-    <div class="h-rule">データの保存</div>
-    <div class="stack">
+    <div class="h-rule">自分で作った技</div>
+    <div class="stack" id="roster-skills"></div>
+    <div class="h-rule">データの持ち運び</div>
+    <div id="roster-usage"></div>
+    <div class="stack" style="margin-top:10px">
       <button class="btn btn-line" id="btn-save-file"><span class="ic">⤓</span>ファイルに保存</button>
       <label class="btn btn-line filebtn" for="data-file" style="width:100%"><span class="ic">⤒</span>ファイルから読み込む
         <input type="file" id="data-file" accept="application/json,.json" style="display:none"></label>
       <div id="io-msg"></div>
-      <button class="btn btn-ghost" id="btn-text-io">文字でやりとりする</button>
+      <button class="btn btn-ghost" id="btn-text-io">共有コードでやりとりする</button>
     </div>
     <div id="io-area"></div>
   </section>
