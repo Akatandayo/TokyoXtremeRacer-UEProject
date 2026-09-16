@@ -35,16 +35,7 @@ Object.assign(UI, {
     if(back) back.onclick=()=>this.show("title");
 
     /* データの持ち運び。失敗したら必ず理由を出す。 */
-    $("#btn-save-file").onclick=()=>{
-      const d=Store.exportData(), c=Store.counts(d);
-      if(!c.characters&&!c.skills){
-        Kit.toast("保存するデータがまだありません。まずキャラクターか技を作ってください。",{tone:"bad"}); return;
-      }
-      try{
-        Store.download();
-        Kit.toast(`キャラクター${c.characters}体・技${c.skills}個をファイルに保存しました。`,{tone:"ok"});
-      }catch(e){ Kit.toast("ファイルに書き出せませんでした。ブラウザの設定をご確認ください。",{tone:"bad"}); }
-    };
+    $("#btn-save-file").onclick=()=>this.chooseExport();
     $("#data-file").onchange=ev=>{
       const f=ev.target.files&&ev.target.files[0];
       ev.target.value="";
@@ -56,6 +47,43 @@ Object.assign(UI, {
       r.readAsText(f);
     };
     $("#btn-text-io").onclick=()=>this.toggleTextIo();
+  },
+
+  /* 立ち絵と効果音を含めるかどうかを選ばせる。重さを数字で見せてから選ばせること。 */
+  chooseExport(){
+    const c=Store.counts(Store.exportData());
+    if(!c.characters&&!c.skills){
+      Kit.toast("保存するデータがまだありません。まずキャラクターか技を作ってください。",{tone:"bad"}); return;
+    }
+    const full=Store.sizeOf(Store.exportData());
+    const lite=Store.sizeOf(Store.exportData({stripMedia:true}));
+    const run=opt=>{
+      Kit.toast("書き出しています…");
+      Store.download(opt).then(()=>{
+        Kit.toast(`キャラクター${c.characters}体・技${c.skills}個をファイルに保存しました。`,{tone:"ok"});
+      }).catch(()=>Kit.toast("ファイルに書き出せませんでした。ブラウザの設定をご確認ください。",{tone:"bad"}));
+    };
+    const canMedia=typeof Media!=="undefined"&&Media.supported();
+    const paint=(sfx)=>{
+      Kit.sheet({title:"ファイルに保存",sub:"何を一緒に持ち出すか選べます",
+        html:`<div class="stack">
+          <button class="pickcard" data-x="full"><b>まるごと（バックアップ用）</b>
+            <span>立ち絵${sfx.count?`・効果音${sfx.count}個`:""}も入れます。ふつうはこちら。</span>
+            <em>約${full+Math.round(sfx.bytes*1.37/1024)}KB</em></button>
+          <button class="pickcard" data-x="lite"><b>軽く（人に渡す用）</b>
+            <span>立ち絵と音を抜きます。相手の端末では絵と音は出ません。</span>
+            <em>約${lite}KB</em></button>
+        </div>
+        <p class="note" style="margin-top:10px">どちらも、あとから「ファイルから読み込む」で戻せます。</p>`,
+        onMount:(body,close)=>{
+          body.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{
+            close();
+            run(b.dataset.x==="full"?{media:canMedia}:{stripMedia:true});
+          });
+        }});
+    };
+    if(canMedia) Media.usage().then(paint).catch(()=>paint({count:0,bytes:0}));
+    else paint({count:0,bytes:0});
   },
 
   renderDraftBanner(){
@@ -214,7 +242,7 @@ Object.assign(UI, {
     }
     box.innerHTML=mine.map(s=>`<div class="skrow" data-id="${s.id}">
       <span class="sk-t"><b>${esc(s.name)}</b>
-        <span>${TYPE_LABEL[s.type]||"技"}・SP${s.cost}${s.power>0?"・威力"+s.power:""}</span></span>
+        <span>${TYPE_LABEL[s.type]||"技"}・SP${s.cost}${s.power>0?"・威力"+s.power:""}${s.sfxId?"・♪":""}</span></span>
       <button class="btn btn-line" data-act="edit">直す</button>
       <button class="btn btn-ghost" data-act="del" aria-label="${esc(s.name)}を削除">削除</button></div>`).join("");
     box.querySelectorAll(".skrow").forEach(row=>{
@@ -235,6 +263,7 @@ Object.assign(UI, {
     const snap=JSON.parse(JSON.stringify(s));
     delete SKILLS[id];
     Store.save(); Editor._ref=null;
+    if(snap.sfxId&&typeof Media!=="undefined") Editor.releaseSfx(snap.sfxId);
     this.renderSkillList(); this.renderStorage();
     Kit.toast(`「${s.name}」を削除しました。`,{action:{label:"取り消す",fn:()=>{
       SKILLS[id]=snap; Store.save(); Editor._ref=null;
@@ -254,8 +283,20 @@ Object.assign(UI, {
     box.innerHTML=`<div class="usage${warn?" warn":""}">
       <div class="us-top"><span>端末に置いている量</span><b>${kb} KB</b></div>
       <div class="us-track"><div class="us-fill" style="transform:scaleX(${(pct/100).toFixed(4)})"></div></div>
-      <div class="note">${warn?`残りが少なくなっています。重いのは ${u.heavy.map(h=>esc(h.name)+"（"+(h.bytes/1024).toFixed(0)+"KB）").join("・")} です。ファイルに書き出してから整理してください。`
-        :"目安の上限は5MBです。立ち絵つきのキャラは1体あたり20KB前後です。"}</div></div>`;
+      <div class="note" id="us-note">${warn?`残りが少なくなっています。重いのは ${u.heavy.map(h=>esc(h.name)+"（"+(h.bytes/1024).toFixed(0)+"KB）").join("・")} です。ファイルに書き出してから整理してください。`
+        :"目安の上限は5MBです。立ち絵つきのキャラは1体あたり20KB前後です。"}</div>
+      <div class="note" id="us-media"></div></div>`;
+    /* 効果音は別の置き場（IndexedDB）なので、別立てで知らせる */
+    if(typeof Media==="undefined"||!Media.supported()){
+      const m=$("#us-media");
+      if(m) m.textContent="効果音はこの環境では保存できません。";
+      return;
+    }
+    Media.usage().then(mu=>{
+      const m=$("#us-media");
+      if(!m) return;
+      m.textContent=mu.count?`効果音 ${mu.count}個（${(mu.bytes/1024).toFixed(0)}KB）は別の置き場にあります。`:"";
+    }).catch(()=>{});
   },
 
   /* ---------- 文字でやりとり ---------- */
@@ -311,6 +352,9 @@ Object.assign(UI, {
     if(res.characters) bits.push(`キャラクター${res.characters}体`);
     if(res.skills) bits.push(`技${res.skills}個`);
     if(res.skipped) bits.push(`読めなかったもの${res.skipped}件`);
+    if(res.media>0) bits.push(`効果音${res.media}個`);
+    if(res.media<0) Kit.toast("効果音が入っていましたが、この環境では端末に置けませんでした。",{tone:"bad",ms:5000});
+    if(res.mediaPromise) res.mediaPromise.then(()=>this.renderStorage());
     if(!res.saved){
       Kit.toast(`${bits.join("・")}を読み込みましたが、端末に保存できませんでした。閉じると消えます。`,{tone:"bad",ms:6000});
     }else{

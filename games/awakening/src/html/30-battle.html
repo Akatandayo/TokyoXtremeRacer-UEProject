@@ -8,10 +8,23 @@
       </span>
     </div>
     <div class="arena" id="arena">
+      <div class="stage" aria-hidden="true">
+        <div class="sky"></div>
+        <div class="moon"></div>
+        <div class="ridge"></div>
+        <div class="torii"></div>
+        <div class="hline"></div>
+        <div class="floor"></div>
+        <div class="embers"><i></i><i></i><i></i></div>
+        <div class="vig"></div>
+      </div>
       <div class="arena-glow" id="arena-glow"></div>
-      <div class="unit foe" id="view1"></div>
-      <div class="midline"></div>
-      <div class="unit" id="view0"></div>
+      <div class="plate foe" id="plate1"></div>
+      <div class="field" id="field">
+        <div class="unit foe" id="view1"></div>
+        <div class="unit me" id="view0"></div>
+      </div>
+      <div class="plate me" id="plate0"></div>
     </div>
     <div class="logrow">
       <button class="logstrip" id="logstrip" aria-label="戦闘ログ。再生中はタップで早送り"></button>

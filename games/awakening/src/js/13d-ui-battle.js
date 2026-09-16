@@ -40,6 +40,7 @@ Object.assign(UI, {
     this.actorSide=null;
     this.guardShown=[false,false];
     this.bindBattle();
+    this.prewarmSfx();
     this.clearFx();
     this.renderFighters();
     this.strip(this.engine.log.slice(-2));
@@ -62,10 +63,28 @@ Object.assign(UI, {
     if(sk) sk.onclick=ev=>{ ev.stopPropagation(); this.cutScene(); };
   },
   clearFx(){
-    $$("#arena .float,#arena .cue,#arena .gring,#arena .spark,#arena .statusburst,#arena .banner").forEach(el=>el.remove());
+    $$("#arena .float,#arena .cue,#arena .gring,#arena .spark,#arena .statusburst,#arena .banner,"
+      +"#arena .im,#arena .sb,#arena .column,#arena .gbreak,#arena .proj,#arena .combo").forEach(el=>el.remove());
     ["sh1","sh2","sh3","sh4"].forEach(c=>$("#arena").classList.remove(c));
     $("#awk").classList.remove("on");
     $("#ffcatch").classList.remove("on");
+  },
+
+  /* この戦闘で鳴りうる「技に設定された効果音」を先に読み込んでおく。
+     Media（担当C）がまだ無い環境でも黙って合成音に落ちる。 */
+  prewarmSfx(){
+    const e=this.engine;
+    if(!e||!Music.prewarm) return;
+    const ids=[];
+    [0,1].forEach(s=>{
+      const f=e.fighters[s];
+      if(!f) return;
+      const list=(f.skills||[]).concat(["basic_attack"]);
+      const form=f.char&&f.char.awakening&&f.char.awakening.form;
+      if(form&&Array.isArray(form.skills)) list.push.apply(list,form.skills);
+      list.forEach(id=>{ const sk=e.SK[id]; if(sk&&sk.sfxId) ids.push(sk.sfxId); });
+    });
+    Music.prewarm(ids);
   },
 
   /* 対戦相手のキャラクターに設定された曲を流す */
@@ -137,22 +156,37 @@ Object.assign(UI, {
     const c=(a.conditions||[]).find(x=>x.type==="HP_BELOW");
     return c?c.value:null;
   },
+  /* 立ち姿（舞台の上）と ステータス板（舞台の縁）を組み立てる。
+     以後は中身の書き換えだけにして、レイアウトを走らせない。 */
   buildUnit(view){
     const host=$("#view"+view);
     host.innerHTML=`
-      <div class="avwrap" data-av></div>
-      <div class="info">
-        <span class="owner" data-owner></span>
-        <div class="nmrow"><span class="nm" data-nm></span><span data-badges></span></div>
-        <div class="hpline">
-          <div class="hpbar"><div class="hpchip" data-chip></div><div class="hpfill" data-fill></div></div>
-          <div class="hpmark" data-mark hidden></div>
-          <div class="hpnum" data-num></div>
+      <div class="stand">
+        <div class="shadow"></div>
+        <div class="avwrap">
+          <div class="st-aura" data-aura></div>
+          <div class="figure" data-av></div>
         </div>
-        <div class="spline"><span class="splabel">SP <b data-spn></b></span><div class="spbar" data-sp></div></div>
-        <div class="chips" data-chips></div>
       </div>`;
+    const plate=$("#plate"+view);
+    plate.innerHTML=`
+      <div class="nmrow">
+        <span class="nm" data-nm></span>
+        <span class="owner" data-owner></span>
+        <span class="bg" data-badges></span>
+      </div>
+      <div class="hpline">
+        <div class="hpbar"><div class="hpchip" data-chip></div><div class="hpfill" data-fill></div>
+          <div class="hpmark" data-mark hidden></div></div>
+        <div class="hpnum" data-num></div>
+      </div>
+      <div class="spline"><span class="splabel">SP <b data-spn></b></span><div class="spbar" data-sp></div></div>
+      <div class="chips" data-chips></div>`;
     this.unitBuilt[view]=true;
+  },
+  /* 立ち姿とステータス板の両方から部品を引く */
+  unitPart(view,key){
+    return $("#view"+view).querySelector("[data-"+key+"]")||$("#plate"+view).querySelector("[data-"+key+"]");
   },
   renderFighters(snap,turn){
     const e=this.engine;
@@ -166,9 +200,15 @@ Object.assign(UI, {
   },
   updateUnit(view,f,s,side){
     const host=$("#view"+view);
-    const q=k=>host.querySelector("[data-"+k+"]");
+    const plate=$("#plate"+view);
+    const q=k=>this.unitPart(view,k);
     const awake=s.form==="AWAKENED";
-    host.className="unit"+(view===1?" foe":"")+(s.hp<=0?" down":"");
+    // 状態異常は「立ち姿そのもの」に出す。行動を止める系は動きを凍らせる
+    const st=FxKit.bodyState(s.effects);
+    host.className="unit"+(view===1?" foe":" me")+(s.hp<=0?" down":"")
+      +(st.aura?" has-st":"")+(st.held?" held":"");
+    if(st.aura) host.style.setProperty("--h",st.hue);
+    plate.className="plate "+(view===1?"foe":"me");
 
     const avCls=(view===1?"foe":"me")+(awake?" awake":"");
     if(host._av!==avCls+"|"+(f.portraitImage||f.portrait)){
@@ -205,7 +245,7 @@ Object.assign(UI, {
 
     const num=q("num");
     const lost=s.maxHp-s.hp;
-    num.innerHTML=`<span>HP</span><span><b>${s.hp}</b> / ${s.maxHp}${lost?` <span class="dmgd">−${lost}</span>`:""}</span>`;
+    num.innerHTML=`<b>${s.hp}</b>/${s.maxHp}${lost?` <span class="dmgd">−${lost}</span>`:""}`;
 
     const spn=q("spn");
     if(spn.textContent!==String(s.sp)) spn.textContent=s.sp;
@@ -278,8 +318,90 @@ Object.assign(UI, {
       host.classList.remove("hurt","big"); void host.offsetWidth;
       host.classList.add("hurt"); if(tier>=3) host.classList.add("big");
       setTimeout(()=>host.classList.remove("hurt","big"),520);
-      this.fx(view,"spark"+(o.crit?" crit":o.counter?" counter":""),400);
     }
+  },
+
+  /* ---------- 技のデータから決まる演出 ----------
+     形・色・向き・大きさは FxKit が技データから導く。ここは描くだけ。 */
+  impact(view,o){
+    o=o||{};
+    const wrap=$("#view"+view).querySelector(".avwrap");
+    if(!wrap) return;
+    const p=o.plan||FxKit.plan({type:"ATTACK"});
+    let shape=o.counter?"pierce":p.impact;
+    if(shape==="slash"&&p.hits>1) shape="wave";
+    if(shape==="hex"||shape==="aura") shape="burst";
+    const tier=Math.max(1,Math.min(4,o.tier||1));
+    const el=document.createElement("div");
+    el.className="im "+shape+(o.crit?" crit":"");
+    el.style.setProperty("--sc",(0.7+tier*0.15+(o.crit?0.18:0)).toFixed(2));
+    el.style.setProperty("--h",o.counter?274:(o.crit?44:p.hue));
+    // 斬る向きは立ち位置から。連撃は1発ごとに返して「刻んでいる」ように見せる
+    const base=(view===1?-32:32);
+    el.style.setProperty("--ang",(base*(((o.index||1)%2)?1:-1))+"deg");
+    wrap.appendChild(el);
+    setTimeout(()=>el.remove(),740);
+  },
+  /* 防御を砕く：破片が散る */
+  shatter(view){
+    const wrap=$("#view"+view).querySelector(".avwrap");
+    if(!wrap) return;
+    const d=document.createElement("div");
+    d.className="gbreak";
+    d.innerHTML=[0,1,2,3,4,5].map(i=>`<i style="--r:${i*60+12}deg"></i>`).join("");
+    wrap.appendChild(d);
+    setTimeout(()=>d.remove(),620);
+  },
+  /* 立ちのぼる光（回復・構え・自己強化・代償） */
+  column(view,hue){
+    const wrap=$("#view"+view).querySelector(".avwrap");
+    if(!wrap) return;
+    const d=document.createElement("div");
+    d.className="column";
+    d.style.setProperty("--h",hue);
+    wrap.appendChild(d);
+    setTimeout(()=>d.remove(),720);
+  },
+  /* 連撃の手数 */
+  comboPop(view,n){
+    const wrap=$("#view"+view).querySelector(".avwrap");
+    if(!wrap) return;
+    const old=wrap.querySelector(".combo");
+    if(old) old.remove();
+    const d=document.createElement("div");
+    d.className="combo";
+    d.innerHTML=`${n}<small>HIT</small>`;
+    wrap.appendChild(d);
+    setTimeout(()=>{ if(d.parentNode) d.remove(); },900);
+  },
+  /* 遠隔の技だけ、撃った側から相手へ光が飛ぶ */
+  projectile(side,plan){
+    const from=$("#view"+this.viewOf(side)).querySelector(".avwrap");
+    const to=$("#view"+this.viewOf(1-side)).querySelector(".avwrap");
+    const field=$("#field");
+    if(!from||!to||!field) return;
+    const fr=from.getBoundingClientRect(), tr=to.getBoundingClientRect(), br=field.getBoundingClientRect();
+    const x0=fr.left+fr.width/2-br.left, y0=fr.top+fr.height/2-br.top;
+    const d=document.createElement("div");
+    d.className="proj";
+    d.style.left=x0+"px"; d.style.top=y0+"px";
+    d.style.setProperty("--dx",Math.round(tr.left+tr.width/2-br.left-x0)+"px");
+    d.style.setProperty("--dy",Math.round(tr.top+tr.height/2-br.top-y0)+"px");
+    d.style.setProperty("--h",plan.hue);
+    d.style.setProperty("--t",Math.round(210*Math.min(1,this.SPEEDS[this.speed].k+0.3))+"ms");
+    field.appendChild(d);
+    setTimeout(()=>d.remove(),700);
+  },
+  /* 状態変化ひとつぶん。kind が未知でも sigil に落ちて必ず絵が出る */
+  statusFx(view,fx){
+    const wrap=$("#view"+view).querySelector(".avwrap");
+    if(!wrap) return;
+    const d=document.createElement("div");
+    d.className="sb "+fx.family;
+    d.style.setProperty("--h",fx.hue);
+    d.innerHTML=`<i>${esc(fx.glyph)}</i>`;
+    wrap.appendChild(d);
+    setTimeout(()=>d.remove(),900);
   },
   /* 数字を伴わない合図（回避・防御・状態異常・無効化） */
   cue(view,text,cls){
@@ -292,11 +414,35 @@ Object.assign(UI, {
     wrap.appendChild(d);
     setTimeout(()=>d.remove(),780);
   },
-  actAnim(side){
+  /* 踏み込み方も技のデータで変わる（先制＝踏み込み、重い技＝溜め、魔法＝詠唱…） */
+  actAnim(side,plan){
     if(side==null) return;
     const host=$("#view"+this.viewOf(side));
-    host.classList.remove("act"); void host.offsetWidth; host.classList.add("act");
-    setTimeout(()=>host.classList.remove("act"),500);
+    host.classList.remove("act","m-dash","m-heavy","m-cast","m-brace");
+    void host.offsetWidth;
+    host.classList.add("act");
+    const m=plan&&plan.motion;
+    if(m&&m!=="lunge") host.classList.add("m-"+m);
+    setTimeout(()=>host.classList.remove("act","m-dash","m-heavy","m-cast","m-brace"),700);
+  },
+  /* 行動の宣言でこのターンの演出を決める。技名では分岐しない */
+  beginAction(e){
+    const id=(this.intent&&e.actor!=null)?this.intent[e.actor]:null;
+    const s=FxKit.skillFromLog(this.engine,e.text,id);
+    this.curSkill=s;
+    this.curPlan=FxKit.plan(s||{type:"ATTACK",power:0,accuracy:95});
+    this.hitIndex=0;
+    if(this.skip||e.actor==null) return;
+    const p=this.curPlan;
+    this.actAnim(e.actor,p);
+    const view=this.viewOf(e.actor);
+    if(p.ranged){
+      if(p.heal||p.motion==="brace") this.column(view,p.hue);
+      else this.projectile(e.actor,p);
+      Music.sfx("cast",{plan:p});
+    }else if(p.heavy){
+      Music.sfx("charge",{plan:p});
+    }
   },
   /* ログの文からどちらの話かを推測する（エンジンは側を持たないため） */
   sideFromText(text,fallback){
@@ -613,6 +759,9 @@ Object.assign(UI, {
     $("#cmd-area").innerHTML=`<div class="waiting"><div class="thinking"><i></i><i></i><i></i></div>
       <div>行動を処理しています</div><div class="wsub">画面をタップすると一気に送れます</div></div>`;
     $("#ffcatch").classList.add("on");
+    // どの技を出したかは解決前にしか残らないので、演出用に控えておく
+    this.intent=(this.engine.pending||[]).map(a=>(a&&a.skillId)||null);
+    this.curPlan=null; this.curSkill=null; this.hitIndex=0;
     const entries=this.engine.resolveTurn();
     this.playing=true; this.skip=false;
     this.actorSide=null;
@@ -664,13 +813,14 @@ Object.assign(UI, {
   playEntry(e){
     let stop=0;
     const prev=this.prevSnap;
+    if(e.kind==="action") this.beginAction(e);
     [0,1].forEach(side=>{
       const before=prev[side].hp, after=e.snap[side].hp;
       if(before===after) return;
       const view=this.viewOf(side);
       const delta=after-before;
       if(delta>0){
-        if(!this.skip){ this.popNumber(view,delta); this.flash("heal"); Music.sfx("heal"); }
+        if(!this.skip){ this.popNumber(view,delta); this.column(view,150); this.flash("heal"); Music.sfx("heal"); }
         return;
       }
       const amount=-delta;
@@ -680,22 +830,37 @@ Object.assign(UI, {
       const counter=!cost&&this.actorSide===side;
       if(this.skip) return;
       this.popNumber(view,delta,{crit,counter,cost,tier});
+      const plan=this.curPlan||FxKit.plan({type:"ATTACK"});
+      if(cost){
+        // 自分で払った代償。殴られた絵ではなく、身を削る赤い光にする
+        this.column(view,352);
+      }else{
+        this.hitIndex++;
+        this.impact(view,{plan,crit,counter,tier,index:this.hitIndex});
+        if(!counter&&plan.hits>1&&this.hitIndex>=2) this.comboPop(view,this.hitIndex);
+      }
       this.shake(tier);
       this.flash(crit?"crit":"");
       this.buzz(this.TIERS[tier].vib);
-      Music.sfx(crit?"crit":counter?"counter":"hit",{tier});
+      Music.sfx("strike",{tier,crit,counter,cost,plan,index:this.hitIndex,
+        sfxId:(!cost&&!counter&&this.curSkill)?this.curSkill.sfxId:null});
       stop=Math.max(stop,this.TIERS[tier].stop*(crit?1.35:1));
-      // 防御していた側が受けたダメージには「防御」を重ねて見せる
-      if(e.snap[side].defending&&!this.guardShown[side]){
+      // 防御していた側が受けたダメージ。貫通する技なら防御が砕ける絵にする
+      if(e.snap[side].defending&&!this.guardShown[side]&&!cost&&!counter){
         this.guardShown[side]=true;
-        this.cue(view,"防御","guard");
-        this.fx(view,"gring",560);
+        if(plan.breaker){
+          this.shatter(view); this.cue(view,"防御貫通","break"); Music.sfx("break");
+          stop=Math.max(stop,90);
+        }else{
+          this.cue(view,"防御","guard");
+          this.fx(view,"gring",560);
+        }
       }
       if(e.snap[side].hp<=0) Music.sfx("down");
     });
     if(this.skip) return stop;
 
-    if(e.kind==="action"||e.kind==="awaken") this.actAnim(e.actor);
+    if(e.kind==="awaken") this.actAnim(e.actor);
     if(e.kind==="miss"){
       const side=this.sideFromText(e.text,this.actorSide==null?null:1-this.actorSide);
       if(side!=null){
@@ -704,21 +869,10 @@ Object.assign(UI, {
         host.classList.remove("dodge"); void host.offsetWidth; host.classList.add("dodge");
         setTimeout(()=>host.classList.remove("dodge"),460);
         this.cue(view,/効かなかった/.test(e.text)?"無効":"MISS","miss");
-        Music.sfx("miss");
+        Music.sfx("miss",{plan:this.curPlan});
       }
     }
-    if(e.kind==="status"&&/状態になった|効果。/.test(e.text)){
-      const side=this.sideFromText(e.text,this.actorSide);
-      if(side!=null){
-        const view=this.viewOf(side);
-        const good=/効果。$/.test(e.text)&&side===this.actorSide;
-        this.fx(view,"statusburst "+(good?"good":"bad"),640);
-        const m=e.text.match(/「(.+?)」/);
-        this.cue(view,m?m[1]:"状態変化","status"+(good?" good":""));
-        Music.sfx("status",{good});
-        stop=Math.max(stop,60);
-      }
-    }
+    if(e.kind==="status") stop=Math.max(stop,this.statusEntry(e));
     if(e.kind==="sys"&&/無効化した/.test(e.text)){
       const side=this.sideFromText(e.text,this.actorSide==null?null:1-this.actorSide);
       if(side!=null){ this.cue(this.viewOf(side),"NULLIFY","nullify"); Music.sfx("guard"); stop=Math.max(stop,90); }
@@ -732,14 +886,41 @@ Object.assign(UI, {
       if(side!=null){
         const view=this.viewOf(side);
         const host=$("#view"+view);
+        this.curPlan=FxKit.plan({type:"DEFENSE",power:0});
+        this.curSkill=null;
         host.classList.remove("guard"); void host.offsetWidth; host.classList.add("guard");
         setTimeout(()=>host.classList.remove("guard"),440);
-        this.fx(view,"gring",560);
+        this.statusFx(view,{family:"ward",hue:166,glyph:"⛨"});
+        this.column(view,166);
         Music.sfx("guard");
       }
     }
     if(e.kind==="win") Music.sfx(this.engine.winner&&this.engine.winner.side===this.mySide?"win":"lose");
     return stop;
+  },
+  /* 状態変化の1行。効果の定義（kind・icon・tone）はその場のスナップショットから引くので、
+     利用者が自分で足した状態異常でも、知らないまま正しい色と紋で出せる。 */
+  statusEntry(e){
+    const side=this.sideFromText(e.text,this.actorSide);
+    if(side==null) return 0;
+    const view=this.viewOf(side);
+    const m=/「(.+?)」/.exec(e.text);
+    let def=null;
+    if(m){
+      def=(e.snap[side].effects||[]).find(x=>x.name===m[1])||null;
+      if(!def&&this.curSkill) def=(this.curSkill.effects||[]).find(x=>x.name===m[1])||null;
+    }
+    if(!def&&this.curSkill){
+      // 付与せずその場で起きる効果（時飛ばし・反転重力など）は名前が文に出ない
+      const want=(side===this.actorSide)?"self":"enemy";
+      def=(this.curSkill.effects||[]).find(x=>(x.target==="enemy"?"enemy":"self")===want)||null;
+    }
+    const fx=FxKit.effectFx(def||{name:(m?m[1]:"状態変化"),tone:(side===this.actorSide?"good":"bad")});
+    this.statusFx(view,fx);
+    if(fx.tone==="good") this.column(view,fx.hue);
+    this.cue(view,fx.name,"status"+(fx.tone==="good"?" good":""));
+    Music.sfx("status",{good:fx.tone==="good",family:fx.family});
+    return 60;
   },
   /* 再生中に画面を触ったら残りを一気に流す */
   fastForward(){

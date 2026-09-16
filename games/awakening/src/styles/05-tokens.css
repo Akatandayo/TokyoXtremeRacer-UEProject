@@ -139,9 +139,13 @@
   --text-3:#C6BBD8;
 }
 
-/* 動きを減らす設定：尺度そのものを潰すので、個別の指定を書き直さなくて済む */
+/* 動きを減らす設定：尺度そのものを潰すので、個別の指定を書き直さなくて済む。
+   アプリの設定（data-motion）は端末の設定より優先する。 */
 @media (prefers-reduced-motion:reduce){
-  :root{
+  :root:not([data-motion="full"]){
     --d-1:1ms; --d-2:1ms; --d-3:1ms; --d-4:1ms; --d-5:1ms;
   }
+}
+:root[data-motion="reduce"]{
+  --d-1:1ms; --d-2:1ms; --d-3:1ms; --d-4:1ms; --d-5:1ms;
 }

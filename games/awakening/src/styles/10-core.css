@@ -223,7 +223,7 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
   padding:var(--sp-3) var(--sp-4);font-size:var(--fs-3);letter-spacing:.04em}
 .title-foot .btn-ghost .ic{margin-right:6px;color:var(--c-gold-400);font-size:15px;vertical-align:-1px}
 .title-foot .sep{width:1px;height:14px;background:var(--stroke-1)}
-.ver{text-align:center;color:rgba(175,163,196,.55);font-size:10px;letter-spacing:.18em;
+.ver{text-align:center;color:var(--text-3);font-size:10.5px;letter-spacing:.18em;
   margin-top:var(--sp-2)}
 
 /* ---------- 立ち絵まわり（共通） -------------------------------------------- */
@@ -243,29 +243,93 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 @keyframes aura{0%,100%{box-shadow:0 0 22px rgba(240,197,80,.35),inset 0 1px 0 rgba(255,255,255,.35)}
   50%{box-shadow:0 0 46px rgba(240,197,80,.75),inset 0 1px 0 rgba(255,255,255,.45)}}
 
-/* ---------- 編成（キャラクター選択） ---------------------------------------- */
-#s-select{padding-bottom:calc(84px + var(--safe-b))}
-/* 上段：対戦カード。左右の枠と中央の「VS」 */
-.vs-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;gap:var(--sp-2);
-  margin-bottom:var(--sp-4)}
-.vs-bar .vs{align-self:center;font-family:var(--serif);font-size:var(--fs-3);letter-spacing:.1em;
+/* ---------- 編成（キャラクター選択） ----------------------------------------
+   自作キャラクターが何十体も並ぶ前提。上＝いま組んでいるカード、下＝探して選ぶ一覧。 */
+#s-select{padding-bottom:calc(136px + var(--safe-b))}
+
+/* 対戦カード。左右がそのまま「どちらを選んでいるか」の切り替えになる */
+.vsboard{border-radius:var(--r-3);padding:var(--sp-2);margin-bottom:var(--sp-3);
+  background:var(--surface-2);border:1px solid var(--stroke-1);
+  box-shadow:var(--e-2),inset 0 1px 0 rgba(255,255,255,.08)}
+.vb-heads{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;gap:var(--sp-2)}
+.vb-vs{align-self:center;font-family:var(--serif);font-size:var(--fs-3);letter-spacing:.1em;
   color:var(--text-3);padding:0 2px}
-.slot{position:relative;display:flex;align-items:center;gap:var(--sp-2);min-height:64px;
-  border-radius:var(--r-2);padding:var(--sp-2);text-align:left;overflow:hidden;
+.vslot{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-height:var(--tap);border-radius:var(--r-2);padding:var(--sp-2) 6px var(--sp-2);overflow:hidden;
   background:var(--surface-hi);border:1px solid var(--stroke-1);
   transition:border-color var(--d-2),background var(--d-2),transform var(--d-1) var(--ease-out)}
-.slot:active{transform:scale(.98)}
-.slot.active{border-color:rgba(240,197,80,.72);
+.vslot:active{transform:scale(.98)}
+.vslot.active{border-color:rgba(240,197,80,.72);
   background:linear-gradient(180deg,rgba(240,197,80,.16),rgba(240,197,80,.04));
   box-shadow:0 6px 18px rgba(240,197,80,.14)}
-.slot .sav{flex:0 0 auto;width:40px;height:40px;border-radius:13px;display:grid;place-items:center;
-  font-size:19px;background:rgba(0,0,0,.28);border:1px solid var(--stroke-1);overflow:hidden;color:var(--text-2)}
-.slot .sav img{width:100%;height:100%;object-fit:cover;display:block}
-.slot .stx{min-width:0;flex:1}
-.slot .who{display:block;font-size:10px;color:var(--text-3);letter-spacing:.14em}
-.slot .pick{display:block;font-family:var(--serif);font-size:var(--fs-5);line-height:1.35;
+.vslot .who{font-size:10px;color:var(--text-3);letter-spacing:.14em;line-height:1.4}
+.vslot.active .who{color:#F0DFB4}
+.vslot .sav{width:52px;height:52px;border-radius:17px;display:grid;place-items:center;
+  font-size:24px;background:rgba(0,0,0,.28);border:1px solid var(--stroke-1);overflow:hidden;
+  color:var(--text-2)}
+.vslot .sav img{width:100%;height:100%;object-fit:cover;display:block}
+.vslot .pick{display:block;max-width:100%;font-family:var(--serif);font-size:var(--fs-4);line-height:1.35;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.slot .pick.empty{color:var(--text-3);font-family:var(--sans);font-size:var(--fs-3)}
+.vslot .pick.none{color:var(--text-3);font-family:var(--sans);font-size:var(--fs-2)}
+.vslot .tags{display:flex;flex-wrap:wrap;justify-content:center;gap:3px}
+.vslot .tags:empty{display:none}
+.vslot .chip{font-size:9.5px;padding:2px 7px}
+
+/* 能力値の対面比較。左は右から、右は左から伸ばして中央で突き合わせる */
+.vb-stats{display:flex;flex-direction:column;gap:5px}
+.vb-stats:empty{display:none}
+.vsboard.open .vb-stats{margin-top:var(--sp-3);padding-top:var(--sp-3);
+  border-top:1px solid var(--stroke-1)}
+.cr{display:grid;grid-template-columns:42px 1fr 40px 1fr 42px;align-items:center;gap:6px}
+.cr .ck{text-align:center;font-size:var(--fs-1);letter-spacing:.06em;color:var(--text-3)}
+.cr .cv{font-size:var(--fs-2);font-weight:700;color:var(--text-2);font-variant-numeric:tabular-nums}
+.cr .cv.l{text-align:right}
+.cr .cv.r{text-align:left}
+.cr .cv.win{color:var(--c-jade-300)}
+.cr .cb{display:block;height:7px;border-radius:var(--r-pill);background:rgba(255,255,255,.09);
+  overflow:hidden}
+.cr .cb i{display:block;height:100%;width:100%;border-radius:inherit;
+  background:linear-gradient(90deg,var(--c-violet-400),var(--c-jade-400));
+  animation:barGrow var(--d-4) var(--ease-emph) both}
+.cr .cb.l i{transform-origin:right center;
+  background:linear-gradient(270deg,var(--c-violet-400),var(--c-jade-400))}
+.cr .cb.r i{transform-origin:left center}
+.vb-foot{margin-top:var(--sp-3)}
+.vb-foot:empty{display:none}
+.vb-foot .btn{font-size:var(--fs-3);padding:var(--sp-3) var(--sp-4)}
+
+/* 対戦の設定（AIの強さ・目隠し）。一覧に潜る前に決めるので上に置く */
+.optline{display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-3)}
+.optline .ol-t{flex:0 0 auto;font-size:var(--fs-3);color:var(--text-2);letter-spacing:.04em}
+.optline .seg{flex:1;min-width:0}
+#select-options .switchrow{margin-bottom:var(--sp-3)}
+
+/* 探して絞る帯。一覧が長くなっても上に貼り付く。
+   面で塗ると板が浮いて見えるので、背面をぼかして受ける。 */
+.pickbar{position:sticky;top:0;z-index:12;padding:var(--sp-2) 0 0;
+  background:rgba(14,11,24,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--stroke-1);margin-bottom:var(--sp-3);
+  border-radius:0 0 var(--r-1) var(--r-1)}
+.pickbar .searchrow{margin-bottom:6px}
+.pickbar .filterwrap{display:flex;align-items:center;gap:var(--sp-2);padding-bottom:var(--sp-2)}
+.pickbar .filterwrap .filterrow{flex:1;min-width:0;padding-bottom:0;
+  /* 右端をぼかして「まだ続く」ことを見せる */
+  -webkit-mask:linear-gradient(90deg,#000 calc(100% - 22px),transparent);
+  mask:linear-gradient(90deg,#000 calc(100% - 22px),transparent)}
+.pickbar .filterwrap .rcount{margin-left:0;padding-left:0}
+.qclear{opacity:0;pointer-events:none;transition:opacity var(--d-2)}
+.qclear.on{opacity:1;pointer-events:auto}
+.empty .em-act{margin-top:var(--sp-4)}
+.empty .em-act .btn{max-width:260px;margin:0 auto}
+
+/* くわしくシートの中身 */
+.dsec+.dsec{margin-top:var(--sp-5)}
+.slines{display:flex;flex-direction:column;gap:6px}
+.sline{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-3);
+  padding:var(--sp-2) var(--sp-3);border-radius:var(--r-1);
+  background:var(--surface-hi);border:1px solid var(--stroke-1)}
+.sline .sl-n{font-size:var(--fs-3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sline .sl-m{flex:0 0 auto;font-size:var(--fs-1);color:var(--text-3);letter-spacing:.02em}
 
 /* 選ぶ側：指で押せる札を並べる */
 .picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:var(--sp-2);
@@ -290,6 +354,18 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
   background:var(--c-gold-400);box-shadow:0 0 8px rgba(240,197,80,.8)}
 .thumb .tag{position:absolute;left:0;top:0;font-size:9px;letter-spacing:.08em;padding:1px 6px;
   border-radius:0 0 var(--r-1) 0;background:rgba(155,123,232,.28);color:#DCCDFF}
+.thumb .tag.pre{background:rgba(255,255,255,.10);color:var(--text-2)}
+/* どちらの枠に入っているか */
+.thumb .mark{position:absolute;right:6px;bottom:5px;font-size:9.5px;font-weight:700;letter-spacing:.06em;
+  padding:1px 6px;border-radius:var(--r-pill);color:var(--text-on-gold);
+  background:linear-gradient(180deg,var(--c-gold-300),var(--c-gold-500))}
+/* 能力の当たりを4本の縦棒で。数字は編成カードで見るのでここでは形だけ
+   （.spark は戦闘演出が使っているので別名にする） */
+.thumb .tsp{display:flex;width:100%;align-items:flex-end;justify-content:flex-start;gap:3px;
+  height:11px;margin-top:2px;padding-left:6px}
+.thumb .tsp i{display:block;width:4px;height:11px;border-radius:2px;transform-origin:bottom center;
+  background:linear-gradient(180deg,var(--c-jade-400),var(--c-violet-400));opacity:.75}
+.thumb.on .tsp i{opacity:1}
 
 /* 見比べる側 */
 .preview{padding:var(--sp-4);margin-bottom:var(--sp-3);position:relative;overflow:hidden}
@@ -366,8 +442,8 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 .switchrow{display:flex;align-items:center;gap:var(--sp-3);min-height:56px;padding:var(--sp-2) var(--sp-3);
   border-radius:var(--r-2);background:var(--surface-hi);border:1px solid var(--stroke-1);cursor:pointer}
 .switchrow .sw-tx{flex:1;min-width:0}
-.switchrow .sw-tl{font-size:var(--fs-3);line-height:1.4}
-.switchrow .sw-ts{font-size:var(--fs-1);color:var(--text-3);line-height:1.4;margin-top:1px}
+.switchrow .sw-tl{display:block;font-size:var(--fs-3);line-height:1.4}
+.switchrow .sw-ts{display:block;font-size:var(--fs-1);color:var(--text-3);line-height:1.4;margin-top:1px}
 .switch{position:relative;flex:0 0 auto;width:54px;height:var(--tap);margin:0;padding:0;
   -webkit-appearance:none;appearance:none;background:none;border:none;cursor:pointer}
 .switch::before{content:"";position:absolute;left:0;top:50%;width:54px;height:30px;
@@ -379,6 +455,15 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 .switch:checked::before{background:linear-gradient(180deg,var(--c-gold-300),var(--c-gold-500));
   border-color:rgba(255,235,170,.6)}
 .switch:checked::after{transform:translateY(-50%) translateX(24px);background:#3A2600}
+.switch:disabled{cursor:default}
+.switchrow:has(.switch:disabled){opacity:.5}
+.switch:disabled::before{background:rgba(255,255,255,.07)}
+
+/* 設定などで「見出し＋操作」をひとかたまりに見せる枠 */
+.setfield{border-radius:var(--r-2);padding:var(--sp-3);background:var(--surface-hi);
+  border:1px solid var(--stroke-1)}
+.setfield .sf-tl{font-size:var(--fs-3);line-height:1.4;margin-bottom:var(--sp-2)}
+.setfield .note{margin:var(--sp-2) 0 0}
 
 /* ---------- 遊び方 ---------------------------------------------------------- */
 .howto-lead{border-radius:var(--r-3);padding:var(--sp-4);margin-bottom:var(--sp-4);
@@ -387,6 +472,33 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 .howto-lead p{margin:0;font-size:var(--fs-3);color:var(--text-1);line-height:1.7}
 .howto-lead .hl{font-family:var(--serif);font-size:var(--fs-5);letter-spacing:.06em;
   margin-bottom:var(--sp-2);color:#EADFFF}
+/* 何をするゲームかの3段。番号を大きく見せて図解として読ませる */
+.steps{display:flex;flex-direction:column;gap:var(--sp-2);margin:0 0 var(--sp-4);padding:0;
+  list-style:none;counter-reset:sp}
+.steps li{position:relative;counter-increment:sp;display:grid;
+  grid-template-columns:44px 1fr;gap:var(--sp-3);align-items:start;
+  padding:var(--sp-3);border-radius:var(--r-2);
+  background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));
+  border:1px solid var(--stroke-1)}
+/* 3段のつながりを縦の線で見せる */
+.steps li:not(:last-child)::after{content:"";position:absolute;left:38px;bottom:-9px;width:1px;height:9px;
+  background:var(--stroke-2)}
+.steps .st-i{grid-row:1/span 2;display:grid;place-items:center;width:44px;height:44px;border-radius:14px;
+  font-size:20px;color:var(--c-gold-400);background:rgba(240,197,80,.12);
+  border:1px solid rgba(240,197,80,.28)}
+.steps .st-i::after{content:counter(sp);position:absolute;margin:-30px 0 0 30px;
+  display:grid;place-items:center;width:18px;height:18px;border-radius:50%;
+  font-size:10px;font-weight:700;color:var(--text-on-gold);
+  background:linear-gradient(180deg,var(--c-gold-300),var(--c-gold-500))}
+/* 直下だけを見出し扱いにする（本文中の b まで大きくしない） */
+.steps li>b{grid-column:2;display:block;font-family:var(--serif);font-size:var(--fs-5);letter-spacing:.04em}
+.steps li>span:not(.st-i){grid-column:2;display:block;font-size:var(--fs-2);color:var(--text-2);
+  line-height:1.7;margin-top:3px}
+.steps li>span b{color:var(--text-1)}
+.howto-cta{margin:0 0 var(--sp-6)}
+.howto-cta .note{margin-top:var(--sp-2);text-align:center}
+.howto-foot{margin-top:var(--sp-6)}
+
 /* 1ターンの流れ：番号つきの段 */
 .flow{display:flex;flex-direction:column;gap:var(--sp-2);margin:0;padding:0;list-style:none;
   counter-reset:fl}
@@ -396,8 +508,9 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 .flow li::before{content:counter(fl);display:grid;place-items:center;width:28px;height:28px;
   border-radius:50%;font-size:var(--fs-2);font-weight:700;color:var(--text-on-gold);
   background:linear-gradient(180deg,var(--c-gold-300),var(--c-gold-500))}
-.flow li b{display:block;font-size:var(--fs-3);letter-spacing:.03em}
-.flow li span{display:block;font-size:var(--fs-2);color:var(--text-3);line-height:1.6;margin-top:2px}
+/* 本文は必ず 2 列目に置く。自動配置に任せると 28px の列に落ちて縦書きになる */
+.flow li>b{grid-column:2;display:block;font-size:var(--fs-3);letter-spacing:.03em}
+.flow li>span{grid-column:2;display:block;font-size:var(--fs-2);color:var(--text-3);line-height:1.6;margin-top:2px}
 /* 節ごとの折りたたみ */
 .acc{border-radius:var(--r-2);border:1px solid var(--stroke-1);background:var(--surface-hi);
   overflow:hidden;margin-bottom:var(--sp-2)}
@@ -428,10 +541,10 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 /* ---------- 小さい端末（360x640 など） --------------------------------------- */
 @media (max-width:374px){
   :root{--gutter:12px;--fs-4:14px}
-  .picker{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
-  .thumb{width:80px}
-  .slot{min-height:58px}
-  .slot .sav{width:34px;height:34px;font-size:16px;border-radius:11px}
+  .picker{grid-template-columns:repeat(auto-fill,minmax(78px,1fr))}
+  .thumb{width:78px}
+  .vslot .sav{width:44px;height:44px;font-size:20px;border-radius:15px}
+  .cr{grid-template-columns:36px 1fr 36px 1fr 36px;gap:4px}
   .hero{padding:3vh 0 0}
   .tile{min-height:76px}
 }

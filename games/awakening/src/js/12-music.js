@@ -198,6 +198,119 @@ const Music = {
     list.forEach((m,i)=>this.blip(at+i*0.012,this.freq(m),this.freq(m),dur,type||"triangle",gain));
   },
 
+  /* =======================================================================
+     利用者がアップロードした効果音。実体は担当Cの Media（IndexedDB）にあり、
+     ここでは decode した AudioBuffer を持っておいて鳴らすだけにする。
+     ======================================================================= */
+  buffers:{},        // id -> AudioBuffer（decode 済み）
+  loading:{},        // id -> Promise（二重読み込みよけ）
+
+  /* 読み込んで decode する。失敗しても null を返すだけで、進行は止めない */
+  loadSfx(id){
+    if(!id) return Promise.resolve(null);
+    if(this.buffers[id]!==undefined) return Promise.resolve(this.buffers[id]);
+    if(this.loading[id]) return this.loading[id];
+    if(typeof Media==="undefined"||!Media.getArrayBuffer||!this.ready()){
+      return Promise.resolve(null);
+    }
+    const p=Promise.resolve()
+      .then(()=>Media.getArrayBuffer(id))
+      .then(buf=>{
+        if(!buf) { this.buffers[id]=null; return null; }
+        return new Promise(res=>{
+          // 旧 Safari はコールバック版しか持たないので両対応で呼ぶ
+          let done=false;
+          const ok=b=>{ if(done) return; done=true; this.buffers[id]=b||null; res(b||null); };
+          const ng=()=>{ if(done) return; done=true; this.buffers[id]=null; res(null); };
+          try{
+            const r=this.ctx.decodeAudioData(buf,ok,ng);
+            if(r&&r.then) r.then(ok).catch(ng);
+          }catch(e){ ng(); }
+        });
+      })
+      .catch(()=>{ this.buffers[id]=null; return null; })
+      .then(b=>{ delete this.loading[id]; return b; });
+    this.loading[id]=p;
+    return p;
+  },
+  /* 戦闘が始まる前に、使う技の音を読み込んでおく（初撃が遅れないように） */
+  prewarm(ids){
+    if(!Array.isArray(ids)) return;
+    ids.filter(Boolean).forEach(id=>{ this.loadSfx(id); });
+  },
+  /* AudioBuffer を1回鳴らす。dest を渡すとそこに繋ぐ（試聴はミュートを迂回する） */
+  playBuffer(buf,gain,dest){
+    if(!buf||!this.ctx) return false;
+    try{
+      const src=this.ctx.createBufferSource();
+      const g=this.ctx.createGain();
+      g.gain.value=(gain==null?1:gain);
+      src.buffer=buf; src.connect(g); g.connect(dest||this.sfxBus||this.master);
+      src.start(this.ctx.currentTime+0.005);
+      return true;
+    }catch(e){ return false; }
+  },
+  /* 技に設定された音。まだ読めていなければ false を返し、呼び出し側は合成音に落とす */
+  playSfxId(id,o){
+    o=o||{};
+    if(!id||!this.ctx) return false;
+    const b=this.buffers[id];
+    if(b===undefined){ this.loadSfx(id); return false; }   // 次からは鳴る
+    if(!b) return false;
+    return this.playBuffer(b,0.55+0.12*Math.max(1,Math.min(4,o.tier||1)));
+  },
+  /* 技エディタの試聴。ミュート中でも鳴らしてよい（担当Cから呼ばれる） */
+  previewSfx(id){
+    if(!this.ready()) return Promise.resolve(false);
+    this.unlock();
+    return this.loadSfx(id).then(b=>{
+      if(!b) return false;
+      // ミュート中は master のゲインが 0 なので、試聴だけは直接出力へ繋ぐ
+      return this.playBuffer(b,0.7,this.muted?this.ctx.destination:null);
+    }).catch(()=>false);
+  },
+
+  /* =======================================================================
+     打撃音の組み立て。技の「音色」は FxKit が技データから決めた timbre で選ぶ。
+     ======================================================================= */
+  strikeSynth(timbre,t,tier,index,crit){
+    // 連撃は1発ごとに少しずつ高くして、刻んでいるように聞かせる
+    const k=Math.pow(1.055,Math.min(6,Math.max(0,index-1)));
+    const g=0.15+0.05*tier;
+    switch(timbre){
+      case "blunt":
+        this.nz(t,0.08+0.03*tier,g*1.15,{type:"lowpass",f0:1700,f1:180,q:1});
+        this.blip(t,150-18*tier,36,0.22+0.06*tier,"sine",0.34+0.06*tier);
+        if(tier>=3) this.blip(t+0.012,78,30,0.5,"sine",0.32);
+        break;
+      case "magic":
+        this.blip(t,880*k,240,0.22,"triangle",0.18);
+        this.blip(t+0.01,1760*k,520,0.26,"sine",0.12);
+        this.nz(t,0.22,0.07,{type:"highpass",f0:2200,f1:6400});
+        this.blip(t+0.02,170,52,0.26+0.04*tier,"sine",0.26+0.05*tier);
+        break;
+      case "pierce":
+        this.nz(t,0.05,0.14,{type:"highpass",f0:2600,f1:8200,q:.8});
+        this.blip(t,2300*k,780,0.09,"square",0.1);
+        this.blip(t+0.005,240,70,0.16+0.04*tier,"sine",0.26+0.05*tier);
+        break;
+      case "drain":
+        this.blip(t,640*k,150,0.36,"sine",0.2);
+        this.nz(t,0.3,0.09,{type:"lowpass",f0:1100,f1:130});
+        this.blip(t+0.02,180,48,0.3,"sine",0.24);
+        break;
+      default: // metal
+        this.nz(t,0.05+0.02*tier,g,{type:"bandpass",f0:2400*k,q:1.4});
+        this.blip(t,1450*k,520,0.1,"square",0.09);
+        this.blip(t,205-22*tier,52,0.18+0.05*tier,"sine",0.3+0.06*tier);
+        if(tier>=4) this.nz(t+0.03,0.45,0.1,{type:"lowpass",f0:900,f1:140});
+    }
+    if(crit){
+      this.blip(t+0.015,2640,1320,0.3,"triangle",0.07);
+      this.blip(t+0.02,86,34,0.5,"sine",0.3);
+    }
+  },
+
   sfx(name,o){
     if(!this.sfxReady()) return;
     o=o||{};
@@ -207,6 +320,31 @@ const Music = {
       switch(name){
         case "tap":
           this.blip(t,780,560,0.045,"square",0.035); break;
+        /* 技の一撃。技に音が設定されていればそれを、無ければ技の性質から合成する */
+        case "strike": {
+          if(o.sfxId&&this.playSfxId(o.sfxId,{tier})) break;
+          const p=o.plan||{};
+          if(o.crit){ this.sfx("crit",{tier}); break; }
+          if(o.counter){ this.sfx("counter",{tier}); break; }
+          this.strikeSynth(p.timbre||"metal",t,tier,o.index||1,false);
+          break;
+        }
+        /* 詠唱・溜め。当たる前に「何か来る」と分かるための音 */
+        case "cast":
+          this.blip(t,420,1180,0.26,"triangle",0.07);
+          this.nz(t+0.04,0.22,0.04,{type:"highpass",f0:2600,f1:5200});
+          break;
+        case "charge":
+          this.blip(t,90,260,0.34,"sawtooth",0.07);
+          this.nz(t+0.1,0.26,0.05,{type:"lowpass",f0:600,f1:2200});
+          break;
+        /* 防御が砕ける */
+        case "break":
+          this.nz(t,0.09,0.26,{type:"bandpass",f0:3200,q:1.2});
+          this.nz(t+0.05,0.26,0.13,{type:"highpass",f0:2400,f1:6800});
+          this.blip(t,320,70,0.3,"square",0.16);
+          this.blip(t+0.02,120,40,0.4,"sine",0.3);
+          break;
         case "hit": {
           const g=0.16+0.05*tier;
           this.nz(t,0.06+0.02*tier,g,{type:"lowpass",f0:3600-500*tier,f1:420,q:1});
@@ -238,10 +376,27 @@ const Music = {
           [0,1,2].forEach(i=>this.blip(t+i*0.07,[660,880,1320][i],[660,880,1320][i],0.22,"triangle",0.085));
           this.nz(t,0.3,0.03,{type:"highpass",f0:3000});
           break;
+        /* 状態変化。系統（FxKit の family）で音の性格を変える */
         case "status": {
           const up=!!o.good;
-          this.blip(t,up?620:760,up?930:470,0.16,"triangle",0.08);
-          this.blip(t+0.09,up?930:470,up?1240:330,0.2,"triangle",0.06);
+          const fam=o.family||"sigil";
+          if(fam==="lock"){                       // 行動を奪う：時が止まる音
+            this.blip(t,1200,240,0.3,"sine",0.11);
+            this.nz(t,0.26,0.07,{type:"bandpass",f0:900,q:3});
+            this.blip(t+0.12,180,90,0.4,"triangle",0.09);
+          }else if(fam==="ward"){                 // 守り：張られる膜
+            this.blip(t,520,780,0.26,"sine",0.1);
+            this.chord(t+0.05,[67,71,74],0.5,"triangle",0.05);
+          }else if(fam==="mote"){                 // 継続：じわじわ滲む
+            this.blip(t,up?520:300,up?720:210,0.34,"sine",0.09);
+            this.nz(t,0.34,0.05,{type:"lowpass",f0:1600,f1:300});
+          }else if(fam==="edge"){                 // 研ぎ澄ます
+            this.blip(t,1480,2200,0.12,"square",0.06);
+            this.blip(t+0.08,2200,3000,0.14,"triangle",0.045);
+          }else{
+            this.blip(t,up?620:760,up?930:470,0.16,"triangle",0.08);
+            this.blip(t+0.09,up?930:470,up?1240:330,0.2,"triangle",0.06);
+          }
           break;
         }
         case "down":

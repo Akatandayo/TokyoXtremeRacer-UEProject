@@ -1,6 +1,13 @@
 /* ===== 戦闘画面 =====
    動かすのは transform と opacity だけ。width/top/height は一切アニメーションさせない。
-   HPバーも scaleX で伸縮させる（--p / --pg を書き換えると transition が走る）。 */
+   HPバーも scaleX で伸縮させる（--p / --pg を書き換えると transition が走る）。
+
+   画面の作り：
+     .arena ── .stage（月・地平・床。奥行きを作る絵。触れない）
+            ├─ .plate.foe（上辺の敵ステータス）
+            ├─ .field（実際に立つ場所。敵は奥＝上・右、自分は手前＝下・左）
+            └─ .plate.me（下辺の自分ステータス）
+   余白を「空」として見せるので、縦に伸びても死に空間にならない。 */
 #s-battle.on{display:flex;flex-direction:column;gap:9px;
   min-height:calc(100vh - 36px);min-height:calc(100dvh - 36px)}
 
@@ -26,23 +33,63 @@
 .tool.hot .tl{color:#F5E3B0}
 
 /* ---------- 闘技場 ---------- */
-.arena{position:relative;flex:1;min-height:196px;display:flex;flex-direction:column;justify-content:space-between;
-  gap:8px;padding:12px 12px;border-radius:24px;overflow:hidden;cursor:pointer;
-  background:linear-gradient(180deg,rgba(242,86,106,.11),rgba(14,11,24,0) 36%,rgba(14,11,24,0) 62%,rgba(79,214,200,.11)),
-             var(--panel);border:1px solid var(--line);
-  box-shadow:0 14px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07);
+.arena{position:relative;flex:1;min-height:214px;display:flex;flex-direction:column;
+  border-radius:24px;overflow:hidden;cursor:pointer;isolation:isolate;
+  background:var(--c-night-900);border:1px solid var(--line);
+  box-shadow:0 14px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.07);
   will-change:transform}
-/* 中央の仕切り。紋の背後を不透明で塗ると、半透明のアリーナの上に黒い箱が
-   浮いて見えるため、線側に切れ目を作って紋を置く。 */
-.midline{position:relative;align-self:center;display:flex;align-items:center;justify-content:center;
-  width:100%;height:1px;pointer-events:none;transition:opacity .25s var(--ease,ease);
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.16) 24%,transparent 45%,
-             transparent 55%,rgba(255,255,255,.16) 76%,transparent)}
-.midline::after{content:"⚔";position:absolute;font-size:13px;color:rgba(255,255,255,.28);
-  padding:0 12px;letter-spacing:.2em}
-/* ターン表示は画面中央に出るので、重なる仕切りは一時的に引っ込める */
-.arena.bannering .midline{opacity:0}
-.arena-glow{position:absolute;inset:-20%;pointer-events:none;opacity:0;
+
+/* 舞台の絵。静止した層だけで作り、毎フレームの負荷をかけない */
+.stage{position:absolute;inset:0;pointer-events:none;z-index:0}
+.stage .sky{position:absolute;inset:0;
+  background:
+    radial-gradient(130% 78% at 50% 4%,rgba(104,64,166,.55),rgba(12,8,22,0) 60%),
+    radial-gradient(90% 50% at 84% 96%,rgba(79,214,200,.10),rgba(12,8,22,0) 70%),
+    linear-gradient(180deg,#191130 0%,#130D24 48%,#0A0616 100%)}
+.stage .moon{position:absolute;left:26%;top:16%;width:23%;max-width:88px;aspect-ratio:1;
+  transform:translateX(-50%);border-radius:50%;opacity:.8;
+  background:radial-gradient(closest-side,#FFF3D6 0 44%,rgba(255,231,175,.38) 54%,rgba(255,214,120,.10) 68%,rgba(255,214,120,0) 80%);
+  box-shadow:0 0 56px rgba(255,220,150,.20)}
+/* 遠景の稜線。空を「空白」にしないための一枚 */
+.stage .ridge{position:absolute;left:-8%;right:-8%;top:32%;height:16%;opacity:.5;
+  background:
+    linear-gradient(17deg,transparent 0 58%,#120C24 58% 100%),
+    linear-gradient(-13deg,transparent 0 66%,#0E0920 66% 100%);
+  background-size:58% 100%,54% 100%;background-position:-4% bottom,70% bottom;background-repeat:no-repeat}
+/* 鳥居。舞台の中央に置いて、視線の抜けと奥行きの基準にする */
+.stage .torii{position:absolute;left:54%;top:23%;width:34%;max-width:146px;height:25%;
+  transform:translateX(-50%);opacity:.86;
+  background:linear-gradient(90deg,transparent 0 15%,#0A0616 15% 20%,transparent 20% 80%,#0A0616 80% 85%,transparent 85%)}
+.stage .torii::before{content:"";position:absolute;left:-10%;right:-10%;top:0;height:6%;border-radius:4px 4px 2px 2px;
+  background:#0A0616;box-shadow:0 1px 0 rgba(255,226,168,.20)}
+.stage .torii::after{content:"";position:absolute;left:2%;right:2%;top:20%;height:4.5%;
+  background:#0A0616;box-shadow:0 1px 0 rgba(255,226,168,.14)}
+.stage .hline{position:absolute;left:0;right:0;top:47%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,228,168,.34) 22%,rgba(255,228,168,.34) 78%,transparent)}
+/* 石畳。地平線の高さから手前まで、奥へ収束する格子を敷く */
+.stage .floor{position:absolute;left:-60%;right:-60%;bottom:0;height:96%;
+  transform:perspective(800px) rotateX(40deg);transform-origin:50% 100%;
+  background:
+    repeating-linear-gradient(90deg,rgba(212,192,255,.17) 0 1px,transparent 1px 54px),
+    repeating-linear-gradient(0deg,rgba(212,192,255,.13) 0 1px,transparent 1px 42px),
+    linear-gradient(0deg,rgba(104,66,172,.62),rgba(40,24,74,.35) 46%,rgba(12,8,22,0) 88%);
+  -webkit-mask-image:linear-gradient(0deg,#000 0 30%,rgba(0,0,0,.55) 68%,transparent 100%);
+  mask-image:linear-gradient(0deg,#000 0 30%,rgba(0,0,0,.55) 68%,transparent 100%)}
+/* 舞う火の粉。3粒だけ、transform と opacity のみで動かす */
+.stage .embers i{position:absolute;bottom:14%;width:3px;height:3px;border-radius:50%;background:#FFD58A;
+  box-shadow:0 0 8px rgba(255,200,120,.9);opacity:0;animation:ember 9s linear infinite;will-change:transform,opacity}
+.stage .embers i:nth-child(1){left:18%;animation-delay:-1s}
+.stage .embers i:nth-child(2){left:52%;animation-delay:-4s;animation-duration:11s}
+.stage .embers i:nth-child(3){left:82%;animation-delay:-7s;animation-duration:8s}
+@keyframes ember{0%{opacity:0;transform:translate3d(0,0,0) scale(.6)}
+  14%{opacity:.85}70%{opacity:.5}100%{opacity:0;transform:translate3d(14px,-150px,0) scale(1.1)}}
+.stage .vig{position:absolute;inset:0;
+  background:radial-gradient(116% 76% at 50% 48%,transparent 38%,rgba(4,2,9,.74) 100%)}
+/* 覚醒中は舞台そのものが金に染まる */
+.arena.lit .stage .sky{filter:saturate(1.2) brightness(1.1)}
+.arena.lit .stage .moon{opacity:.92}
+
+.arena-glow{position:absolute;inset:-20%;pointer-events:none;opacity:0;z-index:1;
   background:radial-gradient(closest-side,rgba(255,255,255,.5),transparent 70%);
   transform:scale(.4);will-change:transform,opacity}
 /* 画面の揺れ：ダメージの重さで 4段階 */
@@ -60,14 +107,19 @@
   42%{transform:translate3d(-10px,4px,0)}60%{transform:translate3d(7px,-3px,0)}
   80%{transform:translate3d(-3px,1px,0)}100%{transform:none}}
 
-/* ---------- ユニット ---------- */
-.unit{display:flex;gap:11px;align-items:center;position:relative;z-index:2}
-.unit.foe{flex-direction:row-reverse;text-align:right}
-.unit .info{flex:1;min-width:0}
-.unit .nmrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:22px}
-.unit.foe .nmrow{justify-content:flex-end}
-.unit .nm{font-family:var(--serif);font-size:17px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.unit .owner{font-size:9.5px;letter-spacing:.18em;color:var(--dim);display:block}
+/* ---------- ステータス板（上辺＝敵／下辺＝自分） ---------- */
+.plate{position:relative;z-index:3;padding:8px 11px 9px;display:flex;flex-direction:column;gap:3px;
+  background:linear-gradient(180deg,rgba(10,7,18,.82),rgba(10,7,18,.36));
+  border-bottom:1px solid rgba(255,255,255,.08)}
+.plate.me{background:linear-gradient(0deg,rgba(10,7,18,.86),rgba(10,7,18,.32));
+  border-bottom:0;border-top:1px solid rgba(255,255,255,.08)}
+.plate .nmrow{display:flex;align-items:baseline;gap:7px;min-width:0}
+.plate.foe .nmrow{flex-direction:row-reverse}
+.plate .nm{font-family:var(--serif);font-size:16px;letter-spacing:.04em;line-height:1.25;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56%}
+.plate .owner{font-size:9.5px;letter-spacing:.16em;color:var(--dim);white-space:nowrap}
+.plate .bg{display:flex;gap:4px;flex:1;min-width:0;overflow:hidden}
+.plate.foe .bg{justify-content:flex-start;flex-direction:row-reverse}
 .badge{font-size:10px;letter-spacing:.06em;border-radius:99px;padding:2px 8px;font-weight:700;white-space:nowrap}
 .b-gold{color:#2A1C00;background:linear-gradient(180deg,#FFE79E,#E5AE31);box-shadow:0 2px 10px rgba(229,174,49,.45)}
 .b-jade{color:#052B28;background:linear-gradient(180deg,#8FF0E4,#3FC2B4)}
@@ -75,12 +127,13 @@
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.75;transform:scale(1.07)}}
 
 /* HPバー：伸縮は scaleX。--p が現在値、--pg が遅れて追う「削れ跡」 */
-.hpline{margin-top:6px;position:relative}
-.hpbar{position:relative;height:13px;border-radius:99px;background:rgba(0,0,0,.5);overflow:hidden;
+.hpline{position:relative;display:flex;align-items:center;gap:8px}
+.plate.foe .hpline{flex-direction:row-reverse}
+.hpbar{position:relative;flex:1;min-width:0;height:11px;border-radius:99px;background:rgba(0,0,0,.6);overflow:hidden;
   border:1px solid rgba(255,255,255,.13);box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
 .hpchip,.hpfill{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:left center;
   transform:scaleX(var(--pg,1));will-change:transform}
-.unit.foe .hpchip,.unit.foe .hpfill{transform-origin:right center;left:auto;right:0}
+.plate.foe .hpchip,.plate.foe .hpfill{transform-origin:right center;left:auto;right:0}
 .hpchip{background:linear-gradient(180deg,#FFF1F2,#FF9AA8);opacity:.55;
   transition:transform .62s cubic-bezier(.33,1,.68,1) .26s}
 .hpchip.up{background:linear-gradient(180deg,#DFFFF3,#8DF0CE);opacity:.45}
@@ -94,46 +147,83 @@
 @keyframes crisis{0%,100%{opacity:1}50%{opacity:.62}}
 .hpfill.awake{background:linear-gradient(180deg,#FFF0C2,#E0A62A)}
 /* 覚醒条件のライン（HP割合で覚醒するキャラだけ出す） */
-.hpmark{position:absolute;top:-2px;height:17px;width:2px;border-radius:2px;background:rgba(255,226,160,.92);
-  box-shadow:0 0 8px rgba(240,197,80,.95);pointer-events:none;z-index:3}
-.hpmark::after{content:"";position:absolute;left:-2px;top:-3px;width:6px;height:6px;border-radius:50%;
-  background:#FFE9B4;box-shadow:0 0 8px rgba(240,197,80,.95)}
+/* バーの中に立てる細い柱。バーは overflow:hidden なので中に収める */
+.hpmark{position:absolute;top:0;height:100%;width:2px;background:rgba(255,236,190,.95);
+  box-shadow:0 0 9px rgba(240,197,80,1);pointer-events:none;z-index:3}
 .hpmark.done{opacity:.3}
-.hpnum{display:flex;gap:6px;justify-content:space-between;align-items:baseline;font-size:11px;color:#C6BBD6;margin-top:3px}
-.unit.foe .hpnum{flex-direction:row-reverse}
+.hpnum{flex:0 0 auto;font-size:10.5px;color:#C6BBD6;white-space:nowrap;letter-spacing:.02em}
 .hpnum b{color:var(--ivory);font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
-.hpnum .dmgd{color:#FF9DAC;font-weight:700;font-variant-numeric:tabular-nums}
+.hpnum .dmgd{color:#FF9DAC;font-weight:700;font-variant-numeric:tabular-nums;font-size:10px}
 
 /* SP */
-.spline{display:flex;align-items:center;gap:7px;margin-top:6px}
-.unit.foe .spline{flex-direction:row-reverse}
-.splabel{font-size:9.5px;letter-spacing:.12em;color:var(--dim)}
+.spline{display:flex;align-items:center;gap:7px}
+.plate.foe .spline{flex-direction:row-reverse}
+.splabel{font-size:9.5px;letter-spacing:.12em;color:var(--dim);white-space:nowrap}
 .splabel b{color:#9DF0E4;font-size:11px;font-variant-numeric:tabular-nums}
-.spbar{display:flex;gap:3px;flex:1}
-.unit.foe .spbar{flex-direction:row-reverse}
+.spbar{display:flex;gap:3px;flex:1;min-width:0}
+.plate.foe .spbar{flex-direction:row-reverse}
 .pip{flex:1;max-width:16px;height:5px;border-radius:99px;background:rgba(255,255,255,.12);
   transform-origin:center;transition:transform .2s,background .2s,box-shadow .2s}
 .pip.on{background:linear-gradient(90deg,#7BE8D8,#3FC2B4);box-shadow:0 0 6px rgba(79,214,200,.6)}
 .pip.fresh{animation:pipIn .35s cubic-bezier(.2,1.5,.4,1)}
 @keyframes pipIn{from{transform:scaleY(2.4)}to{transform:none}}
 
-.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.unit.foe .chips{justify-content:flex-end}
+/* かかっている効果。舞台の上に浮かせ、板の高さを増やさない */
+.chips{position:absolute;left:11px;right:11px;display:flex;flex-wrap:wrap;gap:4px;z-index:4;pointer-events:none}
+.plate.foe .chips{top:100%;margin-top:5px}
+.plate.me .chips{bottom:100%;margin-bottom:5px;justify-content:flex-end}
 #s-battle .chip{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;padding:2px 8px;border-radius:99px;
-  background:rgba(255,255,255,.08);border:1px solid var(--line);color:#D6CCE4}
+  background:rgba(14,10,24,.8);border:1px solid var(--line2);color:#D6CCE4;backdrop-filter:blur(4px)}
 #s-battle .chip .ci{font-size:11px}
-#s-battle .chip.good{color:#9DF0E4;border-color:rgba(79,214,200,.4);background:rgba(79,214,200,.12)}
-#s-battle .chip.bad{color:#FFA9B6;border-color:rgba(242,86,106,.4);background:rgba(242,86,106,.12)}
-#s-battle .chip.gold{color:#F8DE9E;border-color:rgba(240,197,80,.45);background:rgba(240,197,80,.14)}
+#s-battle .chip.good{color:#9DF0E4;border-color:rgba(79,214,200,.45);background:rgba(10,38,36,.8)}
+#s-battle .chip.bad{color:#FFA9B6;border-color:rgba(242,86,106,.45);background:rgba(44,12,20,.8)}
+#s-battle .chip.gold{color:#F8DE9E;border-color:rgba(240,197,80,.5);background:rgba(46,34,6,.8)}
 #s-battle .chip.new{animation:chipIn .4s cubic-bezier(.2,1.4,.4,1) both}
 @keyframes chipIn{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:none}}
 
+/* ---------- 立ち位置 ---------- */
+.field{position:relative;flex:1;min-height:104px;z-index:2}
+.unit{position:absolute;--fig:clamp(74px,26vw,124px);--dir:1}
+.unit.foe{--fig:clamp(64px,22vw,104px);--dir:-1;right:6%;top:3%}
+.unit.me{left:6%;bottom:1%}
+.stand{position:relative;width:var(--fig);height:var(--fig)}
+/* 足元の輪。立っている場所を床に焼き付ける */
+.stand::after{content:"";position:absolute;left:50%;bottom:-11px;width:132%;height:30px;
+  transform:translateX(-50%);border-radius:50%;pointer-events:none;
+  border:1px solid rgba(125,238,224,.22);background:radial-gradient(closest-side,rgba(79,214,200,.14),transparent 72%)}
+.unit.foe .stand::after{border-color:rgba(242,86,106,.22);
+  background:radial-gradient(closest-side,rgba(242,86,106,.14),transparent 72%)}
+.stand .shadow{position:absolute;left:50%;bottom:-8px;width:84%;height:14px;transform:translateX(-50%);
+  border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.66),transparent 74%)}
+.avwrap{position:absolute;inset:0;z-index:2}
+.figure{position:absolute;inset:0;animation:breathe 3.6s ease-in-out infinite;will-change:transform}
+.unit.foe .figure{animation-delay:-1.8s}
+@keyframes breathe{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(0,-2.5%,0) scale(1.014)}}
+#s-battle .figure .av{width:100%;height:100%;border-radius:22px;font-size:calc(var(--fig) * .46)}
+.unit.down .figure{animation:none}
+/* 状態異常の常時オーラ（tone で色が変わる。未知の異常でも必ず何か出る） */
+.st-aura{position:absolute;inset:-8%;border-radius:26px;pointer-events:none;z-index:1;opacity:0;
+  transition:opacity .3s;background:radial-gradient(closest-side,hsla(var(--h,286),80%,64%,.3),transparent 72%)}
+.unit.has-st .st-aura{opacity:1;animation:auraPulse 2.6s ease-in-out infinite}
+@keyframes auraPulse{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.07);opacity:1}}
+/* 行動できない状態は立ち絵そのものを止めて見せる */
+.unit.held .figure{animation:none;filter:saturate(.35) brightness(.8)}
+
 /* ---------- 当たり演出 ---------- */
-.avwrap{position:relative}
+/* 踏み込みは必ず相手の方向へ。--dir が自分=1（上へ）／敵=-1（下へ） */
 .unit.act .avwrap{animation:lunge .45s cubic-bezier(.3,.9,.3,1)}
-.unit.foe.act .avwrap{animation:lungeFoe .45s cubic-bezier(.3,.9,.3,1)}
-@keyframes lunge{28%{transform:translate3d(0,-15px,0) scale(1.07)}100%{transform:none}}
-@keyframes lungeFoe{28%{transform:translate3d(0,15px,0) scale(1.07)}100%{transform:none}}
+@keyframes lunge{28%{transform:translate3d(calc(var(--dir) * 14px),calc(var(--dir) * -13px),0) scale(1.07)}
+  100%{transform:none}}
+.unit.act.m-dash .avwrap{animation:dash .38s cubic-bezier(.2,.9,.2,1)}
+@keyframes dash{20%{transform:translate3d(calc(var(--dir) * 30px),calc(var(--dir) * -24px),0) scale(1.03);opacity:.55}
+  46%{transform:translate3d(calc(var(--dir) * 12px),calc(var(--dir) * -10px),0);opacity:1}100%{transform:none}}
+.unit.act.m-heavy .avwrap{animation:heavy .62s cubic-bezier(.3,.9,.3,1)}
+@keyframes heavy{22%{transform:translate3d(calc(var(--dir) * -9px),calc(var(--dir) * 8px),0) scale(.95)}
+  48%{transform:translate3d(calc(var(--dir) * 20px),calc(var(--dir) * -17px),0) scale(1.1)}100%{transform:none}}
+.unit.act.m-cast .avwrap{animation:cast .6s cubic-bezier(.3,.9,.3,1)}
+@keyframes cast{30%{transform:translate3d(0,-7px,0) scale(1.05)}62%{transform:translate3d(0,-3px,0) scale(1.02)}100%{transform:none}}
+.unit.act.m-brace .avwrap{animation:guardPush .5s cubic-bezier(.3,.9,.3,1)}
+
 .unit.hurt .avwrap{animation:shake .36s cubic-bezier(.36,.07,.19,.97)}
 .unit.hurt.big .avwrap{animation:shakeBig .5s cubic-bezier(.36,.07,.19,.97)}
 @keyframes shake{12%,88%{transform:translate3d(-3px,0,0)}25%,75%{transform:translate3d(4px,0,0)}
@@ -142,14 +232,13 @@
   28%{transform:translate3d(10px,0,0) scale(1.04)}46%{transform:translate3d(-8px,0,0)}
   64%{transform:translate3d(6px,0,0)}82%{transform:translate3d(-3px,0,0)}100%{transform:none}}
 .unit .av{transition:filter .12s}
-.unit.hurt .av{animation:hitTint .34s ease-out}
+.unit.hurt .figure{animation:hitTint .34s ease-out}
 @keyframes hitTint{0%{filter:brightness(2.6) saturate(.2)}40%{filter:brightness(1.35)}100%{filter:none}}
 .unit.guard .avwrap{animation:guardPush .4s cubic-bezier(.3,.9,.3,1)}
-@keyframes guardPush{30%{transform:translate3d(0,0,0) scale(.94)}100%{transform:none}}
+@keyframes guardPush{30%{transform:translate3d(calc(var(--dir) * -7px),calc(var(--dir) * 6px),0) scale(.94)}100%{transform:none}}
 .unit.dodge .avwrap{animation:dodgeAway .42s cubic-bezier(.2,.9,.3,1)}
-@keyframes dodgeAway{35%{transform:translate3d(-16px,0,0) skewX(9deg);opacity:.45}100%{transform:none;opacity:1}}
-.unit.foe.dodge .avwrap{animation:dodgeAwayFoe .42s cubic-bezier(.2,.9,.3,1)}
-@keyframes dodgeAwayFoe{35%{transform:translate3d(16px,0,0) skewX(-9deg);opacity:.45}100%{transform:none;opacity:1}}
+@keyframes dodgeAway{35%{transform:translate3d(calc(var(--dir) * -20px),0,0) skewX(9deg);opacity:.45}
+  100%{transform:none;opacity:1}}
 .unit.down .avwrap{animation:downFall .8s cubic-bezier(.4,0,.6,1) forwards}
 @keyframes downFall{to{transform:translate3d(0,14px,0) rotate(-8deg);opacity:.3}}
 
@@ -158,19 +247,6 @@
   box-shadow:0 0 24px rgba(79,214,200,.7),inset 0 0 18px rgba(79,214,200,.35);
   pointer-events:none;z-index:5;animation:gringOut .5s cubic-bezier(.2,.8,.2,1) forwards}
 @keyframes gringOut{0%{opacity:0;transform:scale(.7)}30%{opacity:1;transform:scale(1.02)}100%{opacity:0;transform:scale(1.2)}}
-/* 命中の火花 */
-.spark{position:absolute;left:50%;top:50%;width:104px;height:104px;margin:-52px 0 0 -52px;pointer-events:none;z-index:5;
-  background:radial-gradient(closest-side,rgba(255,255,255,.95),rgba(255,170,140,.5) 45%,transparent 72%);
-  animation:sparkOut .34s cubic-bezier(.2,.8,.2,1) forwards}
-@keyframes sparkOut{0%{opacity:0;transform:scale(.25)}22%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.5)}}
-.spark.crit{background:radial-gradient(closest-side,#fff,rgba(255,214,110,.75) 42%,transparent 72%)}
-.spark.counter{background:radial-gradient(closest-side,#fff,rgba(196,176,238,.7) 42%,transparent 72%)}
-/* 状態異常の付与 */
-.statusburst{position:absolute;inset:-6px;border-radius:24px;pointer-events:none;z-index:4;
-  animation:sbOut .6s ease-out forwards}
-.statusburst.bad{box-shadow:0 0 0 2px rgba(196,176,238,.85),0 0 28px rgba(155,123,232,.75)}
-.statusburst.good{box-shadow:0 0 0 2px rgba(143,240,228,.8),0 0 28px rgba(79,214,200,.7)}
-@keyframes sbOut{0%{opacity:0;transform:scale(.85)}25%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.1)}}
 
 /* ---------- 飛び出す数字 ---------- */
 .float{position:absolute;left:50%;top:-6px;font-family:var(--serif);font-weight:800;font-size:28px;color:#FFC2CB;
@@ -199,8 +275,9 @@
 .cue.status{color:#2B1550;background:linear-gradient(180deg,#D9C9FF,#9B7BE8);box-shadow:0 4px 16px rgba(155,123,232,.5)}
 .cue.status.good{color:#062E2A;background:linear-gradient(180deg,#9FF3E8,#3FC2B4)}
 .cue.nullify{color:#2A1C00;background:linear-gradient(180deg,#FFE79E,#E5AE31)}
+.cue.break{color:#2A0A0E;background:linear-gradient(180deg,#FFD9A0,#F2566A);box-shadow:0 4px 18px rgba(242,86,106,.6)}
 
-.banner{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:5}
+.banner{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:7}
 .banner span{font-family:var(--serif);font-size:26px;letter-spacing:.36em;color:#F7EDD6;
   text-shadow:0 0 24px rgba(0,0,0,.9);animation:bannerSweep 1s ease forwards}
 @keyframes bannerSweep{0%{opacity:0;transform:translate3d(-26px,0,0)}28%{opacity:1;transform:none}
@@ -309,10 +386,20 @@
 .thinking i:nth-child(2){animation-delay:.14s}.thinking i:nth-child(3){animation-delay:.28s}
 @keyframes tdot{0%,100%{transform:translate3d(0,0,0);opacity:.35}50%{transform:translate3d(0,-6px,0);opacity:1}}
 
-/* 小さい画面では闘技場を詰めて、コマンドの高さを優先する */
+/* 小さい画面では舞台を詰めて、コマンドの高さを優先する */
 @media (max-height:700px){
-  .arena{min-height:160px;padding:10px}
+  .arena{min-height:180px}
+  .field{min-height:88px}
+  .unit{--fig:clamp(58px,19vw,88px)}
+  .unit.foe{--fig:clamp(52px,17vw,78px)}
+  .plate{padding:6px 10px 7px}
+  .plate .nm{font-size:14.5px}
   .sbtn{min-height:54px}
   .cbtn{min-height:48px}
   .logstrip,.loghist{min-height:48px}
+}
+@media (max-height:600px){
+  .arena{min-height:156px}
+  .stage .moon{opacity:.4}
+  .field{min-height:76px}
 }

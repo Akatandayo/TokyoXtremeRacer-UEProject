@@ -143,7 +143,7 @@ const UI = {
   },
   /* 押した所に波紋を出し、対応端末なら軽く震わせる */
   bindTouchFeel(){
-    const SEL="button,.btn,[role=button],.slot,.thumb,.skl,.tile,label.filebtn";
+    const SEL="button,.btn,[role=button],.vslot,.thumb,.skl,.tile,label.filebtn";
     document.addEventListener("pointerdown",ev=>{
       if(ev.button!==undefined&&ev.button!==0) return;
       const el=ev.target&&ev.target.closest?ev.target.closest(SEL):null;
@@ -154,29 +154,87 @@ const UI = {
   },
 
   /* =======================================================================
-     設定シート
+     設定 — 端末の設定を初期値にし、アプリ側で上書きできる。
+     どの項目も即座に効き、そのまま次回起動にも引き継ぐ。
      ======================================================================= */
+
+  /* 動きを減らすか。未設定（null）なら端末の設定に従う */
+  motionReduced(){
+    if(Store.prefs.reduceMotion===true) return true;
+    if(Store.prefs.reduceMotion===false) return false;
+    try{ return matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){ return false; }
+  },
+  /* 外殻まわりの設定を DOM に反映する（起動時と変更時に呼ぶ） */
+  applyShellPrefs(){
+    const r=document.documentElement;
+    const v=Store.prefs.reduceMotion;
+    if(v===true) r.setAttribute("data-motion","reduce");
+    else if(v===false) r.setAttribute("data-motion","full");
+    else r.removeAttribute("data-motion");
+  },
+
   openSettings(){
-    const on=k=>Store.prefs[k]!==false;
-    const row=(id,title,sub,checked)=>`<label class="switchrow" for="${id}">
-      <span class="sw-tx"><span class="sw-tl">${title}</span><span class="sw-ts">${sub}</span></span>
-      <input class="switch" type="checkbox" id="${id}" ${checked?"checked":""}></label>`;
     const canVib=!!navigator.vibrate;
+    const hapOn=Store.prefs.haptics!==false&&canVib;
+    const row=(id,title,sub,checked,dis)=>`<label class="switchrow" for="${id}">
+      <span class="sw-tx"><span class="sw-tl">${title}</span><span class="sw-ts">${sub}</span></span>
+      <input class="switch" type="checkbox" id="${id}" ${checked?"checked":""} ${dis?"disabled":""}></label>`;
+    const speeds=Object.keys(this.SPEEDS).map(k=>
+      `<button data-sp="${k}" class="${this.speed===k?"on":""}" aria-pressed="${this.speed===k}">${this.SPEEDS[k].label}</button>`).join("");
+
     this.openSheet("設定",
-      `<div class="stack">
-        ${row("set-haptics","触覚フィードバック",canVib?"操作したときに端末を軽く震わせます":"この端末は振動に対応していません",on("haptics")&&canVib)}
-        ${row("set-sound","対戦BGM","戦闘中に相手のテーマ曲を鳴らします",!Store.prefs.muted)}
+      `<div class="h-rule">演出</div>
+      <div class="setfield">
+        <div class="sf-tl" id="set-speed-label">戦闘の再生速度</div>
+        <div class="seg" role="group" aria-labelledby="set-speed-label" id="set-speed">${speeds}</div>
+        <p class="note">戦闘中は画面右上の速さボタンからも切り替えられます。再生の途中で画面を触ると、そのターンの残りを一気に送れます。</p>
       </div>
-      <div class="h-rule">ホーム画面に追加</div>
-      <p class="note">ブラウザの共有メニューから「ホーム画面に追加」を選ぶと、アドレスバーのない全画面で遊べます。データは端末の中に残ります。</p>
+      <div class="stack" style="margin-top:var(--sp-3)">
+        ${row("set-motion","動きを減らす","画面の滑りや光の演出を最小限にします",this.motionReduced())}
+      </div>
+
+      <div class="h-rule">音と手ざわり</div>
+      <div class="stack">
+        ${row("set-sound","音","BGMと効果音を鳴らします",!Store.prefs.muted)}
+        ${row("set-haptics","触覚フィードバック",canVib?"操作したときに端末を軽く震わせます":"この端末は振動に対応していません",hapOn,!canVib)}
+      </div>
+
+      <div class="h-rule">データ</div>
+      <div class="stack">
+        <button class="btn btn-line" id="set-data"><span class="ic" aria-hidden="true">✎</span>キャラクターと技を管理</button>
+        <button class="btn btn-line" id="set-howto"><span class="ic" aria-hidden="true">？</span>遊び方をもう一度読む</button>
+      </div>
+      <p class="note" style="margin-top:var(--sp-3)">作ったキャラクターと技はこの端末の中だけに残ります。機種変更や共有のときは、キャラクター画面からファイルに書き出してください。</p>
+
+      <div class="h-rule">このアプリ</div>
+      <p class="note">ブラウザの共有メニューから「ホーム画面に追加」を選ぶと、アドレスバーのない全画面で遊べます。</p>
       <div class="ver">覚醒 v${APP_VERSION}</div>`);
+
+    const seg=$("#set-speed");
+    if(seg) seg.querySelectorAll("[data-sp]").forEach(b=>b.onclick=()=>{
+      this.speed=b.dataset.sp;
+      Store.prefs.speed=this.speed; Store.savePrefs();
+      if(this.syncSpeed) this.syncSpeed();
+      seg.querySelectorAll("[data-sp]").forEach(o=>{
+        const on=o===b; o.classList.toggle("on",on); o.setAttribute("aria-pressed",String(on));
+      });
+      this.haptic(10);
+    });
+
+    const mot=$("#set-motion");
+    if(mot) mot.onchange=e=>{
+      Store.prefs.reduceMotion=e.target.checked; Store.savePrefs();
+      this.applyShellPrefs(); this.haptic(10);
+    };
     const hap=$("#set-haptics");
-    if(hap){
-      hap.disabled=!canVib;
-      hap.onchange=e=>{ Store.prefs.haptics=e.target.checked; Store.savePrefs(); this.haptic(14); };
-    }
+    if(hap) hap.onchange=e=>{ Store.prefs.haptics=e.target.checked; Store.savePrefs(); this.haptic(14); };
     const snd=$("#set-sound");
     if(snd) snd.onchange=()=>{ if(this.toggleMute) this.toggleMute(); };
+
+    const data=$("#set-data");
+    if(data) data.onclick=()=>{ this.closeSheet(); if(this.renderRoster) this.renderRoster(); this.show("roster"); };
+    const how=$("#set-howto");
+    if(how) how.onclick=()=>{ this.closeSheet(); this.show("howto"); };
   },
 
   /* =======================================================================

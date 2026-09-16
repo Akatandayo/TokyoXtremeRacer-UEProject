@@ -1,23 +1,50 @@
-  <section id="s-select" class="screen" aria-label="キャラクター選択">
+  <section id="s-select" class="screen" aria-label="編成">
     <div class="topbar">
       <button class="iconbtn" data-go="title" aria-label="タイトルに戻る">‹</button>
-      <span class="tt" id="select-title">キャラクター選択</span>
+      <span class="tt" id="select-title">編成</span>
+      <button class="btn btn-ghost" id="btn-random">おまかせ</button>
     </div>
-    <div class="vs-bar">
-      <button class="slot active" id="slot0" aria-pressed="true">
-        <span class="sav" id="sav0" aria-hidden="true">＋</span>
-        <span class="stx"><span class="who" id="who0">プレイヤー1</span><span class="pick empty">未選択</span></span>
-      </button>
-      <span class="vs" aria-hidden="true">VS</span>
-      <button class="slot" id="slot1" aria-pressed="false">
-        <span class="sav" id="sav1" aria-hidden="true">＋</span>
-        <span class="stx"><span class="who" id="who1">プレイヤー2</span><span class="pick empty">未選択</span></span>
-      </button>
+    <!-- 対戦カード。左右の枠がそのまま「どちらを選んでいるか」の切り替えになる -->
+    <div class="vsboard" id="select-board">
+      <div class="vb-heads">
+        <button class="vslot active" id="slot0" aria-pressed="true">
+          <span class="who" id="who0">プレイヤー1</span>
+          <span class="sav" id="sav0" aria-hidden="true">＋</span>
+          <span class="pick none">未選択</span>
+          <span class="tags" id="stag0"></span>
+        </button>
+        <span class="vb-vs" aria-hidden="true">VS</span>
+        <button class="vslot" id="slot1" aria-pressed="false">
+          <span class="who" id="who1">プレイヤー2</span>
+          <span class="sav" id="sav1" aria-hidden="true">＋</span>
+          <span class="pick none">未選択</span>
+          <span class="tags" id="stag1"></span>
+        </button>
+      </div>
+      <div class="vb-stats" id="select-stats"></div>
+      <div class="vb-foot" id="select-foot"></div>
     </div>
-    <div class="glass preview" id="preview"></div>
-    <div class="h-rule">キャラクターを選ぶ<button class="act" id="btn-random">おまかせ</button></div>
-    <div class="picker" id="select-tray"></div>
     <div id="select-options"></div>
+    <!-- 探す・絞る。一覧が長くなっても上に貼り付いて手が届く -->
+    <div class="pickbar" id="select-pickbar">
+      <div class="searchrow">
+        <span class="si" aria-hidden="true">⌕</span>
+        <input type="search" id="select-q" placeholder="名前や説明で探す" aria-label="キャラクターを探す"
+          autocomplete="off" enterkeyhint="search">
+        <button class="qclear" id="select-qclear" aria-label="検索を消す">✕</button>
+      </div>
+      <div class="filterwrap">
+        <div class="filterrow" id="select-tabs" role="group" aria-label="絞り込み">
+          <button class="fchip on" data-tab="all" aria-pressed="true">すべて</button>
+          <button class="fchip" data-tab="mine" aria-pressed="false">自作</button>
+          <button class="fchip" data-tab="preset" aria-pressed="false">最初から</button>
+          <button class="fchip" data-tab="awake" aria-pressed="false">覚醒あり</button>
+        </div>
+        <span class="rcount" id="select-count" aria-live="polite"></span>
+      </div>
+    </div>
+    <div class="picker" id="select-tray" role="group" aria-label="キャラクター一覧"></div>
+    <div id="select-empty"></div>
     <div class="cta-dock">
       <div class="cta-hint" id="cta-hint">上の枠を切り替えて、2人ぶん選びます</div>
       <button class="btn btn-gold" id="btn-start" disabled>戦闘開始</button>

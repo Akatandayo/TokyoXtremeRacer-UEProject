@@ -111,10 +111,13 @@ const Store = {
     return {bytes:this.bytes(raw), limit:5*1024*1024, heavy:per.slice(0,3), all:per};
   },
 
-  /* ---------- 下書き（作りかけ） ---------- */
+  /* ---------- 下書き（作りかけ） ----------
+     形は {at, draft:<キャラ>, editingId, step} で平らに持つ。
+     以前は {at, draft:{draft,...}} と二重に包んでいたので、読むときにほどく。 */
   saveDraft(d){
-    if(!d){ this.clearDraft(); return {ok:true}; }
-    const raw=JSON.stringify({at:Date.now(),draft:d});
+    if(!d||!d.draft){ this.clearDraft(); return {ok:true}; }
+    const raw=JSON.stringify({at:Date.now(),draft:d.draft,
+      editingId:d.editingId||null,step:d.step||0});
     this.memDraft=raw;
     return this.writeRaw(this.DKEY,raw);
   },
@@ -123,7 +126,15 @@ const Store = {
     try{ raw=window.localStorage.getItem(this.DKEY); }catch(e){}
     if(!raw) raw=this.memDraft;
     if(!raw) return null;
-    try{ const o=JSON.parse(raw); return o&&o.draft?o:null; }catch(e){ return null; }
+    let o=null;
+    try{ o=JSON.parse(raw); }catch(e){ return null; }
+    if(!o||typeof o!=="object"||!o.draft||typeof o.draft!=="object") return null;
+    // 旧形式（二重包み）をほどく
+    if(o.draft.draft&&typeof o.draft.draft==="object")
+      o={at:o.at,draft:o.draft.draft,editingId:o.draft.editingId||null,step:o.draft.step||0};
+    if(!o.draft.stats&&!("name" in o.draft)) return null;   // 中身が壊れていたら無かったことにする
+    o.step=Math.max(0,Math.min(20,Number(o.step)||0));
+    return o;
   },
   clearDraft(){
     this.memDraft=null;
@@ -138,12 +149,34 @@ const Store = {
     Object.keys(CHARACTERS).forEach(k=>{
       if(!CHARACTERS[k].custom) return;
       const c=CHARACTERS[k];
-      out.characters[k]=opt.stripMedia?Object.assign({},c,{portraitImage:null,bgmAudio:null,bgmAudioName:null}):c;
+      if(!opt.stripMedia){ out.characters[k]=c; return; }
+      // 共有用の軽い形：立ち絵・音の実体をぜんぶ落とす（覚醒形態の立ち絵も含む）
+      const lite=Object.assign({},c,{portraitImage:null,bgmAudio:null,bgmAudioName:null});
+      if(lite.awakening&&lite.awakening.form)
+        lite.awakening=Object.assign({},lite.awakening,
+          {form:Object.assign({},lite.awakening.form,{portraitImage:null})});
+      out.characters[k]=lite;
     });
-    Object.keys(SKILLS).forEach(k=>{ if(SKILLS[k].custom) out.skills[k]=SKILLS[k]; });
+    Object.keys(SKILLS).forEach(k=>{
+      if(!SKILLS[k].custom) return;
+      out.skills[k]=opt.stripMedia?Object.assign({},SKILLS[k],{sfxId:null}):SKILLS[k];
+    });
     return out;
   },
+  /* 音の実体まで含めた書き出し。IndexedDB を読むので非同期。
+     opt.media が真なら {media:{id:base64}, mediaMeta:{id:{...}}} を足す。 */
+  exportBundle(opt){
+    opt=opt||{};
+    const base=this.exportData(opt);
+    if(!opt.media||typeof Media==="undefined") return Promise.resolve(base);
+    return Promise.all([Media.exportAll(),Media.exportMeta()]).then(([m,meta])=>{
+      if(m&&Object.keys(m).length){ base.media=m; base.mediaMeta=meta||{}; }
+      return base;
+    }).catch(()=>base);
+  },
   exportAll(){ return JSON.stringify(this.exportData(),null,2); },
+  /* 書き出しの重さを先に知らせるための見積り（KB） */
+  sizeOf(data){ return Math.round(this.bytes(JSON.stringify(data))/1024); },
   counts(d){ return {characters:Object.keys(d.characters||{}).length, skills:Object.keys(d.skills||{}).length}; },
 
   /* ---------- 読み込み ----------
@@ -183,7 +216,14 @@ const Store = {
     });
     if(!nc&&!ns) throw new Error("読み込めるキャラクターも技もありませんでした。");
     const res=this.save();
-    return {characters:nc, skills:ns, skipped, saved:res.ok, saveReason:res.reason};
+    // 音の実体は IndexedDB へ。落ちても本体の読み込みは成立させる。
+    let media=0, mediaPromise=Promise.resolve();
+    if(data.media&&typeof data.media==="object"&&typeof Media!=="undefined"){
+      media=Object.keys(data.media).length;
+      if(!Media.supported()) media=-1;                     // 使えない環境だと知らせる
+      else mediaPromise=Media.importAll(data.media,data.mediaMeta||{}).catch(()=>{});
+    }
+    return {characters:nc, skills:ns, skipped, saved:res.ok, saveReason:res.reason, media, mediaPromise};
   },
 
   /* ---------- 共有コード（短い文字列） ----------
@@ -260,14 +300,17 @@ const Store = {
     const d=new Date(), p=n=>String(n).padStart(2,"0");
     return `覚醒_キャラクター_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}.json`;
   },
-  download(){
-    const json=JSON.stringify(this.exportData(),null,2);
-    const blob=new Blob([json],{type:"application/json"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url; a.download=this.fileName();
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),2000);
-    return json.length;
+  /* opt: {media:true で音も入れる, stripMedia:true で画像も抜く} */
+  download(opt){
+    return this.exportBundle(opt).then(data=>{
+      const json=JSON.stringify(data,null,2);
+      const blob=new Blob([json],{type:"application/json"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url; a.download=this.fileName();
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),2000);
+      return json.length;
+    });
   }
 };

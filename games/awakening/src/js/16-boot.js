@@ -6,14 +6,27 @@ const STATUS_CHIPS = Object.values(STATUS)
 
 const HOWTO = `
 <div class="howto-lead">
-  <div class="hl">覚醒を、いつ切るか。</div>
-  <p>キャラクターを選んで1対1で戦うコマンドバトル。勝負を決めるのは能力値ではなく、
-  <b>切り札を切る一瞬の判断</b>です。ローカル・AI・オンラインの3つの遊び方があります。</p>
+  <div class="hl">技も、キャラクターも、自分で作る。</div>
+  <p><b>覚醒</b>は、あなたが組み立てたキャラクターを1対1で戦わせるゲームです。
+  最初から入っている3体は<b>作り方の見本</b>。本番は、あなたが作った技とキャラクターで戦うところからです。</p>
 </div>
 
-<div class="h-rule">1ターンの流れ</div>
+<!-- まず全体像。ここだけ読めば何をするゲームか分かる -->
+<ol class="steps">
+  <li><span class="st-i" aria-hidden="true">✧</span>
+    <b>技をつくる</b><span>威力・命中・SP・優先度、毒や麻痺といった効果まで自分で決めます。</span></li>
+  <li><span class="st-i" aria-hidden="true">❖</span>
+    <b>キャラクターをつくる</b><span>${BALANCE.build.budget}ポイントを能力値に配り、作った技を持たせ、追い詰められたときの<b>覚醒</b>の姿を決めます。</span></li>
+  <li><span class="st-i" aria-hidden="true">⚔</span>
+    <b>戦わせる</b><span>AI・同じ端末の友達・オンラインの相手に、その1体をぶつけます。</span></li>
+</ol>
+<div class="howto-cta"><button class="btn btn-gold" id="howto-make">キャラクターを作りはじめる</button>
+  <p class="note">見本の3体をそのまま戦わせて、雰囲気を確かめてからでも大丈夫です。</p></div>
+
+<div class="h-rule">戦いかた</div>
+<p class="note" style="margin-bottom:var(--sp-3)">勝負を決めるのは能力値ではなく、<b>切り札を切る一瞬の判断</b>です。</p>
 <ol class="flow">
-  <li><b>両者がコマンドを選ぶ</b><span>相手には見えません。ローカル対戦では目隠しをはさんで端末を渡します。</span></li>
+  <li><b>両者がコマンドを選ぶ</b><span>相手には見えません。同じ端末で遊ぶときは、目隠しをはさんで渡します。</span></li>
   <li><b>行動順が決まる</b><span>まず技の優先度、同じならSPDの高いほうが先に動きます。</span></li>
   <li><b>行動を処理する</b><span>ダメージ・回復・状態異常を順に適用します。</span></li>
   <li><b>ターンの終わりを確かめる</b><span>継続ダメージやSPの回復、そして覚醒条件をここで判定します。</span></li>
@@ -22,27 +35,56 @@ const HOWTO = `
 <div class="h-rule">くわしく</div>
 
 <details class="acc" open>
+  <summary><span class="aic">✎</span>技をつくる</summary>
+  <div class="acb">
+    <p>キャラクター画面の<b>「技をつくる」</b>から作ります。決めるのはこれだけです。</p>
+    <div class="deflist">
+      <div class="dr"><div class="dk">種別</div><div class="dv">攻撃・防御・特殊・補助。戦闘中の並びと色が変わります。</div></div>
+      <div class="dr"><div class="dk">威力</div><div class="dv">高いほど痛い代わりに、SPか命中で釣り合いを取ることになります。</div></div>
+      <div class="dr"><div class="dk">命中</div><div class="dv">${BALANCE.accuracyMin}〜${BALANCE.accuracyMax}%。外れる技は強くできます。</div></div>
+      <div class="dr"><div class="dk">SP</div><div class="dv">撃つのに払う量。毎ターン${BALANCE.sp.regenPerTurn}しか戻らないので、重い技は続けて撃てません。</div></div>
+      <div class="dr"><div class="dk">優先度</div><div class="dv">上げると相手より先に出ます。回復や妨害を通したいときの生命線です。</div></div>
+      <div class="dr"><div class="dk">効果</div><div class="dv">毒・麻痺・沈黙・反撃・盾・能力の上下げなどを、確率と持続ターンつきで足せます。</div></div>
+    </div>
+    <p class="note">作った技はあなたの技一覧に残り、どのキャラクターにも持たせられます。</p>
+  </div>
+</details>
+
+<details class="acc">
+  <summary><span class="aic">❖</span>キャラクターをつくる</summary>
+  <div class="acb">
+    <p>5つの段（姿 → 能力 → 技 → 覚醒 → 確認）を順に進むだけです。途中でやめても<b>下書きが残ります</b>。</p>
+    <p>HP・ATK・DEF・SPDは合計<b>${BALANCE.build.budget}ポイント</b>まで。
+    HPは${BALANCE.build.hpPerPoint}あたり1ポイント、ほかは1あたり1ポイントです。
+    どこかを尖らせれば、どこかが凹みます。</p>
+    <p>覚醒後のATK+DEF+SPDは、通常時の合計＋${BALANCE.build.awakenBonus}まで。
+    立ち絵の画像とテーマ曲も設定できます。</p>
+    <p class="note">技の構成は作りながら助言が出ます。SP${BALANCE.sp.regenPerTurn}以下の技が1つもない、守りが無い、といった穴はその場で教えてくれます。</p>
+  </div>
+</details>
+
+<details class="acc">
+  <summary><span class="aic">✦</span>覚醒</summary>
+  <div class="acb">
+    <p>このゲームの背骨です。条件を満たしても<b>自動では発動しません。いつ切るかはプレイヤーが決めます。</b></p>
+    <p>覚醒すると技セットが丸ごと入れ替わり、能力値も変わります。ただし<b>持続ターンと代償</b>がついてきます。
+    多くは毎ターンHPが減り、戦闘中に一度きりです。</p>
+    <p class="note">早すぎれば持続が切れたあとに押し切られ、遅すぎれば間に合いません。
+    勝利ボタンではなく、逆転の布石です。条件も代償も、作るときに自分で決められます。</p>
+  </div>
+</details>
+
+<details class="acc">
   <summary><span class="aic">⚔</span>コマンド</summary>
   <div class="acb">
     <div class="deflist">
       <div class="dr"><div class="dk">攻撃</div><div class="dv">コストなしの基本攻撃。SPが尽きても撃てます。</div></div>
-      <div class="dr"><div class="dk">防御</div><div class="dv">被ダメージが半分になり、SPが1多く回復します。防御貫通の技には効きません。</div></div>
+      <div class="dr"><div class="dk">防御</div><div class="dv">被ダメージが半分になり、SPが${BALANCE.sp.defendBonus}多く回復します。防御貫通の技には効きません。</div></div>
       <div class="dr"><div class="dk">技</div><div class="dv">SPを払って使います。優先度つきの技は相手より先に出ます。</div></div>
       <div class="dr"><div class="dk">状況</div><div class="dv">能力値・かかっている効果・覚醒条件の確認。ターンは消費しません。</div></div>
       <div class="dr"><div class="dk">覚醒</div><div class="dv">条件を満たすとボタンが光ります。押すかどうかは自分で決めます。</div></div>
     </div>
-    <p class="note">戦闘中はキーボードの数字キーでもコマンドを選べます。</p>
-  </div>
-</details>
-
-<details class="acc" open>
-  <summary><span class="aic">✦</span>覚醒</summary>
-  <div class="acb">
-    <p>条件を満たしても自動では発動しません。<b>いつ切るかはプレイヤーが決めます。</b></p>
-    <p>覚醒すると技セットが丸ごと入れ替わり、能力値も変わります。ただし<b>持続ターンと代償</b>がついてきます。
-    多くは毎ターンHPが減り、戦闘中に一度きりです。</p>
-    <p class="note">早すぎれば持続が切れたあとに押し切られ、遅すぎれば間に合いません。
-    勝利ボタンではなく、逆転の布石です。</p>
+    <p class="note">パソコンのキーボードでは数字キーでも選べます。</p>
   </div>
 </details>
 
@@ -61,53 +103,48 @@ const HOWTO = `
   <div class="acb">
     <div class="chipgrid">${STATUS_CHIPS}</div>
     <p class="note">アイコンは各キャラクターの下に並びます。数字は残りターン、∞は永続です。
-    技エディタから自由に組み合わせられます。</p>
+    技をつくるときに自由に組み合わせられます。</p>
   </div>
 </details>
 
 <details class="acc">
-  <summary><span class="aic">✎</span>キャラクターを作る</summary>
+  <summary><span class="aic">⇄</span>誰と戦うか</summary>
   <div class="acb">
-    <p>HP・ATK・DEF・SPDは合計<b>${BALANCE.build.budget}ポイント</b>まで。
-    HPは${BALANCE.build.hpPerPoint}あたり1ポイント、ほかは1あたり1ポイントです。</p>
-    <p>覚醒後のATK+DEF+SPDは、通常時の合計＋${BALANCE.build.awakenBonus}まで。
-    立ち絵の画像とテーマ曲も設定できます。</p>
+    <div class="deflist">
+      <div class="dr"><div class="dk">AI</div><div class="dv">強さを4段階から選べます。「本気」は倒しきれる手を逃さず、覚醒のタイミングも計算してきます。</div></div>
+      <div class="dr"><div class="dk">ローカル</div><div class="dv">1台を2人で回します。交代のたびに目隠しをはさむので、手の内は見えません。</div></div>
+      <div class="dr"><div class="dk">オンライン</div><div class="dv">二人が同じ<b>あいことば</b>を入れて押すだけ。役割を選ぶ必要はありません。</div></div>
+    </div>
+    <p class="note">オンラインでは、相手の自作キャラクターを技の内容ごと接続時に受け取ります。事前の共有は要りません
+    （受け取った技はその対戦のあいだだけ使われ、あなたの技一覧は変わりません）。
+    うまくつながらないときは、二人ともWi-Fiに切り替えるか、あいことばを変えてやり直してください。</p>
   </div>
 </details>
 
 <details class="acc">
-  <summary><span class="aic">⤓</span>データの持ち運び</summary>
+  <summary><span class="aic">⤓</span>作ったものを持ち運ぶ</summary>
   <div class="acb">
-    <p>キャラクター画面の「ファイルに保存」で、自分で作ったキャラクターと技をJSONファイルとして書き出せます。
+    <p>作ったデータは<b>この端末のブラウザの中だけ</b>に残ります。履歴の消去で消えることがあります。</p>
+    <p>キャラクター画面の「ファイルに保存」で、自作のキャラクターと技をJSONファイルとして書き出せます。
     機種変更のときや友達に渡すときは、そのファイルを「ファイルから読み込む」で選ぶだけです。立ち絵も一緒に入っています。</p>
-    <p class="note">作ったデータはこの端末のブラウザに保存されます。履歴の消去で消えることがあるので、
-    大事なキャラクターはファイルに書き出しておいてください。</p>
+    <p class="note">大事なキャラクターができたら、早めにファイルへ書き出しておいてください。</p>
   </div>
 </details>
 
 <details class="acc">
-  <summary><span class="aic">♪</span>演出の速さとBGM</summary>
+  <summary><span class="aic">♪</span>演出と音</summary>
   <div class="acb">
-    <p>戦闘画面右上の⏩で「ふつう／はやい／瞬時」を切り替えられます。
-    再生の途中で画面をタップすると、そのターンの残りを一気に送れます。設定は次回も引き継がれます。</p>
-    <p>曲はキャラクターごとに設定でき、戦闘中は<b>対戦相手の曲</b>が流れます。右上の♪で入り切りできます。</p>
-    <p class="note">ブラウザは画面を触るまで音を鳴らせない決まりです。♪が「タップ」表示のときは、どこか触れば鳴りはじめます。</p>
+    <p>タイトル右上の歯車から、<b>戦闘の再生速度</b>（ふつう／はやい／瞬時）、動きを減らす設定、音、触覚を切り替えられます。
+    設定は次回起動でも引き継がれます。</p>
+    <p>再生の途中で画面をタップすると、そのターンの残りを一気に送れます。</p>
+    <p class="note">曲はキャラクターごとに設定でき、戦闘中は<b>対戦相手の曲</b>が流れます。
+    ブラウザは画面を触るまで音を鳴らせない決まりなので、♪が「タップ」表示のときはどこか触れば鳴りはじめます。</p>
   </div>
 </details>
 
-<details class="acc">
-  <summary><span class="aic">⇄</span>オンライン対戦</summary>
-  <div class="acb">
-    <p>二人が同じあいことばを入れて「つながる」を押すだけです。役割を選ぶ必要はなく、
-    先に押した方が自動的に待ち受けになります。</p>
-    <p>やり取りするのは選んだコマンドだけで、計算は両方の端末で行われます。
-    相手の自作キャラクターは技の内容ごと接続時に受け取るので、事前の共有は要りません
-    （受け取った技はその対戦のあいだだけ使われ、あなたの技一覧は変わりません）。</p>
-    <p class="note">携帯回線など直接つながりにくい回線では中継サーバーを経由します。
-    うまくいかないときは、二人ともWi-Fiに切り替えるか、あいことばを変えてやり直してください。
-    お互いのアプリ（このファイル）の版が違うと接続できません。</p>
-  </div>
-</details>`;
+<div class="howto-foot">
+  <button class="btn btn-line" id="howto-make2"><span class="ic" aria-hidden="true">✎</span>キャラクターを作る</button>
+</div>`;
 
 /* -------------------------------------------------------------------------
    ボトムシート — 指で引いて閉じる／背面のスクロールを止める
@@ -161,11 +198,44 @@ function bindSheet(){
     document.body.style.top=(-lockY)+"px"; document.body.classList.add("locked"); };
   const unlock=()=>{ document.body.classList.remove("locked"); document.body.style.top="";
     window.scrollTo(0,lockY); };
+
+  /* 開いているあいだ、キーボード操作が背面へ抜けないようにする */
+  const FOCUSABLE="button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),"+
+    "textarea:not(:disabled),summary,[tabindex]:not([tabindex='-1'])";
+  const items=()=>Array.from(sheet.querySelectorAll(FOCUSABLE)).filter(el=>el.offsetParent!==null);
+  /* 閉じているあいだは支援技術からもタブ移動からも外す */
+  const setHidden=hide=>{
+    try{ sheet.inert=hide; }catch(e){}
+    sheet.setAttribute("aria-hidden",hide?"true":"false");
+  };
+  let prevFocus=null;
+  const focusIn=()=>{
+    prevFocus=document.activeElement;
+    const list=items();
+    const first=list.find(el=>el.id!=="sheet-close")||list[0];
+    if(first) setTimeout(()=>{ try{ first.focus({preventScroll:true}); }catch(e){} },60);
+  };
+  const focusOut=()=>{
+    const p=prevFocus; prevFocus=null;
+    if(p&&document.contains(p)){ try{ p.focus({preventScroll:true}); }catch(e){} }
+  };
+  document.addEventListener("keydown",e=>{
+    if(e.key!=="Tab"||!sheet.classList.contains("on")) return;
+    const list=items();
+    if(!list.length) return;
+    const first=list[0], last=list[list.length-1];
+    if(!sheet.contains(document.activeElement)){ e.preventDefault(); first.focus(); return; }
+    if(e.shiftKey&&document.activeElement===first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey&&document.activeElement===last){ e.preventDefault(); first.focus(); }
+  });
+
   new MutationObserver(()=>{
     const on=sheet.classList.contains("on");
-    if(on&&!locked){ locked=true; lock(); }
-    else if(!on&&locked){ locked=false; setY(0); unlock(); }
+    if(on&&!locked){ locked=true; lock(); focusIn(); }
+    else if(!on&&locked){ locked=false; setY(0); unlock(); focusOut(); }
+    setHidden(!on);
   }).observe(sheet,{attributes:true,attributeFilter:["class"]});
+  setHidden(true);
 }
 
 /* 起動スプラッシュを畳む */
@@ -180,10 +250,16 @@ function boot(){
   Store.load();
   Store.loadPrefs();
   UI.initNav();
+  UI.applyShellPrefs();
   UI.applyPrefs();
   UI.bindTouchFeel();
   bindSheet();
   $("#howto-body").innerHTML=HOWTO;
+  /* 遊び方から、そのまま作りはじめられるようにする */
+  ["#howto-make","#howto-make2"].forEach(sel=>{
+    const b=$(sel);
+    if(b) b.onclick=()=>{ UI.renderRoster(); UI.show("roster"); };
+  });
   const ver=$("#title-ver");
   if(ver) ver.textContent="v"+APP_VERSION;
 
@@ -194,8 +270,8 @@ function boot(){
   });
   $$("[data-mode]").forEach(b=>b.onclick=()=>UI.openMode(b.dataset.mode));
   $("#btn-settings").onclick=()=>UI.openSettings();
-  $("#slot0").onclick=()=>{ UI.slotFocus=0; UI.renderSelect(); };
-  $("#slot1").onclick=()=>{ UI.slotFocus=1; UI.renderSelect(); };
+  $("#slot0").onclick=()=>UI.focusSlot(0);
+  $("#slot1").onclick=()=>UI.focusSlot(1);
   $("#btn-random").onclick=()=>UI.randomPick();
   $("#btn-start").onclick=()=>UI.startLocalOrAi();
   $("#btn-connect").onclick=()=>UI.connect();

@@ -114,9 +114,18 @@
 .word{font-family:var(--serif);font-size:var(--fs-7);letter-spacing:.24em;text-align:center;
   padding:var(--sp-2) 0;color:#FFF0C4}
 
-/* ---------- 動きを減らす設定の受け止め ------------------------------------- */
+/* ---------- 動きを減らす設定の受け止め -------------------------------------
+   端末の設定が既定。アプリの設定で入り切りしたときは data-motion が付き、
+   端末の設定より優先される（reduce＝減らす／full＝端末が減らす設定でも動かす）。 */
 @media (prefers-reduced-motion:reduce){
-  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+  :root:not([data-motion="full"]) *{animation-duration:.01ms !important;animation-iteration-count:1 !important;
     transition-duration:.01ms !important;scroll-behavior:auto !important}
-  .logo::after,#bg::before,#bg::after{display:none}
+  :root:not([data-motion="full"]) .logo::after,
+  :root:not([data-motion="full"]) #bg::before,
+  :root:not([data-motion="full"]) #bg::after{display:none}
 }
+:root[data-motion="reduce"] *{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+  transition-duration:.01ms !important;scroll-behavior:auto !important}
+:root[data-motion="reduce"] .logo::after,
+:root[data-motion="reduce"] #bg::before,
+:root[data-motion="reduce"] #bg::after{display:none}

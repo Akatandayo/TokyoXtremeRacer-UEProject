@@ -1,0 +1,230 @@
+/* ===== 命中・状態変化の絵 =====
+   ここにある形は「技の名前」ではなく「技のデータ」から選ばれる（12b-fxkit.js）。
+   色は --h（色相）、強さは --sc（拡大率）、向きは --ang で外から差し込む。
+   だから利用者が自分で作った技・自分で選んだ状態異常でも同じように映える。
+   動かすのは transform と opacity だけ。 */
+
+/* 当たった場所に置く入れ物。立ち姿の2倍の大きさを取り、中心を合わせる */
+.im{position:absolute;left:-50%;top:-50%;width:200%;height:200%;z-index:6;pointer-events:none;
+  display:grid;place-items:center;--h:352;--sc:1;--ang:-34deg}
+.im::before,.im::after{content:"";grid-area:1/1;will-change:transform,opacity}
+
+/* --- 斬る（近接・単発） --- */
+.im.slash::before{width:112%;height:8px;border-radius:8px;
+  background:linear-gradient(90deg,transparent 2%,hsla(var(--h),100%,92%,.65) 26%,#FFFFFF 48%,
+             hsla(var(--h),100%,78%,.95) 64%,transparent 98%);
+  box-shadow:0 0 30px hsla(var(--h),100%,66%,.95);
+  animation:slashIn .34s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes slashIn{0%{opacity:0;transform:rotate(var(--ang)) scale3d(.12,.35,1)}
+  20%{opacity:1;transform:rotate(var(--ang)) scale3d(var(--sc),1,1)}
+  100%{opacity:0;transform:rotate(var(--ang)) scale3d(calc(var(--sc)*1.18),.2,1)}}
+.im.slash::after{width:46%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(closest-side,#fff,hsla(var(--h),100%,72%,.55) 44%,transparent 72%);
+  animation:coreOut .3s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes coreOut{0%{opacity:0;transform:scale(.2)}24%{opacity:1;transform:scale(var(--sc))}
+  100%{opacity:0;transform:scale(calc(var(--sc)*1.5))}}
+
+/* --- 刻む（連撃の1発。小さく速い） --- */
+.im.wave::before{width:86%;height:5px;border-radius:5px;
+  background:linear-gradient(90deg,transparent,#fff 44%,hsla(var(--h),100%,76%,.9) 66%,transparent);
+  box-shadow:0 0 18px hsla(var(--h),100%,68%,.85);
+  animation:slashIn .24s cubic-bezier(.2,.8,.2,1) forwards}
+.im.wave::after{width:28%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(closest-side,#fff,transparent 70%);
+  animation:coreOut .22s ease-out forwards}
+
+/* --- 貫く（先制・刺突） --- */
+.im.pierce::before{width:132%;height:3px;
+  background:linear-gradient(90deg,transparent,hsla(var(--h),100%,84%,.9) 30%,#fff 72%,transparent 74%);
+  box-shadow:0 0 22px hsla(var(--h),100%,70%,.9);
+  animation:pierceIn .26s cubic-bezier(.1,.9,.2,1) forwards}
+@keyframes pierceIn{0%{opacity:0;transform:rotate(var(--ang)) translate3d(-40%,0,0) scaleX(.2)}
+  30%{opacity:1;transform:rotate(var(--ang)) translate3d(0,0,0) scaleX(var(--sc))}
+  100%{opacity:0;transform:rotate(var(--ang)) translate3d(26%,0,0) scaleX(calc(var(--sc)*.9))}}
+.im.pierce::after{width:34%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(closest-side,#fff,hsla(var(--h),100%,80%,.5) 40%,transparent 70%);
+  animation:coreOut .24s ease-out forwards}
+
+/* --- 弾ける（魔法・特殊） --- */
+.im.burst::before{width:62%;aspect-ratio:1;border-radius:50%;border:3px solid hsla(var(--h),100%,78%,.95);
+  box-shadow:0 0 34px hsla(var(--h),100%,62%,.85),inset 0 0 22px hsla(var(--h),100%,70%,.55);
+  animation:ringOut .46s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes ringOut{0%{opacity:0;transform:scale(.18)}22%{opacity:1;transform:scale(calc(var(--sc)*.8))}
+  100%{opacity:0;transform:scale(calc(var(--sc)*1.85))}}
+.im.burst::after{width:58%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(closest-side,#fff,hsla(var(--h),100%,70%,.72) 38%,transparent 74%);
+  animation:coreOut .38s cubic-bezier(.2,.8,.2,1) forwards}
+
+/* --- 潰す（割合ダメージ・重い一撃） --- */
+.im.crush::before{width:104%;height:46%;border-radius:50%;
+  border:2px solid hsla(var(--h),90%,74%,.8);
+  box-shadow:0 0 30px hsla(var(--h),90%,58%,.7);
+  animation:crushOut .5s cubic-bezier(.15,.85,.25,1) forwards}
+@keyframes crushOut{0%{opacity:0;transform:scale3d(.3,1.6,1)}
+  26%{opacity:1;transform:scale3d(var(--sc),calc(var(--sc)*.55),1)}
+  100%{opacity:0;transform:scale3d(calc(var(--sc)*1.6),calc(var(--sc)*.3),1)}}
+.im.crush::after{width:70%;aspect-ratio:1;
+  background:conic-gradient(from 0deg,transparent 0 8deg,hsla(var(--h),100%,80%,.85) 8deg 11deg,
+             transparent 11deg 52deg,hsla(var(--h),100%,80%,.7) 52deg 55deg,transparent 55deg 128deg,
+             hsla(var(--h),100%,80%,.8) 128deg 131deg,transparent 131deg 212deg,
+             hsla(var(--h),100%,80%,.7) 212deg 215deg,transparent 215deg 300deg,
+             hsla(var(--h),100%,80%,.75) 300deg 303deg,transparent 303deg);
+  animation:coreOut .42s cubic-bezier(.2,.8,.2,1) forwards}
+
+/* --- 吸う（ドレイン） --- */
+.im.drain::before{width:96%;aspect-ratio:1;border-radius:50%;border:2px dashed hsla(var(--h),85%,76%,.85);
+  box-shadow:0 0 26px hsla(var(--h),85%,60%,.6);
+  animation:drainIn .52s cubic-bezier(.3,.7,.2,1) forwards}
+@keyframes drainIn{0%{opacity:0;transform:scale(calc(var(--sc)*1.7)) rotate(0)}
+  25%{opacity:1}100%{opacity:0;transform:scale(.25) rotate(120deg)}}
+.im.drain::after{width:40%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(closest-side,#fff,hsla(var(--h),100%,72%,.5) 46%,transparent 74%);
+  animation:coreOut .36s ease-out forwards}
+
+/* --- 会心：金の追い打ちを重ねる --- */
+.im.crit{--h:44}
+.im.crit::before{filter:brightness(1.25)}
+
+/* --- 防御を砕く --- */
+.gbreak{position:absolute;left:-40%;top:-40%;width:180%;height:180%;z-index:7;pointer-events:none;
+  display:grid;place-items:center}
+.gbreak i{grid-area:1/1;width:26%;height:5px;border-radius:2px;background:linear-gradient(90deg,#FFE7C0,#F2566A);
+  box-shadow:0 0 14px rgba(255,150,120,.85);transform:rotate(var(--r)) translate3d(0,0,0);
+  animation:shard .5s cubic-bezier(.15,.85,.25,1) forwards;will-change:transform,opacity}
+@keyframes shard{0%{opacity:0;transform:rotate(var(--r)) translate3d(0,0,0) scaleX(.2)}
+  20%{opacity:1}100%{opacity:0;transform:rotate(var(--r)) translate3d(64px,0,0) scaleX(1)}}
+
+/* --- 飛び道具（遠隔の技だけ、撃った側から相手へ飛ぶ） --- */
+.proj{position:absolute;z-index:5;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,#fff,hsla(var(--h,274),100%,72%,.85) 45%,transparent 74%);
+  box-shadow:0 0 22px hsla(var(--h,274),100%,64%,.9);
+  animation:projFly var(--t,220ms) cubic-bezier(.4,0,.7,1) forwards;will-change:transform,opacity}
+@keyframes projFly{0%{opacity:0;transform:translate3d(0,0,0) scale(.5)}
+  16%{opacity:1;transform:translate3d(calc(var(--dx)*.16),calc(var(--dy)*.16),0) scale(1)}
+  100%{opacity:1;transform:translate3d(var(--dx),var(--dy),0) scale(.8)}}
+
+/* --- 連撃の手数 --- */
+.combo{position:absolute;left:50%;top:-26%;z-index:7;pointer-events:none;transform:translateX(-50%);
+  font-family:var(--serif);font-weight:800;font-size:15px;letter-spacing:.1em;color:#FFE7A8;white-space:nowrap;
+  text-shadow:0 2px 0 rgba(0,0,0,.7),0 0 18px rgba(255,190,60,.8);
+  animation:comboPop .42s cubic-bezier(.2,1.4,.4,1) both}
+.combo small{font-size:9.5px;font-family:var(--sans);letter-spacing:.2em;margin-left:3px;opacity:.85}
+@keyframes comboPop{0%{opacity:0;transform:translateX(-50%) scale(.6)}
+  40%{opacity:1;transform:translateX(-50%) scale(1.14)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
+
+/* ===== 状態変化 =====
+   どの系統にも「その効果のアイコン」を中心に出す。知らない kind でも
+   sigil に落ちるので、自作の状態異常でも必ず意味のある絵になる。 */
+.sb{position:absolute;left:-45%;top:-45%;width:190%;height:190%;z-index:7;pointer-events:none;
+  display:grid;place-items:center;--h:288}
+.sb i{grid-area:1/1;font-style:normal;font-size:30px;line-height:1;color:hsl(var(--h),92%,84%);
+  text-shadow:0 0 18px hsla(var(--h),100%,60%,.95),0 2px 0 rgba(0,0,0,.5);
+  animation:sbGlyph .78s cubic-bezier(.2,.8,.2,1) forwards;will-change:transform,opacity}
+@keyframes sbGlyph{0%{opacity:0;transform:scale(.4)}22%{opacity:1;transform:scale(1.12)}
+  46%{transform:scale(1)}100%{opacity:0;transform:translate3d(0,-18px,0) scale(.95)}}
+.sb::before,.sb::after{content:"";grid-area:1/1;will-change:transform,opacity}
+
+/* 継続ダメージ・再生：粒が立ちのぼる */
+.sb.mote::before{width:64%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(closest-side,hsla(var(--h),95%,70%,.5),transparent 72%);
+  animation:coreOut .7s ease-out forwards}
+.sb.mote::after{width:70%;height:70%;border-radius:50%;
+  background:
+    radial-gradient(3px 3px at 22% 78%,hsla(var(--h),100%,80%,.95),transparent),
+    radial-gradient(3px 3px at 62% 88%,hsla(var(--h),100%,80%,.9),transparent),
+    radial-gradient(2px 2px at 44% 66%,hsla(var(--h),100%,86%,.9),transparent);
+  animation:moteUp .8s ease-out forwards}
+@keyframes moteUp{0%{opacity:0;transform:translate3d(0,10px,0)}25%{opacity:1}
+  100%{opacity:0;transform:translate3d(0,-30px,0)}}
+
+/* 能力変化：上下の矢羽根 */
+.sb.arrow::before{width:52%;height:78%;
+  background:linear-gradient(0deg,hsla(var(--h),95%,68%,.55),transparent 72%);
+  -webkit-mask-image:linear-gradient(0deg,#000,transparent);mask-image:linear-gradient(0deg,#000,transparent);
+  animation:arrowUp .72s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes arrowUp{0%{opacity:0;transform:translate3d(0,16px,0) scaleY(.6)}
+  26%{opacity:1;transform:none}100%{opacity:0;transform:translate3d(0,-14px,0) scaleY(1.1)}}
+
+/* 行動不能：時を止める枷 */
+.sb.lock::before{width:78%;aspect-ratio:1;border-radius:50%;
+  border:2px solid hsla(var(--h),90%,80%,.9);box-shadow:0 0 30px hsla(var(--h),90%,64%,.8);
+  animation:lockIn .6s cubic-bezier(.15,.9,.2,1) forwards}
+@keyframes lockIn{0%{opacity:0;transform:scale(1.7) rotate(-30deg)}
+  30%{opacity:1;transform:scale(1) rotate(0)}100%{opacity:.6;transform:scale(.96) rotate(4deg)}}
+.sb.lock::after{width:88%;aspect-ratio:1;
+  background:conic-gradient(from 0deg,hsla(var(--h),100%,86%,.9) 0 2deg,transparent 2deg 90deg,
+             hsla(var(--h),100%,86%,.9) 90deg 92deg,transparent 92deg 180deg,
+             hsla(var(--h),100%,86%,.9) 180deg 182deg,transparent 182deg 270deg,
+             hsla(var(--h),100%,86%,.9) 270deg 272deg,transparent 272deg);
+  -webkit-mask-image:radial-gradient(closest-side,transparent 58%,#000 60%);
+  mask-image:radial-gradient(closest-side,transparent 58%,#000 60%);
+  animation:lockIn .6s cubic-bezier(.15,.9,.2,1) forwards}
+
+/* 惑わす：回る呪の輪 */
+.sb.hex::before{width:76%;aspect-ratio:1;border-radius:50%;border:2px dashed hsla(var(--h),90%,78%,.9);
+  box-shadow:0 0 26px hsla(var(--h),90%,60%,.7);animation:hexSpin .8s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes hexSpin{0%{opacity:0;transform:scale(.4) rotate(0)}26%{opacity:1;transform:scale(1) rotate(90deg)}
+  100%{opacity:0;transform:scale(1.15) rotate(220deg)}}
+.sb.hex::after{width:52%;aspect-ratio:1;border-radius:50%;border:1px solid hsla(var(--h),90%,86%,.7);
+  animation:hexSpin .8s cubic-bezier(.2,.8,.2,1) reverse forwards}
+
+/* 守り：六角の障壁 */
+.sb.ward::before{width:84%;aspect-ratio:1;
+  clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  background:linear-gradient(160deg,hsla(var(--h),90%,80%,.34),hsla(var(--h),90%,60%,.1));
+  box-shadow:0 0 30px hsla(var(--h),90%,60%,.6);
+  animation:wardIn .7s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes wardIn{0%{opacity:0;transform:scale(.7)}24%{opacity:1;transform:scale(1.04)}
+  70%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.08)}}
+.sb.ward::after{width:84%;aspect-ratio:1;
+  clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  background:hsla(var(--h),95%,88%,.9);
+  -webkit-mask-image:radial-gradient(closest-side,transparent 92%,#000 94%);
+  mask-image:radial-gradient(closest-side,transparent 92%,#000 94%);
+  animation:wardIn .7s cubic-bezier(.2,.8,.2,1) forwards}
+
+/* 研ぎ澄ます：刃の合図 */
+.sb.edge::before{width:96%;height:4px;background:linear-gradient(90deg,transparent,hsla(var(--h),100%,84%,.95),transparent);
+  box-shadow:0 0 18px hsla(var(--h),100%,70%,.9);
+  animation:edgeSweep .6s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes edgeSweep{0%{opacity:0;transform:rotate(-24deg) translate3d(0,14px,0) scaleX(.3)}
+  28%{opacity:1;transform:rotate(-24deg) translate3d(0,0,0) scaleX(1)}
+  100%{opacity:0;transform:rotate(-24deg) translate3d(0,-14px,0) scaleX(1.1)}}
+.sb.edge::after{width:96%;height:4px;background:linear-gradient(90deg,transparent,hsla(var(--h),100%,84%,.7),transparent);
+  animation:edgeSweep .6s cubic-bezier(.2,.8,.2,1) .09s forwards}
+
+/* SP・気力：弾ける光 */
+.sb.spark::before{width:60%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(closest-side,#fff,hsla(var(--h),100%,76%,.6) 40%,transparent 72%);
+  animation:coreOut .5s ease-out forwards}
+.sb.spark::after{width:80%;aspect-ratio:1;
+  background:conic-gradient(from 20deg,transparent 0 10deg,hsla(var(--h),100%,84%,.9) 10deg 13deg,
+             transparent 13deg 100deg,hsla(var(--h),100%,84%,.9) 100deg 103deg,transparent 103deg 190deg,
+             hsla(var(--h),100%,84%,.9) 190deg 193deg,transparent 193deg 280deg,
+             hsla(var(--h),100%,84%,.9) 280deg 283deg,transparent 283deg);
+  animation:coreOut .5s cubic-bezier(.2,.8,.2,1) forwards}
+
+/* 知らない状態異常はここへ落ちる。二重の輪に紋を刻む */
+.sb.sigil::before{width:80%;aspect-ratio:1;border-radius:50%;border:2px solid hsla(var(--h),90%,78%,.9);
+  box-shadow:0 0 28px hsla(var(--h),90%,60%,.7),inset 0 0 18px hsla(var(--h),90%,66%,.4);
+  animation:sigilIn .74s cubic-bezier(.2,.8,.2,1) forwards}
+.sb.sigil::after{width:58%;aspect-ratio:1;border-radius:50%;border:1px solid hsla(var(--h),95%,88%,.8);
+  animation:sigilIn .74s cubic-bezier(.2,.8,.2,1) .07s forwards}
+@keyframes sigilIn{0%{opacity:0;transform:scale(.35) rotate(-40deg)}
+  28%{opacity:1;transform:scale(1.04) rotate(0)}100%{opacity:0;transform:scale(1.22) rotate(24deg)}}
+
+/* 立ちのぼる光（構え・自己強化・回復） */
+.column{position:absolute;left:12%;right:12%;bottom:-14%;top:-58%;z-index:4;pointer-events:none;
+  background:linear-gradient(0deg,hsla(var(--h,150),95%,72%,.55),hsla(var(--h,150),95%,72%,.12) 56%,transparent 92%);
+  -webkit-mask-image:linear-gradient(0deg,#000 10%,transparent 96%);
+  mask-image:linear-gradient(0deg,#000 10%,transparent 96%);
+  animation:columnUp .62s cubic-bezier(.2,.8,.2,1) forwards;will-change:transform,opacity}
+@keyframes columnUp{0%{opacity:0;transform:scale3d(.5,.3,1)}26%{opacity:1;transform:scale3d(1,1,1)}
+  100%{opacity:0;transform:scale3d(1.06,1.1,1)}}
+
+/* 動きを減らす設定では、当たった事実だけを短く見せる */
+@media (prefers-reduced-motion:reduce){
+  .im::before,.im::after,.sb i,.sb::before,.sb::after,.column,.gbreak i,.proj{animation-duration:.14s!important}
+  .stage .embers i{animation:none;opacity:.4}
+  .figure{animation:none}
+}

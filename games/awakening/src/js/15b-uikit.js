@@ -102,6 +102,41 @@ const Kit = {
   },
   dialogOpen(){ return !!this._dlg; },
 
+  /* ---------- 下から出るシート ----------
+     引数: {title, sub, html, onMount(panel, close)}
+     返り値: {close} — カタログから何かを選ばせたいときに使う。 */
+  sheet(opt){
+    opt=opt||{};
+    const host=this.layer();
+    const old=host.querySelector(".kit-sheet"); if(old) old.remove();
+    const el=document.createElement("div");
+    el.className="kit-sheet";
+    el.innerHTML=`<div class="ks-scrim"></div>
+      <div class="ks-panel" role="dialog" aria-modal="true" aria-label="${esc(opt.title||"")}">
+        <div class="ks-grip" aria-hidden="true"></div>
+        <div class="ks-head"><b>${esc(opt.title||"")}</b>
+          ${opt.sub?`<span>${esc(opt.sub)}</span>`:""}
+          <button class="ks-x" aria-label="閉じる">✕</button></div>
+        <div class="ks-body">${opt.html||""}</div>
+      </div>`;
+    host.appendChild(el);
+    requestAnimationFrame(()=>el.classList.add("on"));
+    const close=()=>{
+      if(el._gone) return;
+      el._gone=true;
+      document.removeEventListener("keydown",onKey,true);
+      el.classList.remove("on");
+      setTimeout(()=>el.remove(),260);
+    };
+    const onKey=ev=>{ if(ev.key==="Escape"){ ev.stopPropagation(); close(); } };
+    document.addEventListener("keydown",onKey,true);
+    el.querySelector(".ks-scrim").onclick=close;
+    el.querySelector(".ks-x").onclick=close;
+    this.buzz(6);
+    if(opt.onMount) opt.onMount(el.querySelector(".ks-body"),close);
+    return {close, el};
+  },
+
   /* ---------- 指で配るスライダー ----------
      引数: {host, value, min, max, cap, step, onInput}
      cap は「残りポイントで届く上限」。max までは動かせるがそこで壁を感じさせる。 */
