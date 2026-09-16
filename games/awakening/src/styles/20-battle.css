@@ -32,11 +32,16 @@
              var(--panel);border:1px solid var(--line);
   box-shadow:0 14px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07);
   will-change:transform}
+/* 中央の仕切り。紋の背後を不透明で塗ると、半透明のアリーナの上に黒い箱が
+   浮いて見えるため、線側に切れ目を作って紋を置く。 */
 .midline{position:relative;align-self:center;display:flex;align-items:center;justify-content:center;
-  width:100%;height:1px;pointer-events:none;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
+  width:100%;height:1px;pointer-events:none;transition:opacity .25s var(--ease,ease);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.16) 24%,transparent 45%,
+             transparent 55%,rgba(255,255,255,.16) 76%,transparent)}
 .midline::after{content:"⚔";position:absolute;font-size:13px;color:rgba(255,255,255,.28);
-  background:var(--ink);padding:0 12px;letter-spacing:.2em}
+  padding:0 12px;letter-spacing:.2em}
+/* ターン表示は画面中央に出るので、重なる仕切りは一時的に引っ込める */
+.arena.bannering .midline{opacity:0}
 .arena-glow{position:absolute;inset:-20%;pointer-events:none;opacity:0;
   background:radial-gradient(closest-side,rgba(255,255,255,.5),transparent 70%);
   transform:scale(.4);will-change:transform,opacity}

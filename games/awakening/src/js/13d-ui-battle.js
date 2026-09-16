@@ -765,8 +765,8 @@ Object.assign(UI, {
     const a=$("#arena");
     const b=document.createElement("div");
     b.className="banner"; b.innerHTML=`<span>${esc(text)}</span>`;
-    a.appendChild(b);
-    setTimeout(()=>b.remove(),1000);
+    a.appendChild(b); a.classList.add("bannering");
+    setTimeout(()=>{ b.remove(); a.classList.remove("bannering"); },1000);
   },
   /* 覚醒：1回目はたっぷり、2回目からは短く。いつでもスキップできる */
   awakenFlash(text){
