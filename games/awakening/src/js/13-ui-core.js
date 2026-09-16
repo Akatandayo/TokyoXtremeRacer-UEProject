@@ -288,6 +288,11 @@ const UI = {
     const tags=[];
     if(c.custom) tags.push(`<span class="chip">自作</span>`);
     if(c.awakening&&c.awakening.enabled) tags.push(`<span class="chip gold">覚醒あり</span>`);
+    // RC（レギュレーション）に適合しているか。自作キャラの強さの目安になる。
+    const rc=(typeof RC!=="undefined")?RC.checkCharacter(c):null;
+    if(rc) tags.push(rc.ok
+      ? `<span class="chip jade" title="技の効果がSP消費に見合っています">RC適合</span>`
+      : `<span class="chip" style="color:#FFC2CB;border-color:rgba(242,86,106,.42);background:rgba(242,86,106,.12)" title="${esc(rc.issues.map(i=>i.text).join(" "))}">RC対象外</span>`);
     if(c.bgm&&c.bgm!=="none"&&typeof BGM!=="undefined"&&BGM[c.bgm])
       tags.push(`<span class="chip">♪ ${esc(BGM[c.bgm].name)}</span>`);
     return `<div class="pv-head">${this.avatar(c,"84")}

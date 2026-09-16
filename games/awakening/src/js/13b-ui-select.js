@@ -2,6 +2,7 @@
    自作キャラクターが何十体も並ぶ前提で組む。
    上＝いま組んでいる対戦カード（比較）、下＝探して選ぶ一覧、最下段＝親指の届く主要操作。 */
 Object.assign(UI, {
+  rcOnly:false,          // RC戦（レギュレーション）で戦うかどうか
   selQuery:"", selTab:"all",
 
   /* ---------- モード別の準備画面 ---------- */
@@ -43,6 +44,8 @@ Object.assign(UI, {
       if(this.selTab==="mine"&&!c.custom) return false;
       if(this.selTab==="preset"&&c.custom) return false;
       if(this.selTab==="awake"&&!(c.awakening&&c.awakening.enabled)) return false;
+      // RC戦のときは規定外を並べない（選べないものを見せない）
+      if(this.rcOnly&&typeof RC!=="undefined"&&!RC.checkCharacter(c).ok) return false;
       if(!q) return true;
       return (c.name+" "+(c.description||"")).toLowerCase().indexOf(q)>=0;
     });
@@ -81,10 +84,17 @@ Object.assign(UI, {
       if(tag) tag.innerHTML=c?this.charTags(c):"";
     });
   },
-  /* 自作か既定か、覚醒を持つか。編成でいちばん知りたい2つ */
+  /* 自作か既定か、覚醒を持つか、RCの規定に合うか。編成でいちばん知りたいところ */
   charTags(c){
     const t=[`<span class="chip ${c.custom?"vio":""}">${c.custom?"自作":"最初から"}</span>`];
     if(c.awakening&&c.awakening.enabled) t.push(`<span class="chip gold">覚醒</span>`);
+    // 自作キャラだけに出す。既定キャラはすべて規定に収まっているので印は要らない。
+    if(c.custom&&typeof RC!=="undefined"){
+      const r=RC.checkCharacter(c);
+      t.push(r.ok
+        ? `<span class="chip jade" title="技の効果がSP消費に見合っています">RC</span>`
+        : `<span class="chip bad" title="${esc(r.issues.map(i=>i.text).join(" "))}">RC外</span>`);
+    }
     return t.join("");
   },
 
@@ -145,6 +155,16 @@ Object.assign(UI, {
         <input class="switch" type="checkbox" id="opt-blind" ${this.blind?"checked":""}></label>`;
       $("#opt-blind").onchange=e=>{ this.blind=e.target.checked; this.haptic(8); };
     }
+    // RC戦：技の効果がSP消費に見合ったキャラクターだけで戦う
+    opt.insertAdjacentHTML("beforeend",
+      `<label class="switchrow" for="opt-rc" style="margin-top:9px">
+        <span class="sw-tx"><span class="sw-tl">RC戦（レギュレーション）</span>
+          <span class="sw-ts">SP消費に見合った技のキャラだけで戦う</span></span>
+        <input class="switch" type="checkbox" id="opt-rc" ${this.rcOnly?"checked":""}></label>`);
+    $("#opt-rc").onchange=e=>{
+      this.rcOnly=e.target.checked; this.haptic(8);
+      this.renderTray(); this.renderBoard(); this.renderDock();
+    };
   },
 
   /* 一覧。件数が増えても札の大きさは変えず、探して絞る側で捌く */
@@ -227,12 +247,16 @@ Object.assign(UI, {
     const a=this.pick[0]?CHARACTERS[this.pick[0]]:null;
     const b=this.pick[1]?CHARACTERS[this.pick[1]]:null;
     const hint=$("#cta-hint");
+    // RC戦のときは、規定に合わないキャラクターでは始められない
+    const 規定外=this.rcOnly?[a,b].filter(c=>c&&typeof RC!=="undefined"&&!RC.checkCharacter(c).ok):[];
     if(hint){
-      if(a&&b) hint.innerHTML=`<b>${esc(a.name)}</b>　VS　<b>${esc(b.name)}</b>`;
+      if(規定外.length) hint.innerHTML=`<span style="color:#FFC2CB">`+
+        `${規定外.map(c=>esc(c.name)).join("・")} はRCの規定に合っていません</span>`;
+      else if(a&&b) hint.innerHTML=`<b>${esc(a.name)}</b>　VS　<b>${esc(b.name)}</b>`;
       else if(a||b) hint.textContent=`${a?$("#who1").textContent:$("#who0").textContent}のキャラクターを選んでください`;
       else hint.textContent="上の枠を切り替えて、2人ぶん選びます";
     }
-    $("#btn-start").disabled=!(a&&b);
+    $("#btn-start").disabled=!(a&&b)||規定外.length>0;
   },
 
   /* ---------- くわしく（段階的開示） ---------- */
