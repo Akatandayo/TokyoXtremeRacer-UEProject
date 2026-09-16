@@ -143,4 +143,7 @@ obj/
 
 !CookedMeshumap/**
 
-!Content/**.claude/
+!Content/**
+
+# Claude Code のエージェント用ワークツリー（このリポジトリの成果物ではない）
+.claude/
