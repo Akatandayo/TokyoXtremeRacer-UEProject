@@ -303,7 +303,7 @@ const Editor = {
         <label class="btn btn-line filebtn" for="e-audio"><span class="ic">♪</span>音楽ファイルを使う
           <input type="file" id="e-audio" accept="audio/*" style="display:none"></label>
         ${d.bgmAudio?`<button class="btn btn-ghost" id="e-audio-clear" style="width:auto">外す</button>
-          <span class="hint">${esc(d.bgmAudioName||"設定済み")}</span>`:`<span class="hint">3MBまで。端末内に保存されます。</span>`}
+          <span class="hint">${esc(d.bgmAudioName||"設定済み")}</span>`:`<span class="hint">端末内に保存されます。曲まるごとでも入ります。</span>`}
       </div>`;
   },
   bind_look(){
@@ -329,7 +329,7 @@ const Editor = {
       this.readFile(f,url=>{
         this.lastPhoto=url;
         Cropper.open(url,cropped=>{ d.portraitImage=cropped; this.touch(); this.renderStep(); });
-      },msg=>{ $("#e-file-err").textContent=msg; Kit.toast(msg,{tone:"bad"}); },12);
+      },msg=>{ $("#e-file-err").textContent=msg; Kit.toast(msg,{tone:"bad"}); },48);
     };
     const ed=$("#e-file-edit");
     if(ed) ed.onclick=()=>Cropper.open(this.lastPhoto||d.portraitImage,c=>{ d.portraitImage=c; this.touch(); this.renderStep(); });
@@ -345,7 +345,7 @@ const Editor = {
       ev.target.value="";
       this.readFile(f,url=>{ d.bgmAudio=url; d.bgmAudioName=f.name; this.touch(); this.renderStep();
         Kit.toast("この曲を使います。"); },
-        msg=>{ $("#e-file-err").textContent=msg; Kit.toast(msg,{tone:"bad"}); },3);
+        msg=>{ $("#e-file-err").textContent=msg; Kit.toast(msg,{tone:"bad"}); },64);
     };
     const ac=$("#e-audio-clear");
     if(ac) ac.onclick=()=>{ d.bgmAudio=null; d.bgmAudioName=null; this.touch(); this.renderStep(); };

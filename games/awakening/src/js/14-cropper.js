@@ -4,7 +4,9 @@
         失敗は alert ではなくトーストで伝える。
    ========================================================================= */
 const Cropper = {
-  V:280, OUT:256, MAXPX:1600,        // 取り込み時の最大辺。これを超えたら縮める
+  V:280, OUT:768, MAXPX:3000,        // 取り込み時の最大辺。これを超えたら縮める
+  /* OUT は書き出す立ち絵の一辺。実体は IndexedDB に置くので、高解像度の端末でも
+     ぼやけない大きさを取れる（以前は localStorage の都合で 256 に抑えていた）。 */
   img:null, scale:1, zoom:1, tx:0, ty:0, done:null, drag:null, pointers:null, pinch:null,
   lastTap:0, busy:false,
 

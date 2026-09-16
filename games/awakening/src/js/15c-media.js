@@ -14,8 +14,12 @@
    ========================================================================= */
 const Media = {
   DB:"awakening_media_v1", STORE:"files", VER:1,
-  MAX_BYTES:512*1024,          // 1ファイルの上限
-  MAX_MS:5000,                 // 長さの上限
+  /* 上限。実体は IndexedDB にあり、localStorage の約5MBとは無関係なので大きく取れる。
+     端末の空き容量のほうが先に効くため、足りなければ保存時に理由を出して断る。 */
+  MAX_BYTES:24*1024*1024,      // 1ファイルの上限（効果音）
+  MAX_MS:180000,               // 長さの上限（効果音）
+  MAX_BYTES_BGM:64*1024*1024,  // 1ファイルの上限（キャラBGM。曲まるごと入る想定）
+  MAX_MS_BGM:900000,           // 長さの上限（キャラBGM）
   /* 受け付ける形式。拡張子と MIME の両方で見る（端末によって type が空になる） */
   EXT:["mp3","m4a","ogg","wav"],
   MIME:/^audio\/(mpeg|mp3|mp4|m4a|x-m4a|aac|ogg|oga|wav|x-wav|wave|vnd\.wave)$/i,
@@ -89,18 +93,23 @@ const Media = {
 
   /* ---------- 書き込み ---------- */
   newId(){ return "m_"+Date.now().toString(36)+Math.floor(Math.random()*1296).toString(36); },
-  putFile(file){
+  /* opts.kind: "sfx"（既定）/ "bgm"。用途で上限が変わる。 */
+  putFile(file, opts){
+    const bgm=!!(opts&&opts.kind==="bgm");
+    const maxBytes=bgm?this.MAX_BYTES_BGM:this.MAX_BYTES;
+    const maxMs=bgm?this.MAX_MS_BGM:this.MAX_MS;
+    const MB=n=>(n/1048576).toFixed(n<10485760?1:0);
     if(!file) return Promise.reject(new Error("ファイルが選ばれていません。"));
     if(!this.supported()) return Promise.reject(new Error(this.reason()));
     const kind=this.checkKind(file);
     if(kind) return Promise.reject(new Error(kind));
-    if(file.size>this.MAX_BYTES)
+    if(file.size>maxBytes)
       return Promise.reject(new Error(
-        `ファイルが大きすぎます（${Math.round(this.MAX_BYTES/1024)}KBまで／選んだのは${(file.size/1024).toFixed(0)}KB）。短く切り出すか、書き出し設定を下げてください。`));
+        `ファイルが大きすぎます（${MB(maxBytes)}MBまで／選んだのは${MB(file.size)}MB）。`));
     return this.durationOf(file).then(ms=>{
       if(ms<0) throw new Error("音として読み込めませんでした。別のファイルでお試しください。");
-      if(ms>this.MAX_MS)
-        throw new Error(`長すぎます（${(this.MAX_MS/1000).toFixed(0)}秒まで／選んだのは${(ms/1000).toFixed(1)}秒）。効果音として短く切り出してください。`);
+      if(ms>maxMs)
+        throw new Error(`長すぎます（${Math.round(maxMs/1000)}秒まで／選んだのは${(ms/1000).toFixed(1)}秒）。`);
       return this.bufOf(file).then(buf=>{
         const rec={id:this.newId(),name:String(file.name||"効果音").slice(0,40),
           type:file.type||"audio/"+this.extOf(file.name),
@@ -122,6 +131,39 @@ const Media = {
       r.readAsArrayBuffer(file);
     });
   },
+  /* ---------- 文字列（データURI）の預かり ----------
+     立ち絵とキャラBGMは、これまで localStorage に直接入っていた。
+     そこは約5MBしかなく、立ち絵を数枚置いただけで保存できなくなる。
+     実体はこちら（IndexedDB）に預け、localStorage 側には差し札だけを残す。 */
+  MARK:"idb:",
+  isMark(v){ return typeof v==="string" && v.indexOf(this.MARK)===0; },
+  keyOf(v){ return this.isMark(v) ? v.slice(this.MARK.length) : null; },
+  putData(key,dataUrl){
+    if(!this.supported()||!dataUrl) return Promise.resolve(null);
+    const rec={id:key,name:key,type:"data",bytes:dataUrl.length,durationMs:0,at:Date.now(),data:dataUrl};
+    return this.tx("readwrite").then(st=>this.wrap(st.put(rec)))
+      .then(()=>{ this._meta=null; return this.MARK+key; }).catch(()=>null);
+  },
+  getData(key){
+    if(!key||!this.supported()) return Promise.resolve(null);
+    return this.get(key).then(r=>(r&&typeof r.data==="string")?r.data:null).catch(()=>null);
+  },
+
+  /* ---------- 端末の空き ---------- */
+  estimate(){
+    try{
+      if(navigator.storage&&navigator.storage.estimate) return navigator.storage.estimate();
+    }catch(e){}
+    return Promise.resolve({usage:null,quota:null});
+  },
+  /* 消えにくい保存を頼んでおく（拒否されても動きは変わらない） */
+  persist(){
+    try{
+      if(navigator.storage&&navigator.storage.persist) return navigator.storage.persist().catch(()=>false);
+    }catch(e){}
+    return Promise.resolve(false);
+  },
+
   /* 生のデータごと入れ直す（読み込み用） */
   putRaw(rec){
     if(!this.supported()) return Promise.reject(new Error(this.reason()));
@@ -197,7 +239,7 @@ const Media = {
       chain=chain.then(()=>{
         let buf;
         try{ buf=this.bufferFromB64(obj[id]); }catch(e){ return; }   // 壊れた1件で全部を止めない
-        if(!buf||buf.byteLength>this.MAX_BYTES*2) return;
+        if(!buf||buf.byteLength>this.MAX_BYTES_BGM) return;
         const m=meta[id]||{};
         return this.putRaw({id,name:String(m.name||"効果音").slice(0,40),type:m.type||"audio/mpeg",
           bytes:buf.byteLength,durationMs:Number(m.durationMs)||0,at:Date.now(),data:buf}).catch(()=>{});

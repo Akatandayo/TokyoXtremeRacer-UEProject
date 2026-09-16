@@ -249,6 +249,16 @@ function hideSplash(){
 function boot(){
   Store.load();
   Store.loadPrefs();
+  /* 立ち絵とキャラBGMの実体は IndexedDB にある。差し札を実体に戻してから描き直す。
+     スプラッシュが出ているあいだに終わるので、待たせている感じにはならない。 */
+  if(typeof Media!=="undefined"&&Media.supported()){
+    Media.persist();                                  // 消えにくい保存を頼んでおく
+    Store.hydrate().then(()=>{
+      const cur=document.querySelector(".screen.on");
+      if(cur&&cur.id==="s-roster") UI.renderRoster();
+      else if(cur&&cur.id==="s-select") UI.renderSelect();
+    });
+  }
   UI.initNav();
   UI.applyShellPrefs();
   UI.applyPrefs();

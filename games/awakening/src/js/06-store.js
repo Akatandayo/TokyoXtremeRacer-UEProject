@@ -90,10 +90,50 @@ const Store = {
   },
 
   /* 保存。戻り値 {ok,reason,bytes} — 呼び出し側は必ず ok を見ること。 */
+  /* 重いもの（立ち絵・覚醒立ち絵・キャラBGM）は localStorage に入れない。
+     約5MBしかなく、立ち絵を数枚置いただけで保存できなくなるため、
+     実体は IndexedDB に預け、ここには差し札（idb:...）だけを書く。 */
+  HEAVY:[["portraitImage","face"],["bgmAudio","bgm"]],
+  stash(c){
+    if(typeof Media==="undefined"||!Media.supported()) return c;          // 使えない端末では今まで通り
+    const copy=Object.assign({},c);
+    this.HEAVY.forEach(([field,tag])=>{
+      const v=c[field];
+      if(typeof v==="string"&&v.length>4096&&!Media.isMark(v)){
+        const key=`c_${c.id}_${tag}`;
+        Media.putData(key,v);                                 // 書き込みは待たない
+        copy[field]=Media.MARK+key;
+      }
+    });
+    const a=c.awakening, af=a&&a.form;
+    if(af&&typeof af.portraitImage==="string"&&af.portraitImage.length>4096&&!Media.isMark(af.portraitImage)){
+      const key=`c_${c.id}_awk`;
+      Media.putData(key,af.portraitImage);
+      copy.awakening=Object.assign({},a,{form:Object.assign({},af,{portraitImage:Media.MARK+key})});
+    }
+    return copy;
+  },
+  /* 差し札を実体に戻す。UIは同期のままでよいよう、描画前にまとめて解決する。 */
+  hydrate(){
+    if(typeof Media==="undefined"||!Media.supported()) return Promise.resolve();
+    const jobs=[];
+    Object.values(CHARACTERS).forEach(c=>{
+      if(!c||!c.custom) return;
+      this.HEAVY.forEach(([field])=>{
+        const k=Media.keyOf(c[field]);
+        if(k) jobs.push(Media.getData(k).then(v=>{ if(v) c[field]=v; else c[field]=null; }));
+      });
+      const af=c.awakening&&c.awakening.form;
+      const ak=af&&Media.keyOf(af.portraitImage);
+      if(ak) jobs.push(Media.getData(ak).then(v=>{ af.portraitImage=v||null; }));
+    });
+    return Promise.all(jobs).catch(()=>{});
+  },
+
   save(){
     const custom={skills:{},characters:{}};
     Object.keys(SKILLS).forEach(k=>{ if(SKILLS[k].custom) custom.skills[k]=SKILLS[k]; });
-    Object.keys(CHARACTERS).forEach(k=>{ if(CHARACTERS[k].custom) custom.characters[k]=CHARACTERS[k]; });
+    Object.keys(CHARACTERS).forEach(k=>{ if(CHARACTERS[k].custom) custom.characters[k]=this.stash(CHARACTERS[k]); });
     const raw=JSON.stringify(custom);
     this.mem=raw;                                  // 端末に書けなくても今回の起動中は残る
     const res=this.writeRaw(this.KEY,raw);
@@ -108,6 +148,8 @@ const Store = {
     const per=Object.values(CHARACTERS).filter(c=>c.custom).map(c=>({
       id:c.id,name:c.name,bytes:this.bytes(JSON.stringify(c))
     })).sort((a,b)=>b.bytes-a.bytes);
+    // localStorage に残るのは差し札だけなので、ここの limit は「見出し側」の上限。
+    // 立ち絵や音の実体は Media（IndexedDB）にあり、端末の空き容量まで使える。
     return {bytes:this.bytes(raw), limit:5*1024*1024, heavy:per.slice(0,3), all:per};
   },
 

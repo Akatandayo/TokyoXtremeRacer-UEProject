@@ -2939,10 +2939,50 @@ const Store = {
   },
 
   /* 保存。戻り値 {ok,reason,bytes} — 呼び出し側は必ず ok を見ること。 */
+  /* 重いもの（立ち絵・覚醒立ち絵・キャラBGM）は localStorage に入れない。
+     約5MBしかなく、立ち絵を数枚置いただけで保存できなくなるため、
+     実体は IndexedDB に預け、ここには差し札（idb:...）だけを書く。 */
+  HEAVY:[["portraitImage","face"],["bgmAudio","bgm"]],
+  stash(c){
+    if(typeof Media==="undefined"||!Media.supported()) return c;          // 使えない端末では今まで通り
+    const copy=Object.assign({},c);
+    this.HEAVY.forEach(([field,tag])=>{
+      const v=c[field];
+      if(typeof v==="string"&&v.length>4096&&!Media.isMark(v)){
+        const key=`c_${c.id}_${tag}`;
+        Media.putData(key,v);                                 // 書き込みは待たない
+        copy[field]=Media.MARK+key;
+      }
+    });
+    const a=c.awakening, af=a&&a.form;
+    if(af&&typeof af.portraitImage==="string"&&af.portraitImage.length>4096&&!Media.isMark(af.portraitImage)){
+      const key=`c_${c.id}_awk`;
+      Media.putData(key,af.portraitImage);
+      copy.awakening=Object.assign({},a,{form:Object.assign({},af,{portraitImage:Media.MARK+key})});
+    }
+    return copy;
+  },
+  /* 差し札を実体に戻す。UIは同期のままでよいよう、描画前にまとめて解決する。 */
+  hydrate(){
+    if(typeof Media==="undefined"||!Media.supported()) return Promise.resolve();
+    const jobs=[];
+    Object.values(CHARACTERS).forEach(c=>{
+      if(!c||!c.custom) return;
+      this.HEAVY.forEach(([field])=>{
+        const k=Media.keyOf(c[field]);
+        if(k) jobs.push(Media.getData(k).then(v=>{ if(v) c[field]=v; else c[field]=null; }));
+      });
+      const af=c.awakening&&c.awakening.form;
+      const ak=af&&Media.keyOf(af.portraitImage);
+      if(ak) jobs.push(Media.getData(ak).then(v=>{ af.portraitImage=v||null; }));
+    });
+    return Promise.all(jobs).catch(()=>{});
+  },
+
   save(){
     const custom={skills:{},characters:{}};
     Object.keys(SKILLS).forEach(k=>{ if(SKILLS[k].custom) custom.skills[k]=SKILLS[k]; });
-    Object.keys(CHARACTERS).forEach(k=>{ if(CHARACTERS[k].custom) custom.characters[k]=CHARACTERS[k]; });
+    Object.keys(CHARACTERS).forEach(k=>{ if(CHARACTERS[k].custom) custom.characters[k]=this.stash(CHARACTERS[k]); });
     const raw=JSON.stringify(custom);
     this.mem=raw;                                  // 端末に書けなくても今回の起動中は残る
     const res=this.writeRaw(this.KEY,raw);
@@ -2957,6 +2997,8 @@ const Store = {
     const per=Object.values(CHARACTERS).filter(c=>c.custom).map(c=>({
       id:c.id,name:c.name,bytes:this.bytes(JSON.stringify(c))
     })).sort((a,b)=>b.bytes-a.bytes);
+    // localStorage に残るのは差し札だけなので、ここの limit は「見出し側」の上限。
+    // 立ち絵や音の実体は Media（IndexedDB）にあり、端末の空き容量まで使える。
     return {bytes:this.bytes(raw), limit:5*1024*1024, heavy:per.slice(0,3), all:per};
   },
 
@@ -7048,7 +7090,9 @@ Object.assign(UI, {
         失敗は alert ではなくトーストで伝える。
    ========================================================================= */
 const Cropper = {
-  V:280, OUT:256, MAXPX:1600,        // 取り込み時の最大辺。これを超えたら縮める
+  V:280, OUT:768, MAXPX:3000,        // 取り込み時の最大辺。これを超えたら縮める
+  /* OUT は書き出す立ち絵の一辺。実体は IndexedDB に置くので、高解像度の端末でも
+     ぼやけない大きさを取れる（以前は localStorage の都合で 256 に抑えていた）。 */
   img:null, scale:1, zoom:1, tx:0, ty:0, done:null, drag:null, pointers:null, pinch:null,
   lastTap:0, busy:false,
 
@@ -7531,7 +7575,7 @@ const Editor = {
         <label class="btn btn-line filebtn" for="e-audio"><span class="ic">♪</span>音楽ファイルを使う
           <input type="file" id="e-audio" accept="audio/*" style="display:none"></label>
         ${d.bgmAudio?`<button class="btn btn-ghost" id="e-audio-clear" style="width:auto">外す</button>
-          <span class="hint">${esc(d.bgmAudioName||"設定済み")}</span>`:`<span class="hint">3MBまで。端末内に保存されます。</span>`}
+          <span class="hint">${esc(d.bgmAudioName||"設定済み")}</span>`:`<span class="hint">端末内に保存されます。曲まるごとでも入ります。</span>`}
       </div>`;
   },
   bind_look(){
@@ -7557,7 +7601,7 @@ const Editor = {
       this.readFile(f,url=>{
         this.lastPhoto=url;
         Cropper.open(url,cropped=>{ d.portraitImage=cropped; this.touch(); this.renderStep(); });
-      },msg=>{ $("#e-file-err").textContent=msg; Kit.toast(msg,{tone:"bad"}); },12);
+      },msg=>{ $("#e-file-err").textContent=msg; Kit.toast(msg,{tone:"bad"}); },48);
     };
     const ed=$("#e-file-edit");
     if(ed) ed.onclick=()=>Cropper.open(this.lastPhoto||d.portraitImage,c=>{ d.portraitImage=c; this.touch(); this.renderStep(); });
@@ -7573,7 +7617,7 @@ const Editor = {
       ev.target.value="";
       this.readFile(f,url=>{ d.bgmAudio=url; d.bgmAudioName=f.name; this.touch(); this.renderStep();
         Kit.toast("この曲を使います。"); },
-        msg=>{ $("#e-file-err").textContent=msg; Kit.toast(msg,{tone:"bad"}); },3);
+        msg=>{ $("#e-file-err").textContent=msg; Kit.toast(msg,{tone:"bad"}); },64);
     };
     const ac=$("#e-audio-clear");
     if(ac) ac.onclick=()=>{ d.bgmAudio=null; d.bgmAudioName=null; this.touch(); this.renderStep(); };
@@ -9084,8 +9128,12 @@ const Kit = {
    ========================================================================= */
 const Media = {
   DB:"awakening_media_v1", STORE:"files", VER:1,
-  MAX_BYTES:512*1024,          // 1ファイルの上限
-  MAX_MS:5000,                 // 長さの上限
+  /* 上限。実体は IndexedDB にあり、localStorage の約5MBとは無関係なので大きく取れる。
+     端末の空き容量のほうが先に効くため、足りなければ保存時に理由を出して断る。 */
+  MAX_BYTES:24*1024*1024,      // 1ファイルの上限（効果音）
+  MAX_MS:180000,               // 長さの上限（効果音）
+  MAX_BYTES_BGM:64*1024*1024,  // 1ファイルの上限（キャラBGM。曲まるごと入る想定）
+  MAX_MS_BGM:900000,           // 長さの上限（キャラBGM）
   /* 受け付ける形式。拡張子と MIME の両方で見る（端末によって type が空になる） */
   EXT:["mp3","m4a","ogg","wav"],
   MIME:/^audio\/(mpeg|mp3|mp4|m4a|x-m4a|aac|ogg|oga|wav|x-wav|wave|vnd\.wave)$/i,
@@ -9159,18 +9207,23 @@ const Media = {
 
   /* ---------- 書き込み ---------- */
   newId(){ return "m_"+Date.now().toString(36)+Math.floor(Math.random()*1296).toString(36); },
-  putFile(file){
+  /* opts.kind: "sfx"（既定）/ "bgm"。用途で上限が変わる。 */
+  putFile(file, opts){
+    const bgm=!!(opts&&opts.kind==="bgm");
+    const maxBytes=bgm?this.MAX_BYTES_BGM:this.MAX_BYTES;
+    const maxMs=bgm?this.MAX_MS_BGM:this.MAX_MS;
+    const MB=n=>(n/1048576).toFixed(n<10485760?1:0);
     if(!file) return Promise.reject(new Error("ファイルが選ばれていません。"));
     if(!this.supported()) return Promise.reject(new Error(this.reason()));
     const kind=this.checkKind(file);
     if(kind) return Promise.reject(new Error(kind));
-    if(file.size>this.MAX_BYTES)
+    if(file.size>maxBytes)
       return Promise.reject(new Error(
-        `ファイルが大きすぎます（${Math.round(this.MAX_BYTES/1024)}KBまで／選んだのは${(file.size/1024).toFixed(0)}KB）。短く切り出すか、書き出し設定を下げてください。`));
+        `ファイルが大きすぎます（${MB(maxBytes)}MBまで／選んだのは${MB(file.size)}MB）。`));
     return this.durationOf(file).then(ms=>{
       if(ms<0) throw new Error("音として読み込めませんでした。別のファイルでお試しください。");
-      if(ms>this.MAX_MS)
-        throw new Error(`長すぎます（${(this.MAX_MS/1000).toFixed(0)}秒まで／選んだのは${(ms/1000).toFixed(1)}秒）。効果音として短く切り出してください。`);
+      if(ms>maxMs)
+        throw new Error(`長すぎます（${Math.round(maxMs/1000)}秒まで／選んだのは${(ms/1000).toFixed(1)}秒）。`);
       return this.bufOf(file).then(buf=>{
         const rec={id:this.newId(),name:String(file.name||"効果音").slice(0,40),
           type:file.type||"audio/"+this.extOf(file.name),
@@ -9192,6 +9245,39 @@ const Media = {
       r.readAsArrayBuffer(file);
     });
   },
+  /* ---------- 文字列（データURI）の預かり ----------
+     立ち絵とキャラBGMは、これまで localStorage に直接入っていた。
+     そこは約5MBしかなく、立ち絵を数枚置いただけで保存できなくなる。
+     実体はこちら（IndexedDB）に預け、localStorage 側には差し札だけを残す。 */
+  MARK:"idb:",
+  isMark(v){ return typeof v==="string" && v.indexOf(this.MARK)===0; },
+  keyOf(v){ return this.isMark(v) ? v.slice(this.MARK.length) : null; },
+  putData(key,dataUrl){
+    if(!this.supported()||!dataUrl) return Promise.resolve(null);
+    const rec={id:key,name:key,type:"data",bytes:dataUrl.length,durationMs:0,at:Date.now(),data:dataUrl};
+    return this.tx("readwrite").then(st=>this.wrap(st.put(rec)))
+      .then(()=>{ this._meta=null; return this.MARK+key; }).catch(()=>null);
+  },
+  getData(key){
+    if(!key||!this.supported()) return Promise.resolve(null);
+    return this.get(key).then(r=>(r&&typeof r.data==="string")?r.data:null).catch(()=>null);
+  },
+
+  /* ---------- 端末の空き ---------- */
+  estimate(){
+    try{
+      if(navigator.storage&&navigator.storage.estimate) return navigator.storage.estimate();
+    }catch(e){}
+    return Promise.resolve({usage:null,quota:null});
+  },
+  /* 消えにくい保存を頼んでおく（拒否されても動きは変わらない） */
+  persist(){
+    try{
+      if(navigator.storage&&navigator.storage.persist) return navigator.storage.persist().catch(()=>false);
+    }catch(e){}
+    return Promise.resolve(false);
+  },
+
   /* 生のデータごと入れ直す（読み込み用） */
   putRaw(rec){
     if(!this.supported()) return Promise.reject(new Error(this.reason()));
@@ -9267,7 +9353,7 @@ const Media = {
       chain=chain.then(()=>{
         let buf;
         try{ buf=this.bufferFromB64(obj[id]); }catch(e){ return; }   // 壊れた1件で全部を止めない
-        if(!buf||buf.byteLength>this.MAX_BYTES*2) return;
+        if(!buf||buf.byteLength>this.MAX_BYTES_BGM) return;
         const m=meta[id]||{};
         return this.putRaw({id,name:String(m.name||"効果音").slice(0,40),type:m.type||"audio/mpeg",
           bytes:buf.byteLength,durationMs:Number(m.durationMs)||0,at:Date.now(),data:buf}).catch(()=>{});
@@ -9545,6 +9631,16 @@ function hideSplash(){
 function boot(){
   Store.load();
   Store.loadPrefs();
+  /* 立ち絵とキャラBGMの実体は IndexedDB にある。差し札を実体に戻してから描き直す。
+     スプラッシュが出ているあいだに終わるので、待たせている感じにはならない。 */
+  if(typeof Media!=="undefined"&&Media.supported()){
+    Media.persist();                                  // 消えにくい保存を頼んでおく
+    Store.hydrate().then(()=>{
+      const cur=document.querySelector(".screen.on");
+      if(cur&&cur.id==="s-roster") UI.renderRoster();
+      else if(cur&&cur.id==="s-select") UI.renderSelect();
+    });
+  }
   UI.initNav();
   UI.applyShellPrefs();
   UI.applyPrefs();
