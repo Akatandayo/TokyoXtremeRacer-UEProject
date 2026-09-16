@@ -184,6 +184,23 @@ Object.assign(UI, {
       <div class="chips" data-chips></div>`;
     this.unitBuilt[view]=true;
   },
+  /* その時点で見せるべき姿。覚醒形態に絵が設定されていればそちらを使う。 */
+  lookOf(f,awake){
+    const af=awake&&f.char&&f.char.awakening&&f.char.awakening.form;
+    if(af&&(af.portraitImage||af.portrait))
+      return {portraitImage:af.portraitImage||null, portrait:af.portrait||f.portrait};
+    return f;
+  },
+  /* 姿が変わる瞬間の演出。減らす設定のときは静かに差し替える。 */
+  morphAvatar(view){
+    const el=this.unitPart(view,"av");
+    if(!el||this.reduceMotion&&this.reduceMotion()) return;
+    el.classList.remove("morph");
+    void el.offsetWidth;                                   // アニメを撃ち直すための再計算
+    el.classList.add("morph");
+    setTimeout(()=>el.classList.remove("morph"),900);
+  },
+
   /* 立ち姿とステータス板の両方から部品を引く */
   unitPart(view,key){
     return $("#view"+view).querySelector("[data-"+key+"]")||$("#plate"+view).querySelector("[data-"+key+"]");
@@ -210,10 +227,15 @@ Object.assign(UI, {
     if(st.aura) host.style.setProperty("--h",st.hue);
     plate.className="plate "+(view===1?"foe":"me");
 
+    // 覚醒すると立ち姿そのものが変わる。覚醒用の絵が無いキャラは通常の絵のままにする。
+    const 見た目=this.lookOf(f,awake);
     const avCls=(view===1?"foe":"me")+(awake?" awake":"");
-    if(host._av!==avCls+"|"+(f.portraitImage||f.portrait)){
-      host._av=avCls+"|"+(f.portraitImage||f.portrait);
-      q("av").innerHTML=this.avatar(f,"84",avCls);
+    const 鍵=avCls+"|"+(見た目.portraitImage||見た目.portrait);
+    if(host._av!==鍵){
+      const 絵が変わる=host._av && host._av.split("|")[1]!==(見た目.portraitImage||見た目.portrait);
+      host._av=鍵;
+      q("av").innerHTML=this.avatar(見た目,"84",avCls);
+      if(絵が変わる&&awake) this.morphAvatar(view);          // 覚醒で姿が変わった瞬間を見せる
     }
     const owner=this.ownerLabel(side);
     if(q("owner").textContent!==owner) q("owner").textContent=owner;

@@ -1305,6 +1305,14 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 .logfull .lg-t{font-size:10.5px;letter-spacing:.2em;color:#7E729A;padding:7px 0 4px;position:sticky;top:0;
   background:linear-gradient(#1B1433,rgba(27,20,51,.92));border-bottom:1px solid rgba(255,255,255,.07)}
 
+/* 覚醒で立ち姿が差し替わる瞬間。光が回り込んでから新しい姿が出る。 */
+.figure.morph{animation:morphIn .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes morphIn{
+  0%{opacity:0;transform:scale(1.14);filter:brightness(2.6) saturate(.2) blur(6px)}
+  36%{opacity:1;filter:brightness(1.7) saturate(.7) blur(1px)}
+  100%{opacity:1;transform:none;filter:none}}
+@media (prefers-reduced-motion:reduce){ .figure.morph{animation:none} }
+
 /* ===== 22-strike.css ===== */
 /* ===== 命中・状態変化の絵 =====
    ここにある形は「技の名前」ではなく「技のデータ」から選ばれる（12b-fxkit.js）。
@@ -5538,14 +5546,117 @@ Object.assign(UI, {
     $("#btn-cancel-net").style.display=on?"block":"none";
   },
   /* 相手の端末に無い自作技も一緒に渡す。相手のデータは書き換えない */
+  /* 立ち絵・覚醒立ち絵・BGM・技の効果音は重い。これらを hello に丸ごと積むと
+     対戦の開始そのものが遅れるうえ、大きすぎて届かないこともある。
+     そこで本体は「実体を抜いた軽い束」として先に送り、実体はあとから小分けで送る。
+     届いたぶんから順に反映されるので、対戦はすぐ始められる。 */
+  MEDIA_CHUNK:48*1024,          // 1回に送る大きさ
+  MEDIA_BUDGET:16*1024*1024,    // 1回の対戦で送るメディアの合計上限
+
   bundleFor(charId){
     const c=CHARACTERS[charId];
     const o=JSON.parse(JSON.stringify(c));
-    if(o.bgmAudio&&o.bgmAudio.length>300000){ delete o.bgmAudio; delete o.bgmAudioName; }
     const ids=[].concat(o.skills||[],(o.awakening&&o.awakening.form&&o.awakening.form.skills)||[]);
     const skills={};
     ids.forEach(id=>{ if(SKILLS[id]) skills[id]=SKILLS[id]; });
-    return {v:APP_VERSION, char:o, skills};
+
+    // 実体を抜き、どこに何があったかの目録だけ残す
+    const media=[];
+    const 抜く=(obj,field,key)=>{
+      const v=obj&&obj[field];
+      if(typeof v==="string"&&v.length>0){ media.push({key,kind:"data",len:v.length}); obj[field]=null; }
+    };
+    抜く(o,"portraitImage","face");
+    抜く(o,"bgmAudio","bgm");
+    const af=o.awakening&&o.awakening.form;
+    if(af) 抜く(af,"portraitImage","awk");
+    Object.keys(skills).forEach(id=>{
+      if(skills[id].sfxId) media.push({key:"sfx:"+id,kind:"sfx",sfxId:skills[id].sfxId,len:0});
+    });
+    return {v:APP_VERSION, char:o, skills, media};
+  },
+
+  /* 目録に従って実体を集める。効果音は IndexedDB から取り出す。 */
+  collectMedia(charId,bundle){
+    const c=CHARACTERS[charId];
+    const out=[];
+    const push=(key,val)=>{ if(typeof val==="string"&&val) out.push({key,text:val}); };
+    push("face", c.portraitImage);
+    push("bgm",  c.bgmAudio);
+    const af=c.awakening&&c.awakening.form;
+    if(af) push("awk", af.portraitImage);
+    const sfx=(bundle.media||[]).filter(m=>m.kind==="sfx");
+    if(!sfx.length||typeof Media==="undefined"||!Media.supported()) return Promise.resolve(out);
+    return Promise.all(sfx.map(m=>
+      Media.get(m.sfxId).then(rec=>{
+        if(!rec||!rec.data) return;
+        const bin=(typeof rec.data==="string")?rec.data:Media.toBase64(rec.data);
+        if(bin) out.push({key:m.key,text:bin,sfxId:m.sfxId,name:rec.name,
+                          type:rec.type,durationMs:rec.durationMs,b64:typeof rec.data!=="string"});
+      }).catch(()=>{})
+    )).then(()=>out);
+  },
+
+  /* 小分けにして送る。相手の受信が追いつくよう少しずつ流す。 */
+  sendMedia(charId,bundle){
+    this.collectMedia(charId,bundle).then(items=>{
+      let 予算=this.MEDIA_BUDGET;
+      const 送る=items.filter(it=>{
+        if(it.text.length>予算) return false;               // 入りきらないものは諦める
+        予算-=it.text.length; return true;
+      });
+      const 落とした=items.length-送る.length;
+      if(落とした) this.netStatus(`相手に渡せないほど大きいデータが ${落とした} 件ありました。`,"");
+      const queue=[];
+      送る.forEach(it=>{
+        const n=Math.ceil(it.text.length/this.MEDIA_CHUNK)||1;
+        for(let i=0;i<n;i++) queue.push({t:"media",key:it.key,i,n,
+          part:it.text.slice(i*this.MEDIA_CHUNK,(i+1)*this.MEDIA_CHUNK),
+          meta:i===0?{sfxId:it.sfxId,name:it.name,type:it.type,durationMs:it.durationMs,b64:it.b64}:null});
+      });
+      const 流す=()=>{
+        if(!queue.length||!Net.conn) return;
+        for(let k=0;k<4&&queue.length;k++) Net.send(queue.shift());
+        setTimeout(流す,24);
+      };
+      流す();
+    }).catch(()=>{});
+  },
+
+  /* 受け取った小分けを組み立て、揃ったものから相手のキャラに反映する */
+  onMediaChunk(d){
+    if(!d||!d.key) return;
+    this.mediaBuf=this.mediaBuf||{};
+    const b=this.mediaBuf[d.key]=this.mediaBuf[d.key]||{parts:[],got:0,n:d.n,meta:null};
+    if(d.meta) b.meta=d.meta;
+    if(b.parts[d.i]==null){ b.parts[d.i]=d.part; b.got++; }
+    if(b.got<b.n) return;
+    const text=b.parts.join("");
+    delete this.mediaBuf[d.key];
+    this.applyMedia(d.key,text,b.meta);
+  },
+  applyMedia(key,text,meta){
+    const side=1-this.mySide;
+    const c=this.chars&&this.chars[side];
+    if(!c) return;
+    if(key==="face"){ c.portraitImage=text; }
+    else if(key==="bgm"){ c.bgmAudio=text; this.playBgm(); }
+    else if(key==="awk"){
+      if(c.awakening&&c.awakening.form) c.awakening.form.portraitImage=text;
+    }
+    else if(key.indexOf("sfx:")===0&&meta&&meta.sfxId&&typeof Media!=="undefined"){
+      // 相手の効果音は相手の対戦のあいだだけ使う。手元の保存物として残さない。
+      Media.putRemote(meta.sfxId,text,meta);
+      return;
+    }
+    // 立ち絵が届いたら、戦闘中でも姿を描き直す
+    if(this.engine){
+      const f=this.engine.fighters[side];
+      if(f){ if(key==="face") f.portraitImage=text; f.char=c; }
+      const view=(side===this.mySide)?0:1;
+      const host=$("#view"+view); if(host) host._av=null;      // 描き直させる
+      this.renderFighters();
+    }
   },
   battleSkills(b1,b2){
     return Object.assign({},(b1&&b1.skills)||{},(b2&&b2.skills)||{});
@@ -5604,6 +5715,7 @@ Object.assign(UI, {
       this.beginOnlineBattle(d.bundles,d.seed);
       return;
     }
+    if(d.t==="media"){ this.onMediaChunk(d); return; }
     if(d.t==="need-act"){
       // 相手がこちらの行動を受け取れていない。控えから送り直す
       const a=this.sentActions&&this.sentActions[d.turn];
@@ -5635,7 +5747,11 @@ Object.assign(UI, {
     this.remoteBuf={}; this.sentActions={};
     this.stopResend();
     this.netBusy(false);
+    this.mediaBuf={};
     this.startBattle(this.chars[0],this.chars[1],seed,this.battleSkills(bundles[0],bundles[1]));
+    // 対戦はもう始まっている。立ち絵と音はここから順に届く。
+    const mine=bundles[this.mySide];
+    if(mine&&(mine.media||[]).length) this.sendMedia(this.onlinePick,mine);
   },
   /* 通信が一度こぼれても止まらないよう、相手の行動が来るまで自分の行動を送り直す */
   startResend(){
@@ -5842,6 +5958,23 @@ Object.assign(UI, {
       <div class="chips" data-chips></div>`;
     this.unitBuilt[view]=true;
   },
+  /* その時点で見せるべき姿。覚醒形態に絵が設定されていればそちらを使う。 */
+  lookOf(f,awake){
+    const af=awake&&f.char&&f.char.awakening&&f.char.awakening.form;
+    if(af&&(af.portraitImage||af.portrait))
+      return {portraitImage:af.portraitImage||null, portrait:af.portrait||f.portrait};
+    return f;
+  },
+  /* 姿が変わる瞬間の演出。減らす設定のときは静かに差し替える。 */
+  morphAvatar(view){
+    const el=this.unitPart(view,"av");
+    if(!el||this.reduceMotion&&this.reduceMotion()) return;
+    el.classList.remove("morph");
+    void el.offsetWidth;                                   // アニメを撃ち直すための再計算
+    el.classList.add("morph");
+    setTimeout(()=>el.classList.remove("morph"),900);
+  },
+
   /* 立ち姿とステータス板の両方から部品を引く */
   unitPart(view,key){
     return $("#view"+view).querySelector("[data-"+key+"]")||$("#plate"+view).querySelector("[data-"+key+"]");
@@ -5868,10 +6001,15 @@ Object.assign(UI, {
     if(st.aura) host.style.setProperty("--h",st.hue);
     plate.className="plate "+(view===1?"foe":"me");
 
+    // 覚醒すると立ち姿そのものが変わる。覚醒用の絵が無いキャラは通常の絵のままにする。
+    const 見た目=this.lookOf(f,awake);
     const avCls=(view===1?"foe":"me")+(awake?" awake":"");
-    if(host._av!==avCls+"|"+(f.portraitImage||f.portrait)){
-      host._av=avCls+"|"+(f.portraitImage||f.portrait);
-      q("av").innerHTML=this.avatar(f,"84",avCls);
+    const 鍵=avCls+"|"+(見た目.portraitImage||見た目.portrait);
+    if(host._av!==鍵){
+      const 絵が変わる=host._av && host._av.split("|")[1]!==(見た目.portraitImage||見た目.portrait);
+      host._av=鍵;
+      q("av").innerHTML=this.avatar(見た目,"84",avCls);
+      if(絵が変わる&&awake) this.morphAvatar(view);          // 覚醒で姿が変わった瞬間を見せる
     }
     const owner=this.ownerLabel(side);
     if(q("owner").textContent!==owner) q("owner").textContent=owner;
@@ -9263,6 +9401,33 @@ const Media = {
     return this.get(key).then(r=>(r&&typeof r.data==="string")?r.data:null).catch(()=>null);
   },
 
+  /* ---------- 相手から届いた音 ----------
+     オンライン対戦の相手の効果音は、その対戦のあいだだけ鳴ればよい。
+     手元の保存物（一覧や書き出しの対象）には混ぜず、メモリ上にだけ置く。 */
+  remote:{},
+  toBase64(buf){
+    try{
+      const b=new Uint8Array(buf); let s="";
+      for(let i=0;i<b.length;i+=8192) s+=String.fromCharCode.apply(null,b.subarray(i,i+8192));
+      return btoa(s);
+    }catch(e){ return null; }
+  },
+  fromBase64(str){
+    try{
+      const bin=atob(str), b=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i);
+      return b.buffer;
+    }catch(e){ return null; }
+  },
+  putRemote(id,text,meta){
+    const buf=(meta&&meta.b64===false)?null:this.fromBase64(text);
+    if(!buf) return;
+    this.remote[id]={id,name:(meta&&meta.name)||"相手の効果音",
+      type:(meta&&meta.type)||"audio/mpeg",bytes:buf.byteLength,
+      durationMs:(meta&&meta.durationMs)||0,data:buf};
+  },
+  clearRemote(){ this.remote={}; },
+
   /* ---------- 端末の空き ---------- */
   estimate(){
     try{
@@ -9290,6 +9455,7 @@ const Media = {
     return this.tx("readonly").then(st=>this.wrap(st.get(id))).catch(()=>null);
   },
   getArrayBuffer(id){
+    if(this.remote[id]) return Promise.resolve(this.remote[id].data);   // 相手から届いた音
     return this.get(id).then(r=>(r&&r.data)?r.data:null);
   },
   info(id){

@@ -155,3 +155,11 @@
 .logfull .lgroup{margin-top:10px}
 .logfull .lg-t{font-size:10.5px;letter-spacing:.2em;color:#7E729A;padding:7px 0 4px;position:sticky;top:0;
   background:linear-gradient(#1B1433,rgba(27,20,51,.92));border-bottom:1px solid rgba(255,255,255,.07)}
+
+/* 覚醒で立ち姿が差し替わる瞬間。光が回り込んでから新しい姿が出る。 */
+.figure.morph{animation:morphIn .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes morphIn{
+  0%{opacity:0;transform:scale(1.14);filter:brightness(2.6) saturate(.2) blur(6px)}
+  36%{opacity:1;filter:brightness(1.7) saturate(.7) blur(1px)}
+  100%{opacity:1;transform:none;filter:none}}
+@media (prefers-reduced-motion:reduce){ .figure.morph{animation:none} }

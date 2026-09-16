@@ -149,6 +149,33 @@ const Media = {
     return this.get(key).then(r=>(r&&typeof r.data==="string")?r.data:null).catch(()=>null);
   },
 
+  /* ---------- 相手から届いた音 ----------
+     オンライン対戦の相手の効果音は、その対戦のあいだだけ鳴ればよい。
+     手元の保存物（一覧や書き出しの対象）には混ぜず、メモリ上にだけ置く。 */
+  remote:{},
+  toBase64(buf){
+    try{
+      const b=new Uint8Array(buf); let s="";
+      for(let i=0;i<b.length;i+=8192) s+=String.fromCharCode.apply(null,b.subarray(i,i+8192));
+      return btoa(s);
+    }catch(e){ return null; }
+  },
+  fromBase64(str){
+    try{
+      const bin=atob(str), b=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i);
+      return b.buffer;
+    }catch(e){ return null; }
+  },
+  putRemote(id,text,meta){
+    const buf=(meta&&meta.b64===false)?null:this.fromBase64(text);
+    if(!buf) return;
+    this.remote[id]={id,name:(meta&&meta.name)||"相手の効果音",
+      type:(meta&&meta.type)||"audio/mpeg",bytes:buf.byteLength,
+      durationMs:(meta&&meta.durationMs)||0,data:buf};
+  },
+  clearRemote(){ this.remote={}; },
+
   /* ---------- 端末の空き ---------- */
   estimate(){
     try{
@@ -176,6 +203,7 @@ const Media = {
     return this.tx("readonly").then(st=>this.wrap(st.get(id))).catch(()=>null);
   },
   getArrayBuffer(id){
+    if(this.remote[id]) return Promise.resolve(this.remote[id].data);   // 相手から届いた音
     return this.get(id).then(r=>(r&&r.data)?r.data:null);
   },
   info(id){
