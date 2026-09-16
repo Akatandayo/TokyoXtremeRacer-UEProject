@@ -276,10 +276,18 @@ const Media = {
     return chain.then(()=>{ this._meta=null; });
   },
 
-  /* ---------- 参照されていない音を片づける ---------- */
+  /* ---------- 参照されていないものを片づける ----------
+     効果音（技の sfxId）だけでなく、立ち絵・覚醒立ち絵・キャラBGM の実体も
+     ここに置いてある。鍵の作り方は Store.stash と同じ決まりなので、
+     キャラが居るあいだは必ず「使用中」に数える（消してしまうと立ち絵が失われる）。 */
   used(){
     const set={};
     Object.keys(SKILLS).forEach(k=>{ if(SKILLS[k]&&SKILLS[k].sfxId) set[SKILLS[k].sfxId]=1; });
+    Object.keys(CHARACTERS).forEach(k=>{
+      const c=CHARACTERS[k];
+      if(!c||!c.custom) return;
+      ["face","bgm","awk"].forEach(t=>{ set[`c_${c.id}_${t}`]=1; });
+    });
     return set;
   },
   sweep(){

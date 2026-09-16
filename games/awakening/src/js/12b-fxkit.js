@@ -24,8 +24,33 @@ const FxKit = {
   /* 行動を奪う系。かかっているあいだ立ち姿の呼吸を止める */
   HOLD:["STUN","SLEEP","PETRIFY","TIMESTOP"],
 
+  /* 状態異常の色。kind から引き、利用者が選んだ記号がはっきり何かを示しているときは
+     そちらを優先する（自作の「氷牙」でも ❄ を選んでいれば青くなる）。 */
+  KIND_HUE:{
+    DOT:96, REGEN:150, STUN:196, SLEEP:226, PETRIFY:34, TIMESTOP:190, TIMESKIP:190,
+    PARALYZE:52, CONFUSE:308, SILENCE:272, HEALBLOCK:330, INVERT:286,
+    SHIELD:166, NEGATE:176, ENDURE:44, CRIT:44, PIERCE:16, COUNTER:274, EXTRA:180,
+    ACC:262, SP:172
+  },
+  GLYPH_HUE:{
+    "❄":198,"✹":18,"🔥":14,"⚡":52,"☠":96,"☣":104,"☾":226,"✚":150,"⛨":166,"✦":44,
+    "◐":262,"⊘":330,"✖":272,"⏳":190,"⏩":190,"◘":34,"✜":44,"➶":16,"↩":274,"⛉":176
+  },
   num(v,d){ const n=Number(v); return Number.isFinite(n)?n:d; },
   family(kind){ return this.FAMILY[kind]||"sigil"; },
+  /* 効果ひとつぶんの色相 */
+  hueOf(e,tone,glyph){
+    if(glyph&&this.GLYPH_HUE[glyph]!=null) return this.GLYPH_HUE[glyph];
+    if(e&&this.KIND_HUE[e.kind]!=null) return this.KIND_HUE[e.kind];
+    return tone==="good"?this.TONE_HUE.good:this.TONE_HUE.bad;
+  },
+  /* 記号の動き方。何が起きているかを、動きでも言う */
+  markMotion(family,tone){
+    if(family==="lock") return "still";       // 止まっている
+    if(family==="hex") return "orbit";        // 絡みつく
+    if(family==="ward") return "shell";       // 包む
+    return tone==="good"?"rise":"sink";       // 立ちのぼる／滴る
+  },
 
   /* 状態異常ひとつぶんの絵。tone と icon は効果の定義から来るので、
      自作の異常でも色と字が決まる。 */
@@ -33,24 +58,37 @@ const FxKit = {
     e=e||{};
     const tone=(typeof effTone==="function")?effTone(e):(e.tone||"bad");
     const glyph=(typeof effIcon==="function")?effIcon(e):(e.icon||"◆");
+    const family=this.family(e.kind);
     return {
-      family:this.family(e.kind),
-      tone, glyph,
-      hue:this.TONE_HUE[tone]!=null?this.TONE_HUE[tone]:288,
+      family, tone, glyph,
+      hue:this.hueOf(e,tone,glyph),
+      motion:this.markMotion(family,tone),
       name:e.name||"効果"
     };
   },
-  /* いま体にかかっているものを1つのオーラにまとめる */
+  /* いま体にかかっているものを「立ち姿の見た目」にまとめる。
+     どれか一つを主役（オーラの色と体の扱い）にし、最大3つを記号として体の周りに出す。
+     利用者が自分で足した異常でも、kind と記号から必ず何かしらの絵になる。 */
   bodyState(list){
     const es=list||[];
-    let bad=0, good=0, held=false;
+    if(!es.length) return {aura:false,hue:288,held:false,family:"",tone:"bad",marks:[]};
+    // 主役の決め方：行動を奪うもの＞絡みつくもの＞継続するもの＞守り＞その他
+    const weight=fam=>fam==="lock"?5:fam==="hex"?4:fam==="mote"?3:fam==="ward"?2:1;
+    let bad=0, good=0, held=false, lead=null, leadW=-1;
+    const marks=[];
     es.forEach(e=>{
+      const fx=this.effectFx(e);
       if(this.HOLD.indexOf(e.kind)>=0) held=true;
-      const t=(typeof effTone==="function")?effTone(e):(e.tone||"bad");
-      if(t==="good") good++; else bad++;
+      if(fx.tone==="good") good++; else bad++;
+      const w=weight(fx.family)+(fx.tone==="good"?0:0.5);
+      if(w>leadW){ leadW=w; lead=fx; }
+      if(marks.length<3) marks.push(fx);
     });
-    if(!es.length) return {aura:false,hue:288,held:false};
-    return {aura:true, hue:(bad>=good?this.TONE_HUE.bad:this.TONE_HUE.good), held};
+    return {
+      aura:true,
+      hue:lead?lead.hue:(bad>=good?this.TONE_HUE.bad:this.TONE_HUE.good),
+      held, family:lead?lead.family:"sigil", tone:lead?lead.tone:"bad", marks
+    };
   },
 
   /* --- 技ひとつぶんの演出設計図 --------------------------------------------
@@ -85,15 +123,18 @@ const FxKit = {
     }else if(swift){
       motion="dash"; impact="pierce"; timbre="pierce";
     }else if(hits>=3){
-      motion="lunge"; impact="wave"; timbre="metal";
+      motion="lunge"; impact="wave"; timbre="wave";
     }else if(heavy){
-      motion="heavy"; impact=ratio?"crush":"burst"; timbre=magic?"magic":"blunt";
+      motion="heavy"; impact=ratio?"crush":"burst"; timbre=ratio?"crush":(magic?"magic":"blunt");
     }else if(magic){
       motion="cast"; impact="burst"; timbre="magic";
     }else{
       motion="lunge"; impact="slash"; timbre="metal";
     }
     if(drain){ impact="drain"; timbre="drain"; }
+    // 攻撃でも癒やす技・守る技は、音の性格をそちらに寄せる
+    if(damaging&&heal) timbre="bless";
+    if(damaging&&type==="DEFENSE") timbre="ward";
 
     // 色：基本は技の系統。相手に状態異常を乗せる技はその異常の色に寄せる
     let hue=this.TYPE_HUE[type];

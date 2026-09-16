@@ -142,6 +142,13 @@ Object.assign(UI, {
       if(c.custom) chips.push("自作");
       if(c.awakening&&c.awakening.enabled) chips.push("覚醒あり");
       chips.push("技"+((c.skills||[]).length)+"個");
+      /* 何を持たせたかが一覧で分かるようにする（容量の見当もつく） */
+      const awkFace=c.awakening&&c.awakening.form&&c.awakening.form.portraitImage;
+      if(c.portraitImage) chips.push(awkFace?"立ち絵2枚":"立ち絵");
+      else if(awkFace) chips.push("覚醒の立ち絵");
+      if(c.bgmAudio) chips.push("♪ 曲");
+      const sfx=(c.skills||[]).filter(id=>SKILLS[id]&&SKILLS[id].sfxId).length;
+      if(sfx) chips.push("♪ 技の音"+sfx);
       return `<div class="rcard" data-id="${c.id}">
         <button class="rc-main" data-act="open">
           ${this.avatar(c,"44")}
@@ -276,7 +283,10 @@ Object.assign(UI, {
     const box=$("#roster-usage");
     if(!box) return;
     const u=Store.usage();
-    if(!u.bytes){ box.innerHTML=""; return; }
+    if(!u.bytes){
+      box.innerHTML=`<p class="note">端末にはまだ何も置いていません。キャラクターを作ると、ここに使用量が出ます。</p>`;
+      return;
+    }
     const kb=(u.bytes/1024).toFixed(0);
     const pct=Math.min(100,u.bytes/u.limit*100);
     const warn=pct>70;
@@ -285,7 +295,10 @@ Object.assign(UI, {
       <div class="us-track"><div class="us-fill" style="transform:scaleX(${(pct/100).toFixed(4)})"></div></div>
       <div class="note" id="us-note">${warn?`残りが少なくなっています。重いのは ${u.heavy.map(h=>esc(h.name)+"（"+(h.bytes/1024).toFixed(0)+"KB）").join("・")} です。ファイルに書き出してから整理してください。`
         :"目安の上限は5MBです。立ち絵つきのキャラは1体あたり20KB前後です。"}</div>
-      <div class="note" id="us-media"></div></div>`;
+      <div class="note" id="us-media"></div>
+      <button class="btn btn-ghost" id="us-manage" style="margin-top:8px">内訳を見て整理する</button></div>`;
+    const mg=$("#us-manage");
+    if(mg) mg.onclick=()=>this.openVault();
     /* 効果音は別の置き場（IndexedDB）なので、別立てで知らせる */
     if(typeof Media==="undefined"||!Media.supported()){
       const m=$("#us-media");

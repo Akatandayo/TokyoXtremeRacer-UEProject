@@ -39,6 +39,7 @@ Object.assign(UI, {
     this.lastSp=[null,null];
     this.actorSide=null;
     this.guardShown=[false,false];
+    this.awkState=[null,null];
     this.bindBattle();
     this.prewarmSfx();
     this.clearFx();
@@ -65,8 +66,11 @@ Object.assign(UI, {
   clearFx(){
     $$("#arena .float,#arena .cue,#arena .gring,#arena .spark,#arena .statusburst,#arena .banner,"
       +"#arena .im,#arena .sb,#arena .column,#arena .gbreak,#arena .proj,#arena .combo").forEach(el=>el.remove());
-    ["sh1","sh2","sh3","sh4"].forEach(c=>$("#arena").classList.remove(c));
+    ["sh1","sh2","sh3","sh4","settled"].forEach(c=>$("#arena").classList.remove(c));
+    $("#s-battle").classList.remove("charging");
     $("#awk").classList.remove("on");
+    $("#decide").className="decide";
+    $("#decide").setAttribute("aria-hidden","true");
     $("#ffcatch").classList.remove("on");
   },
 
@@ -223,7 +227,7 @@ Object.assign(UI, {
     // 状態異常は「立ち姿そのもの」に出す。行動を止める系は動きを凍らせる
     const st=FxKit.bodyState(s.effects);
     host.className="unit"+(view===1?" foe":" me")+(s.hp<=0?" down":"")
-      +(st.aura?" has-st":"")+(st.held?" held":"");
+      +(awake?" awakened":"")+(st.aura?" has-st":"")+(st.held?" held":"");
     if(st.aura) host.style.setProperty("--h",st.hue);
     plate.className="plate "+(view===1?"foe":"me");
 
@@ -254,6 +258,16 @@ Object.assign(UI, {
     const tone = awake?"awake" : p>0.55?"" : p>0.3?"mid" : p>0.15?"low":"crisis";
     const fc="hpfill"+(tone?" "+tone:"");
     if(fill.className!==fc) fill.className=fc;
+
+    // 覚醒できるようになった瞬間は、音と光で必ず知らせる（見逃させない）
+    if(!this.awkState) this.awkState=[null,null];
+    const prevAwk=this.awkState[view];
+    this.awkState[view]=s.awaken;
+    if(prevAwk&&prevAwk!==s.awaken&&s.awaken==="AVAILABLE"&&!this.skip){
+      Music.sfx("ready",{view});
+      this.cue(view,"覚醒可能","awk");
+      this.column(view,44);
+    }
 
     const line=this.awakenLine(f);
     const mark=q("mark");
@@ -461,9 +475,9 @@ Object.assign(UI, {
     if(p.ranged){
       if(p.heal||p.motion==="brace") this.column(view,p.hue);
       else this.projectile(e.actor,p);
-      Music.sfx("cast",{plan:p});
+      Music.sfx("cast",{plan:p,view});
     }else if(p.heavy){
-      Music.sfx("charge",{plan:p});
+      Music.sfx("charge",{plan:p,view});
     }
   },
   /* ログの文からどちらの話かを推測する（エンジンは側を持たないため） */
@@ -821,7 +835,9 @@ Object.assign(UI, {
       const isAwk=(e.kind==="awaken"&&e.text.indexOf("AWAKENING")>=0);
       let ms;
       if(isAwk){
-        ms=this.skip?140:this.awakenFlash(e.text);
+        ms=this.skip?140:this.awakenFlash(e.text,e.actor);
+      }else if(e.kind==="win"){
+        ms=this.decideCard(this.skip);           // 最後の一撃からリザルトまでを一続きにする
       }else if(this.skip){
         ms=14;
       }else{
@@ -842,7 +858,7 @@ Object.assign(UI, {
       const view=this.viewOf(side);
       const delta=after-before;
       if(delta>0){
-        if(!this.skip){ this.popNumber(view,delta); this.column(view,150); this.flash("heal"); Music.sfx("heal"); }
+        if(!this.skip){ this.popNumber(view,delta); this.column(view,150); this.flash("heal"); Music.sfx("heal",{view}); }
         return;
       }
       const amount=-delta;
@@ -864,21 +880,21 @@ Object.assign(UI, {
       this.shake(tier);
       this.flash(crit?"crit":"");
       this.buzz(this.TIERS[tier].vib);
-      Music.sfx("strike",{tier,crit,counter,cost,plan,index:this.hitIndex,
+      Music.sfx("strike",{tier,crit,counter,cost,plan,view,index:this.hitIndex,
         sfxId:(!cost&&!counter&&this.curSkill)?this.curSkill.sfxId:null});
       stop=Math.max(stop,this.TIERS[tier].stop*(crit?1.35:1));
       // 防御していた側が受けたダメージ。貫通する技なら防御が砕ける絵にする
       if(e.snap[side].defending&&!this.guardShown[side]&&!cost&&!counter){
         this.guardShown[side]=true;
         if(plan.breaker){
-          this.shatter(view); this.cue(view,"防御貫通","break"); Music.sfx("break");
+          this.shatter(view); this.cue(view,"防御貫通","break"); Music.sfx("break",{view});
           stop=Math.max(stop,90);
         }else{
           this.cue(view,"防御","guard");
           this.fx(view,"gring",560);
         }
       }
-      if(e.snap[side].hp<=0) Music.sfx("down");
+      if(e.snap[side].hp<=0){ Music.sfx("down",{view}); stop=Math.max(stop,this.deathBlow(view)); }
     });
     if(this.skip) return stop;
 
@@ -891,17 +907,17 @@ Object.assign(UI, {
         host.classList.remove("dodge"); void host.offsetWidth; host.classList.add("dodge");
         setTimeout(()=>host.classList.remove("dodge"),460);
         this.cue(view,/効かなかった/.test(e.text)?"無効":"MISS","miss");
-        Music.sfx("miss",{plan:this.curPlan});
+        Music.sfx("miss",{plan:this.curPlan,view});
       }
     }
     if(e.kind==="status") stop=Math.max(stop,this.statusEntry(e));
     if(e.kind==="sys"&&/無効化した/.test(e.text)){
       const side=this.sideFromText(e.text,this.actorSide==null?null:1-this.actorSide);
-      if(side!=null){ this.cue(this.viewOf(side),"NULLIFY","nullify"); Music.sfx("guard"); stop=Math.max(stop,90); }
+      if(side!=null){ this.cue(this.viewOf(side),"NULLIFY","nullify"); Music.sfx("guard",{view:this.viewOf(side)}); stop=Math.max(stop,90); }
     }
     if(e.kind==="sys"&&/を防いだ/.test(e.text)){
       const side=this.sideFromText(e.text,this.actorSide==null?null:1-this.actorSide);
-      if(side!=null){ this.cue(this.viewOf(side),"SHIELD","guard"); Music.sfx("guard"); }
+      if(side!=null){ this.cue(this.viewOf(side),"SHIELD","guard"); Music.sfx("guard",{view:this.viewOf(side)}); }
     }
     if(e.kind==="sys"&&/身を固めた/.test(e.text)){
       const side=this.sideFromText(e.text,e.actor);
@@ -914,10 +930,9 @@ Object.assign(UI, {
         setTimeout(()=>host.classList.remove("guard"),440);
         this.statusFx(view,{family:"ward",hue:166,glyph:"⛨"});
         this.column(view,166);
-        Music.sfx("guard");
+        Music.sfx("guard",{view});
       }
     }
-    if(e.kind==="win") Music.sfx(this.engine.winner&&this.engine.winner.side===this.mySide?"win":"lose");
     return stop;
   },
   /* 状態変化の1行。効果の定義（kind・icon・tone）はその場のスナップショットから引くので、
@@ -941,7 +956,7 @@ Object.assign(UI, {
     this.statusFx(view,fx);
     if(fx.tone==="good") this.column(view,fx.hue);
     this.cue(view,fx.name,"status"+(fx.tone==="good"?" good":""));
-    Music.sfx("status",{good:fx.tone==="good",family:fx.family});
+    Music.sfx("status",{good:fx.tone==="good",family:fx.family,view});
     return 60;
   },
   /* 再生中に画面を触ったら残りを一気に流す */
@@ -953,16 +968,25 @@ Object.assign(UI, {
     if(this._advance) this._advance();
     return true;
   },
-  /* 覚醒の演出だけを飛ばす（その後は通常の速度で続ける） */
+  /* 覚醒の演出だけを飛ばす（その後は通常の速度で続ける）。
+     溜めの最中（まだ幕が上がっていない）でも押せるようにしておく。 */
   cutScene(){
-    if(!$("#awk").classList.contains("on")) return;
+    if(!$("#awk").classList.contains("on")&&!$("#arena").classList.contains("charging")) return;
+    const view=this._awkView;
     this.hideAwaken();
+    if(view!=null) this.morphAvatar(view);          // 幕を飛ばしても姿の切り替わりは見せる
     if(this._advance) this._advance();
   },
   hideAwaken(){
     const o=$("#awk");
+    (this._awkTimers||[]).forEach(clearTimeout);
+    this._awkTimers=[];
     o.classList.remove("on","brief");
     o.setAttribute("aria-hidden","true");
+    $("#arena").classList.remove("charging");
+    $("#s-battle").classList.remove("charging");
+    $$("#arena .unit.charge").forEach(el=>el.classList.remove("charge"));
+    $("#shockwave").classList.remove("on");
   },
   banner(text){
     const a=$("#arena");
@@ -971,28 +995,133 @@ Object.assign(UI, {
     a.appendChild(b); a.classList.add("bannering");
     setTimeout(()=>{ b.remove(); a.classList.remove("bannering"); },1000);
   },
-  /* 覚醒：1回目はたっぷり、2回目からは短く。いつでもスキップできる */
-  awakenFlash(text){
+  /* 覚醒：この作品の題名そのもの。
+     ①舞台が息を呑む（溜め）→ ②闇が本人の位置から広がる → ③一閃 → ④新しい姿 → ⑤舞台に戻す。
+     1回目はたっぷり、2回目からは①を省いて短く。いつでもスキップできる。 */
+  awakenFlash(text,actor){
     const brief=this.awkSeen>0;
     this.awkSeen++;
-    const sw=$("#shockwave");
-    sw.classList.remove("on"); void sw.offsetWidth; sw.classList.add("on");
-    setTimeout(()=>sw.classList.remove("on"),460);
-    const o=$("#awk");
+    const calm=this.reduceMotion&&this.reduceMotion();
     const name=text.replace("【AWAKENING】","");
     const m=name.match(/^(.+?)が(.+?)へ移行した/);
     $("#awk-who").textContent=m?m[1]:name;
     $("#awk-form").textContent=m?m[2]:"";
+
+    // 誰が覚醒したのか。その立ち姿を幕の中央に据える（覚醒前の姿→覚醒後の姿）
+    const side=(actor!=null)?actor:this.sideFromText(text,null);
+    const view=(side!=null)?this.viewOf(side):0;
+    this._awkView=(side!=null)?view:null;
+    const f=(side!=null)?this.engine.fighters[side]:null;
+    if(f){
+      $("#awk-sil").innerHTML=this.avatar(this.lookOf(f,false),"84","");
+      $("#awk-fig").innerHTML=this.avatar(this.lookOf(f,true),"84","awake");
+    }else{ $("#awk-sil").innerHTML=""; $("#awk-fig").innerHTML=""; }
+
+    this._awkTimers=(this._awkTimers||[]);
+    this._awkTimers.forEach(clearTimeout);
+    this._awkTimers=[];
+    const at=(ms,fn)=>{ this._awkTimers.push(setTimeout(fn,ms)); };
+
+    const charge=(brief||calm)?0:420;
+    if(charge) this.awakenCharge(view);
+    at(charge,()=>this.awakenCurtain(brief,calm,view));
+    const dur=calm?700:(brief?1150:2700);
+    // 幕が引ける少し前に立ち姿を差し替える。幕の残り香が切り替わりを隠してくれる
+    at(charge+dur-200,()=>{ if($("#awk").classList.contains("on")) this.morphAvatar(view); });
+    at(charge+dur,()=>{ if($("#awk").classList.contains("on")){ this.hideAwaken(); this.awakenLand(view); } });
+    return charge+dur+(brief?60:160);
+  },
+  /* ①溜め。舞台が暗み、本人だけが光る。ここでの「間」が覚醒を重くする */
+  awakenCharge(view){
+    const a=$("#arena");
+    a.classList.add("charging");
+    $("#s-battle").classList.add("charging");
+    const host=$("#view"+view);
+    if(host){ host.classList.add("charge"); }
+    this.column(view,44);
+    Music.sfx("awakenRise");
+    this.buzz([0,12,90,18,110,26]);
+  },
+  /* ⑤舞台に戻る。幕が引けた瞬間、足元から金の波が広がって新しい姿を舞台に据える */
+  awakenLand(view){
+    this.fx(view,"awkland",900);
+    this.column(view,44);
+    const host=$("#view"+view);
+    if(host){
+      host.classList.remove("landed"); void host.offsetWidth; host.classList.add("landed");
+      setTimeout(()=>host.classList.remove("landed"),900);
+    }
+  },
+  /* ②〜④幕。--t は CSS と JS で同じ値を使う */
+  awakenCurtain(brief,calm,view){
+    const o=$("#awk"), a=$("#arena");
+    a.classList.remove("charging");
+    $("#s-battle").classList.remove("charging");
+    const host=$("#view"+view);
+    if(host) host.classList.remove("charge");
+    // 闇の広がる起点を、覚醒した本人の立ち位置に合わせる
+    const wrap=host&&host.querySelector(".avwrap");
+    if(wrap){
+      const r=wrap.getBoundingClientRect();
+      o.style.setProperty("--ox",Math.round(r.left+r.width/2)+"px");
+      o.style.setProperty("--oy",Math.round(r.top+r.height/2)+"px");
+    }else{ o.style.setProperty("--ox","50%"); o.style.setProperty("--oy","44%"); }
+    const dur=calm?700:(brief?1150:2700);
+    o.style.setProperty("--t",dur+"ms");
     o.classList.remove("on","brief");
     void o.offsetWidth;
     o.classList.add("on");
     if(brief) o.classList.add("brief");
     o.setAttribute("aria-hidden","false");
-    const dur=brief?1150:2400;
     Music.sfx("awaken",{brief});
     this.buzz(brief?[0,30,40,30]:[0,40,60,40,80,60]);
-    setTimeout(()=>{ if(o.classList.contains("on")) this.hideAwaken(); },dur);
-    return dur+(brief?60:140);
+    if(!calm){
+      // 断つ瞬間に白が抜ける。幕の 33% 地点＝一閃が交差するところ
+      this._awkTimers.push(setTimeout(()=>{
+        const sw=$("#shockwave");
+        sw.classList.remove("on"); void sw.offsetWidth; sw.classList.add("on");
+        this._awkTimers.push(setTimeout(()=>sw.classList.remove("on"),460));
+        this.buzz([0,50,30,70]);
+      },Math.round(dur*0.32)));
+    }
+  },
+
+  /* ---------- 決着 ----------
+     最後の一撃 → 倒れる → 決着の札 → リザルト、を一続きの体験にする。 */
+  /* とどめ。時間が伸びたように見せ、舞台から色を抜く */
+  deathBlow(view){
+    if(this.skip) return 0;
+    const a=$("#arena");
+    a.classList.add("settled");
+    const host=$("#view"+view);
+    if(host){ this.fx(view,"deathring",900); }
+    this.flash("final");
+    this.shake(4);
+    this.buzz([0,60,50,90,60,140]);
+    Music.sfx("deathblow",{view});
+    return 420;
+  },
+  /* 決着の札。勝ちか負けかを一拍で言い切ってからリザルトへ渡す */
+  decideCard(quick){
+    const e=this.engine, o=$("#decide");
+    const win=e.winner;
+    const mine=!!(win&&win.side===this.mySide);
+    const local=(this.mode==="local");
+    const word=local?"決着":(mine?"勝利":"敗北");
+    const sub=local
+      ? (win?win.name+" の勝ち":"")
+      : (win?win.name+(mine?" が勝った":" に敗れた"):"");
+    $("#decide-word").innerHTML=word.split("").map(c=>`<span>${esc(c)}</span>`).join("");
+    $("#decide-sub").textContent=sub;
+    Music.sfx(local?"win":(mine?"win":"lose"));
+    if(quick){ return 140; }
+    const calm=this.reduceMotion&&this.reduceMotion();
+    const dur=calm?600:1500;
+    o.className="decide on"+(local?" draw":(mine?" win":" lose"));
+    o.style.setProperty("--t",dur+"ms");
+    o.setAttribute("aria-hidden","false");
+    this.buzz(mine||local?[0,30,60,40]:[0,80]);
+    return dur;
   },
 
   /* ---------- リザルト ---------- */
@@ -1061,7 +1190,17 @@ Object.assign(UI, {
     rb.disabled=false; rb.textContent="もう一度たたかう";
     this.hideAwaken();
     $("#ffcatch").classList.remove("on");
+    // 勝ち負けで画面の温度を変え、決着の札からそのまま溶け込ませる
+    const mine=(win.side===this.mySide);
+    $("#s-result").classList.toggle("won",this.mode==="local"||mine);
+    $("#s-result").classList.toggle("lost",this.mode!=="local"&&!mine);
     this.show("result");
+    const dc=$("#decide");
+    if(dc.classList.contains("on")){
+      dc.classList.add("out");
+      setTimeout(()=>{ dc.className="decide"; dc.setAttribute("aria-hidden","true"); },420);
+    }
+    $("#arena").classList.remove("settled");
   },
   rematch(){
     this.tick(14);

@@ -14,70 +14,152 @@
 #shockwave.on{display:block;animation:flashBang .45s ease forwards}
 @keyframes flashBang{0%{opacity:1}100%{opacity:0}}
 
-/* ---------- 覚醒 ---------- */
-#awk{position:fixed;inset:0;display:none;place-items:center;z-index:80;overflow:hidden;--t:2.4s;
+/* ---------- 覚醒：この作品の題名そのもの。最大の見せ場にする ----------
+   組み立て：闇が覚醒した者の位置から広がる → 元の姿が浮かぶ → 一閃で断つ
+   → 白光 → 新しい姿が現れる → 「覚醒」の二文字 → 名と形態 → 舞台へ戻る。
+   時間は --t の割合だけで書いてあるので、2回目以降（.brief）は同じ形のまま短くなる。 */
+#awk{position:fixed;inset:0;display:none;place-items:center;z-index:80;overflow:hidden;
+  --t:2.7s;--ox:50%;--oy:44%;
   background:none;-webkit-tap-highlight-color:transparent}
 #awk.brief{--t:1.15s}
 #awk.on{display:grid;animation:awkHold var(--t) linear forwards}
-@keyframes awkHold{0%,99%{opacity:1}100%{opacity:0}}
-#awk .awk-void{position:absolute;inset:0;
-  background:radial-gradient(58% 58% at 50% 50%,rgba(255,214,120,.34),rgba(10,7,18,.96) 68%,#07040E 100%);
-  animation:awkVoid var(--t) cubic-bezier(.2,.8,.2,1) both}
-@keyframes awkVoid{0%{opacity:0;transform:scale(1.35)}9%{opacity:1;transform:scale(1)}
-  82%{opacity:1;transform:scale(1.04)}100%{opacity:0;transform:scale(1.1)}}
-#awk .rays{position:absolute;left:50%;top:50%;width:190vmax;height:190vmax;margin:-95vmax 0 0 -95vmax;
+@keyframes awkHold{0%,97%{opacity:1}100%{opacity:0}}
+
+/* 覚醒した者の足元から広がる墨。ここが「切った」瞬間の起点になる */
+#awk .awk-ink{position:absolute;left:var(--ox);top:var(--oy);width:24px;height:24px;margin:-12px 0 0 -12px;
+  border-radius:50%;background:radial-gradient(closest-side,#160C24 0%,#0A0614 62%,#07040E 100%);
+  transform:scale(0);animation:awkInk var(--t) cubic-bezier(.16,.9,.24,1) both;will-change:transform}
+@keyframes awkInk{0%{transform:scale(0);opacity:1}5%{transform:scale(170);opacity:1}
+  90%{transform:scale(170);opacity:1}100%{transform:scale(170);opacity:0}}
+/* 墨の上に乗る光。断つ瞬間に一段明るくなる */
+#awk .awk-void{position:absolute;inset:0;z-index:1;
+  background:radial-gradient(58% 46% at 50% 38%,rgba(255,214,120,.30),rgba(10,7,18,.25) 62%,rgba(7,4,14,.7) 100%);
+  animation:awkVoid var(--t) linear both}
+@keyframes awkVoid{0%{opacity:0}8%{opacity:.5}30%{opacity:.6}34%{opacity:1}
+  46%{opacity:.85}88%{opacity:.85}100%{opacity:0}}
+#awk .rays{position:absolute;left:50%;top:38%;width:190vmax;height:190vmax;margin:-95vmax 0 0 -95vmax;z-index:1;
   background:repeating-conic-gradient(from 0deg,rgba(255,232,176,.20) 0deg 2.4deg,rgba(255,232,176,0) 2.4deg 13deg);
-  animation:spin 11s linear infinite,awkRays var(--t) cubic-bezier(.2,.8,.2,1) both;
+  animation:spin 11s linear infinite,awkRays var(--t) linear both;
   will-change:transform,opacity}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes awkRays{0%{opacity:0}16%{opacity:1}78%{opacity:.9}100%{opacity:0}}
-#awk .awk-ring{position:absolute;left:50%;top:50%;width:44vmax;height:44vmax;margin:-22vmax 0 0 -22vmax;
+@keyframes awkRays{0%,30%{opacity:0}38%{opacity:1}84%{opacity:.75}100%{opacity:0}}
+#awk .awk-ring{position:absolute;left:50%;top:38%;width:44vmax;height:44vmax;margin:-22vmax 0 0 -22vmax;z-index:2;
   border-radius:50%;border:2px solid rgba(255,240,200,.85);box-shadow:0 0 70px rgba(255,214,110,.6);
-  animation:awkRing calc(var(--t)*.62) cubic-bezier(.15,.85,.25,1) both;will-change:transform,opacity}
-#awk .awk-ring.r2{border-color:rgba(255,205,120,.5);animation-delay:calc(var(--t)*.16)}
-@keyframes awkRing{0%{opacity:0;transform:scale(.12)}22%{opacity:1}100%{opacity:0;transform:scale(2.6)}}
-#awk .awk-slash{position:absolute;left:-30%;top:50%;width:160%;height:3px;
+  animation:awkRing calc(var(--t)*.5) cubic-bezier(.15,.85,.25,1) both;
+  animation-delay:calc(var(--t)*.31);will-change:transform,opacity}
+#awk .awk-ring.r2{border-color:rgba(255,205,120,.5);animation-delay:calc(var(--t)*.4)}
+@keyframes awkRing{0%{opacity:0;transform:scale(.06)}18%{opacity:1}100%{opacity:0;transform:scale(2.6)}}
+
+/* 立ち姿。断つ前の姿と、断ったあとの姿を同じ場所で入れ替える */
+#awk .awk-stage{position:absolute;left:50%;top:38%;z-index:2;
+  width:min(46vmin,230px);height:min(46vmin,230px);margin:0;transform:translate3d(-50%,-50%,0)}
+#awk .awk-fig{position:absolute;inset:0;display:grid;place-items:center}
+#awk .awk-fig .av{width:100%;height:100%;border-radius:26px;font-size:min(22vmin,108px);border-width:2px}
+#awk .awk-fig .av.awake{animation:none}
+/* 断つ前：沈んだ影。輪郭にだけ光が当たっている */
+#awk #awk-sil{filter:brightness(.26) saturate(.35) contrast(1.15);
+  animation:awkSil var(--t) cubic-bezier(.2,.8,.2,1) both}
+@keyframes awkSil{0%{opacity:0;transform:translate3d(0,7%,0) scale(1.16);filter:brightness(.05) blur(6px)}
+  8%{opacity:1;transform:none;filter:brightness(.26) saturate(.35)}
+  29%{opacity:1;filter:brightness(.26) saturate(.35)}
+  33%{opacity:1;filter:brightness(7) saturate(0)}
+  38%{opacity:0;transform:scale(1.1);filter:brightness(9) saturate(0)}
+  100%{opacity:0}}
+/* 断ったあと：新しい姿。金の縁取りと共に現れ、最後まで残る */
+#awk #awk-fig{animation:awkNew var(--t) cubic-bezier(.2,.8,.2,1) both}
+@keyframes awkNew{0%,32%{opacity:0;transform:scale(1.22);filter:brightness(6) saturate(0) blur(8px)}
+  38%{opacity:1;transform:scale(1.02);filter:brightness(2.2) saturate(.6) blur(0)}
+  48%{opacity:1;transform:scale(1);filter:none}
+  90%{opacity:1;transform:scale(1.03);filter:none}
+  100%{opacity:0;transform:scale(1.06)}}
+#awk #awk-fig::after{content:"";position:absolute;inset:-14%;border-radius:34px;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(255,206,110,.5),transparent 72%);
+  animation:awkHalo var(--t) ease-in-out both}
+@keyframes awkHalo{0%,32%{opacity:0;transform:scale(.7)}40%{opacity:1;transform:scale(1.12)}
+  60%{opacity:.7;transform:scale(1)}88%{opacity:.85;transform:scale(1.06)}100%{opacity:0}}
+/* 断たれた影の破片 */
+#awk .awk-shards{position:absolute;inset:0;z-index:3;pointer-events:none}
+#awk .awk-shards i{position:absolute;left:50%;top:50%;width:3px;height:26%;margin:-13% 0 0 -1.5px;
+  background:linear-gradient(180deg,rgba(255,244,214,.95),rgba(255,196,90,0));
+  transform-origin:50% 50%;transform:rotate(var(--r)) translate3d(0,0,0) scaleY(0);
+  animation:awkShard calc(var(--t)*.34) cubic-bezier(.1,.8,.3,1) both;animation-delay:calc(var(--t)*.32)}
+@keyframes awkShard{0%{opacity:0;transform:rotate(var(--r)) translate3d(0,0,0) scaleY(.2)}
+  22%{opacity:1;transform:rotate(var(--r)) translate3d(0,-14%,0) scaleY(1)}
+  100%{opacity:0;transform:rotate(var(--r)) translate3d(0,-120%,0) scaleY(.5)}}
+/* 立ちのぼる光の粒。画面が止まって見えないようにする */
+#awk .awk-motes{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
+#awk .awk-motes i{position:absolute;bottom:-6%;width:5px;height:5px;border-radius:50%;
+  background:radial-gradient(closest-side,#FFF3D2,rgba(255,196,90,0));
+  animation:awkMote calc(var(--t)*.9) linear infinite both}
+#awk .awk-motes i:nth-child(1){left:12%;animation-delay:calc(var(--t)*.30)}
+#awk .awk-motes i:nth-child(2){left:26%;animation-delay:calc(var(--t)*.36);transform:scale(1.5)}
+#awk .awk-motes i:nth-child(3){left:38%;animation-delay:calc(var(--t)*.33)}
+#awk .awk-motes i:nth-child(4){left:50%;animation-delay:calc(var(--t)*.42);transform:scale(.8)}
+#awk .awk-motes i:nth-child(5){left:62%;animation-delay:calc(var(--t)*.31);transform:scale(1.3)}
+#awk .awk-motes i:nth-child(6){left:74%;animation-delay:calc(var(--t)*.45)}
+#awk .awk-motes i:nth-child(7){left:86%;animation-delay:calc(var(--t)*.35);transform:scale(1.2)}
+#awk .awk-motes i:nth-child(8){left:94%;animation-delay:calc(var(--t)*.48);transform:scale(.7)}
+@keyframes awkMote{0%{opacity:0;transform:translate3d(0,0,0)}
+  12%{opacity:.95}100%{opacity:0;transform:translate3d(6px,-108vh,0)}}
+
+/* 一閃。これが「切った」手応えの本体 */
+#awk .awk-slash{position:absolute;left:-30%;top:38%;width:160%;height:4px;z-index:4;
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.95) 45%,#FFE9B4 55%,transparent);
-  box-shadow:0 0 26px rgba(255,226,160,.9);transform-origin:center;
-  animation:awkSlash calc(var(--t)*.4) cubic-bezier(.2,.9,.2,1) both;will-change:transform,opacity}
-#awk .awk-slash.s1{animation-delay:calc(var(--t)*.1)}
-#awk .awk-slash.s2{animation-delay:calc(var(--t)*.2)}
+  box-shadow:0 0 30px rgba(255,226,160,.95);transform-origin:center;
+  animation:awkSlash calc(var(--t)*.26) cubic-bezier(.1,.9,.2,1) both;will-change:transform,opacity}
+#awk .awk-slash.s1{animation-delay:calc(var(--t)*.24)}
+#awk .awk-slash.s2{animation-delay:calc(var(--t)*.29)}
 @keyframes awkSlash{0%{opacity:0;transform:rotate(-28deg) scaleX(0)}
-  30%{opacity:1;transform:rotate(-28deg) scaleX(1)}100%{opacity:0;transform:rotate(-28deg) scaleX(1.12)}}
+  22%{opacity:1;transform:rotate(-28deg) scaleX(1)}100%{opacity:0;transform:rotate(-28deg) scaleX(1.14)}}
 #awk .awk-slash.s2{animation-name:awkSlash2}
 @keyframes awkSlash2{0%{opacity:0;transform:rotate(19deg) scaleX(0)}
-  30%{opacity:1;transform:rotate(19deg) scaleX(1)}100%{opacity:0;transform:rotate(19deg) scaleX(1.12)}}
-#awk .awk-core{position:relative;text-align:center;z-index:3}
-#awk .awk-form{font-family:var(--serif);font-size:15px;letter-spacing:.42em;color:#FFE9B4;margin-bottom:10px;
-  text-shadow:0 0 22px rgba(240,197,80,.8);animation:awkForm calc(var(--t)*.7) cubic-bezier(.2,.8,.2,1) both;
-  animation-delay:calc(var(--t)*.14)}
+  22%{opacity:1;transform:rotate(19deg) scaleX(1)}100%{opacity:0;transform:rotate(19deg) scaleX(1.14)}}
+
+/* 文字。立ち姿より下に置いて、顔を隠さない */
+#awk .awk-core{position:relative;text-align:center;z-index:5;margin-top:34vh;padding:0 16px}
+#awk .awk-form{font-family:var(--serif);font-size:15px;letter-spacing:.42em;color:#FFE9B4;margin-bottom:8px;
+  text-shadow:0 0 22px rgba(240,197,80,.8);animation:awkForm calc(var(--t)*.5) cubic-bezier(.2,.8,.2,1) both;
+  animation-delay:calc(var(--t)*.44)}
 @keyframes awkForm{0%{opacity:0;transform:translate3d(0,10px,0);letter-spacing:1.2em}
-  40%{opacity:1;transform:none;letter-spacing:.42em}100%{opacity:1}}
+  60%{opacity:1;transform:none;letter-spacing:.42em}100%{opacity:1}}
 #awk .big{display:flex;justify-content:center;gap:.12em;font-family:var(--serif);font-weight:800;
-  font-size:clamp(66px,23vw,124px);line-height:1;color:#FFF8E4}
+  font-size:clamp(58px,20vw,112px);line-height:1;color:#FFF8E4}
 #awk .big i{display:block;font-style:normal;
   text-shadow:0 0 12px rgba(255,236,180,.95),0 0 60px rgba(240,197,80,.85),0 6px 0 rgba(120,70,0,.35);
-  animation:awkKanji calc(var(--t)*.55) cubic-bezier(.16,.9,.2,1) both}
-#awk .big i:nth-child(2){animation-delay:calc(var(--t)*.1)}
-@keyframes awkKanji{0%{opacity:0;transform:scale(2.1) rotate(-6deg);filter:blur(14px)}
+  animation:awkKanji calc(var(--t)*.42) cubic-bezier(.16,.9,.2,1) both;animation-delay:calc(var(--t)*.33)}
+#awk .big i:nth-child(2){animation-delay:calc(var(--t)*.38)}
+@keyframes awkKanji{0%{opacity:0;transform:scale(2.3) rotate(-6deg);filter:blur(14px)}
   55%{opacity:1;transform:scale(1) rotate(0);filter:blur(0)}
   100%{opacity:1;transform:scale(1.04)}}
-#awk .who2{margin-top:12px;color:#F6E7BC;letter-spacing:.2em;font-size:13.5px;
-  animation:awkWho calc(var(--t)*.5) ease both;animation-delay:calc(var(--t)*.28)}
+#awk .who2{margin-top:10px;color:#F6E7BC;letter-spacing:.2em;font-size:13.5px;
+  animation:awkWho calc(var(--t)*.4) ease both;animation-delay:calc(var(--t)*.5)}
 @keyframes awkWho{0%{opacity:0;transform:translate3d(0,8px,0)}100%{opacity:1;transform:none}}
-#awk .awk-bar{position:absolute;left:0;right:0;height:9vh;background:linear-gradient(#07040E,rgba(7,4,14,.6));
-  z-index:4;animation:awkBarIn calc(var(--t)*.3) cubic-bezier(.2,.8,.2,1) both}
+#awk .awk-bar{position:absolute;left:0;right:0;height:9vh;background:linear-gradient(#07040E,rgba(7,4,14,.55));
+  z-index:6;animation:awkBarIn calc(var(--t)*.9) cubic-bezier(.2,.8,.2,1) both}
 #awk .awk-bar.t{top:0}
-#awk .awk-bar.b{bottom:0;background:linear-gradient(rgba(7,4,14,.6),#07040E);animation-name:awkBarInB}
-@keyframes awkBarIn{from{transform:translate3d(0,-100%,0)}to{transform:none}}
-@keyframes awkBarInB{from{transform:translate3d(0,100%,0)}to{transform:none}}
-#awk .awk-skip{position:absolute;right:16px;bottom:calc(16px + var(--safe-b));z-index:6;
+#awk .awk-bar.b{bottom:0;background:linear-gradient(rgba(7,4,14,.55),#07040E);animation-name:awkBarInB}
+@keyframes awkBarIn{0%{transform:translate3d(0,-100%,0)}10%{transform:none}
+  88%{transform:none}100%{transform:translate3d(0,-100%,0)}}
+@keyframes awkBarInB{0%{transform:translate3d(0,100%,0)}10%{transform:none}
+  88%{transform:none}100%{transform:translate3d(0,100%,0)}}
+#awk .awk-skip{position:absolute;right:16px;bottom:calc(16px + var(--safe-b));z-index:7;
   min-height:44px;padding:0 18px;border-radius:99px;font-size:12.5px;letter-spacing:.14em;font-weight:700;
   color:#F4E7C4;background:rgba(20,14,34,.72);border:1px solid rgba(255,226,160,.45);
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  animation:awkSkipIn .4s ease both;animation-delay:.25s}
+  animation:awkSkipIn .4s ease both;animation-delay:.2s}
 #awk .awk-skip:active{transform:scale(.95)}
 @keyframes awkSkipIn{from{opacity:0}to{opacity:.92}}
+/* 2回目以降は「断つ前の姿」を省いて、一閃から見せる */
+#awk.brief #awk-sil,#awk.brief .awk-motes{display:none}
+#awk.brief .awk-stage{top:36%}
+/* 動きを減らす設定：光り物を止め、静かに知らせるだけにする */
+@media (prefers-reduced-motion:reduce){
+  #awk .rays,#awk .awk-motes,#awk .awk-shards,#awk .awk-slash{display:none}
+  #awk .awk-ink,#awk .awk-void,#awk .awk-ring,#awk #awk-sil,#awk #awk-fig,
+  #awk #awk-fig::after,#awk .big i,#awk .awk-form,#awk .who2,#awk .awk-bar{animation-duration:.01s}
+  #awk #awk-sil{display:none}
+  #awk #awk-fig{opacity:1;filter:none;transform:none;animation:none}
+}
 
 /* ---------- ローカル対戦の目隠し ---------- */
 #veil{position:fixed;inset:0;z-index:70;display:none;padding:24px;
@@ -104,6 +186,50 @@
 #veil .vs{color:var(--dim);font-size:12.5px;margin:16px 0 20px;line-height:1.7}
 #veil .veil-hint{color:#7E729A;font-size:11px;letter-spacing:.06em;margin-top:12px}
 #veil #veil-ok{min-height:56px}
+
+/* ---------- 決着 ----------
+   最後の一撃で舞台から色が抜け、札が落ちて、そのままリザルトへ溶ける。 */
+#hitflash.final{background:radial-gradient(120% 90% at 50% 50%,rgba(255,255,255,.55) 0%,rgba(255,236,190,.7) 100%)}
+.decide{position:fixed;inset:0;z-index:78;display:none;pointer-events:none;--t:1500ms}
+.decide.on{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px}
+.decide .dc-dim{position:absolute;inset:0;background:radial-gradient(70% 55% at 50% 50%,rgba(6,3,12,.84),rgba(3,1,7,.97));
+  animation:dcDim var(--t) ease-out both}
+@keyframes dcDim{0%{opacity:0}18%{opacity:1}100%{opacity:1}}
+.decide .dc-word{position:relative;display:flex;gap:.16em;font-family:var(--serif);font-weight:800;
+  font-size:clamp(52px,17vw,96px);line-height:1;letter-spacing:.04em;z-index:2}
+.decide .dc-word span{display:block;
+  animation:dcWord calc(var(--t)*.5) cubic-bezier(.16,.9,.2,1) both}
+.decide .dc-word span:nth-child(2){animation-delay:calc(var(--t)*.07)}
+.decide .dc-word span:nth-child(3){animation-delay:calc(var(--t)*.14)}
+@keyframes dcWord{0%{opacity:0;transform:translate3d(0,-26px,0) scale(1.5);filter:blur(10px)}
+  60%{opacity:1;transform:none;filter:blur(0)}100%{opacity:1}}
+.decide.win .dc-word span{color:transparent;background:linear-gradient(170deg,#FFF6D8,#F0C550 48%,#B07C12);
+  -webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 6px 30px rgba(240,197,80,.6))}
+.decide.draw .dc-word span{color:#F3E8CC;text-shadow:0 0 28px rgba(240,197,80,.5)}
+.decide.lose .dc-word span{color:#8B7FA6;text-shadow:0 0 26px rgba(40,26,64,.9)}
+.decide .dc-sub{position:relative;z-index:2;margin-top:16px;font-size:13px;letter-spacing:.18em;color:#CFC6DE;
+  animation:dcSub calc(var(--t)*.4) ease both;animation-delay:calc(var(--t)*.22)}
+@keyframes dcSub{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
+/* 札の下を横切る一本線。勝ちは金、負けは灰 */
+.decide .dc-rule{position:absolute;left:0;right:0;top:50%;height:2px;z-index:1;transform-origin:left center;
+  margin-top:calc(min(17vw,96px) * .66);
+  background:linear-gradient(90deg,transparent,rgba(255,226,160,.85),transparent);
+  animation:dcRule calc(var(--t)*.55) cubic-bezier(.16,.9,.2,1) both}
+.decide.lose .dc-rule{background:linear-gradient(90deg,transparent,rgba(150,138,180,.7),transparent)}
+@keyframes dcRule{0%{opacity:0;transform:scaleX(0)}35%{opacity:1;transform:scaleX(1)}100%{opacity:.5;transform:scaleX(1)}}
+.decide.out{animation:dcOut .42s ease forwards}
+@keyframes dcOut{to{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  .decide .dc-word span,.decide .dc-sub,.decide .dc-rule,.decide .dc-dim{animation-duration:.01s}
+}
+
+/* リザルトは決着の温度を引き継ぐ */
+#s-result.won .rz-head::before{content:"";position:absolute;left:0;right:0;top:0;height:320px;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(240,197,80,.22),transparent 70%);
+  animation:winIn 1s ease both}
+#s-result.lost .rz-head::before{content:"";position:absolute;left:0;right:0;top:0;height:320px;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(120,106,160,.2),transparent 70%)}
+.rz-head{position:relative}
 
 /* ---------- リザルト ---------- */
 #s-result.on{display:flex;flex-direction:column;min-height:calc(100vh - 36px);min-height:calc(100dvh - 36px)}
@@ -157,9 +283,9 @@
   background:linear-gradient(#1B1433,rgba(27,20,51,.92));border-bottom:1px solid rgba(255,255,255,.07)}
 
 /* 覚醒で立ち姿が差し替わる瞬間。光が回り込んでから新しい姿が出る。 */
-.figure.morph{animation:morphIn .9s cubic-bezier(.2,.8,.2,1) both}
+.figure.morph{animation:morphIn .8s cubic-bezier(.2,.8,.2,1) both}
 @keyframes morphIn{
-  0%{opacity:0;transform:scale(1.14);filter:brightness(2.6) saturate(.2) blur(6px)}
-  36%{opacity:1;filter:brightness(1.7) saturate(.7) blur(1px)}
+  0%{opacity:.25;transform:scale(1.18);filter:brightness(3.2) saturate(.15) blur(7px)}
+  26%{opacity:1;transform:scale(1.05);filter:brightness(1.9) saturate(.7) blur(1px)}
   100%{opacity:1;transform:none;filter:none}}
 @media (prefers-reduced-motion:reduce){ .figure.morph{animation:none} }

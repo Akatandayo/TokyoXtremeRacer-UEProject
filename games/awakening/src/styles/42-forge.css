@@ -35,56 +35,6 @@
   box-shadow:0 4px 14px rgba(79,214,200,.3),inset 0 1px 0 rgba(255,255,255,.7)}
 .rankbadge.r-C b{background:linear-gradient(160deg,#E6E1F0,#9A8EB6);color:#1A1226;box-shadow:none}
 
-/* ---- 完成の一枚 ---- */
-.finale{position:relative;overflow:hidden;border-radius:24px;padding:16px 15px 15px;
-  border:1px solid rgba(240,197,80,.42);
-  background:
-    radial-gradient(120% 78% at 50% -12%,rgba(240,197,80,.24),transparent 62%),
-    linear-gradient(180deg,#241B42,#160F2B);
-  box-shadow:0 16px 44px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
-.finale.r-SS{border-color:rgba(242,86,106,.5);
-  background:radial-gradient(120% 78% at 50% -12%,rgba(242,86,106,.26),transparent 62%),
-    linear-gradient(180deg,#2B1733,#180E27)}
-.fin-sweep{position:absolute;top:0;bottom:0;width:46%;left:-60%;pointer-events:none;
-  background:linear-gradient(100deg,transparent,rgba(255,255,255,.16),transparent);opacity:0}
-.finale.reveal{animation:finRise .5s cubic-bezier(.2,.9,.25,1) both}
-.finale.reveal .fin-sweep{animation:finSweep 1.05s .22s cubic-bezier(.3,.7,.3,1) both}
-.finale.reveal .fin-port .av{animation:finPop .55s .1s cubic-bezier(.2,1.5,.4,1) both}
-@keyframes finRise{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
-@keyframes finSweep{0%{left:-60%;opacity:0}22%{opacity:1}100%{left:115%;opacity:0}}
-@keyframes finPop{from{transform:scale(.7);opacity:0}to{transform:none;opacity:1}}
-.fin-top{display:flex;gap:13px;align-items:center}
-.fin-port{flex:0 0 auto}
-.fin-port .av{box-shadow:0 0 0 2px rgba(240,197,80,.5),0 10px 26px rgba(0,0,0,.5)}
-.fin-id{flex:1;min-width:0}
-.fin-name{font-family:var(--serif);font-size:25px;line-height:1.2;letter-spacing:.06em;margin-top:6px;
-  overflow-wrap:anywhere}
-.fin-title{font-size:12px;letter-spacing:.22em;color:var(--gold);margin-top:2px}
-.fin-desc{font-size:12.5px;color:#CDC3DC;line-height:1.65;margin-top:11px}
-.fin-mid{display:flex;gap:10px;align-items:center;margin-top:12px;
-  padding:10px;border-radius:16px;background:rgba(0,0,0,.26)}
-.fin-nums{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:0}
-.fn{display:flex;align-items:baseline;gap:6px;border-radius:11px;padding:6px 9px;background:rgba(255,255,255,.05)}
-.fn span{font-size:10px;letter-spacing:.1em;color:var(--dim);width:28px;flex:0 0 auto}
-.fn b{font-family:var(--serif);font-size:17px;color:var(--ivory)}
-.fn em{font-style:normal;font-size:10.5px;margin-left:auto}
-.fn em.up{color:#9DF0E4}.fn em.dn{color:#FFA9B6}
-.fin-sec{display:flex;gap:9px;align-items:flex-start;margin-top:11px;font-size:12px}
-.fs-k{flex:0 0 auto;width:34px;color:var(--dim);letter-spacing:.1em;padding-top:4px}
-.fs-v{flex:1;display:flex;flex-wrap:wrap;gap:5px;color:var(--dim)}
-.fs-v .mchip em{font-style:normal;color:#9DF0E4;margin-left:5px}
-.mchip.t-ATTACK{border-color:rgba(242,86,106,.4)}
-.mchip.t-DEFENSE{border-color:rgba(79,214,200,.4)}
-.mchip.t-SUPPORT{border-color:rgba(240,197,80,.4)}
-.fin-awk{margin-top:12px;border-radius:16px;padding:11px 12px;
-  border:1px solid rgba(240,197,80,.34);background:linear-gradient(180deg,rgba(240,197,80,.14),rgba(240,197,80,.03))}
-.fa-h{display:flex;align-items:baseline;gap:9px}
-.fa-k{font-size:10px;letter-spacing:.24em;color:var(--gold)}
-.fa-h b{font-family:var(--serif);font-size:17px}
-.fa-r{display:flex;gap:9px;margin-top:6px;font-size:11.5px;color:#CDC3DC;line-height:1.5}
-.fa-r span:first-child{flex:0 0 auto;width:70px;color:var(--dim)}
-.fa-r span:last-child{flex:1;min-width:0;overflow-wrap:anywhere}
-
 /* ---- 技づくり：作りかけの一枚 ---- */
 .forgecard{position:relative;border-radius:16px;border:1px solid var(--line);padding:12px 12px 12px 17px;
   background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03))}
@@ -167,7 +117,6 @@
   border:1px solid var(--line);white-space:nowrap}
 
 @media (prefers-reduced-motion:reduce){
-  .finale.reveal,.finale.reveal .fin-sweep,.finale.reveal .fin-port .av{animation:none}
   .radar .rp{transition:none}
 }
 
@@ -203,10 +152,6 @@
 .fg-res.t-hot .fr-w{color:#FFC2CC}
 .fg-res.t-bad .fr-w{color:#FFA9B6}
 
-/* ---- 完成の一枚：立ち絵の大きさと数値の並び ---- */
-.fin-port .av-96{width:96px;height:96px;font-size:44px;border-radius:26px}
-.fin-nums{grid-template-columns:1fr}
-
 /* ---- 技の効果音 ---- */
 .sfxrow{display:flex;align-items:center;gap:11px;border:1px solid rgba(79,214,200,.34);border-radius:16px;
   padding:10px 12px;background:rgba(79,214,200,.07)}
@@ -219,13 +164,7 @@
 
 /* ---- 覚醒形態の立ち絵 ---- */
 .portprev{position:relative}
-.portsame{position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);white-space:nowrap;
-  font-size:9.5px;letter-spacing:.06em;color:var(--dim);padding:2px 8px;border-radius:99px;
-  background:rgba(20,15,36,.92);border:1px solid var(--line)}
 .awkface{box-shadow:0 0 0 2px rgba(240,197,80,.45)}
-.fa-face{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;
-  border-top:1px solid rgba(240,197,80,.24)}
-.fa-face span{font-size:11.5px;color:#E7D9AE}
 
 /* ---- 選ばせるカード（書き出しの形など） ---- */
 .pickcard{display:block;width:100%;text-align:left;border-radius:16px;border:1px solid var(--line);

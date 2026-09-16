@@ -209,6 +209,57 @@
 /* 行動できない状態は立ち絵そのものを止めて見せる */
 .unit.held .figure{animation:none;filter:saturate(.35) brightness(.8)}
 
+/* ---------- 覚醒：溜めと、覚醒後の立ち姿 ----------
+   幕（#awk）が上がる前の「間」。舞台が息を呑み、覚醒する本人だけが光る。 */
+.arena.charging .stage,.arena.charging .plate{filter:brightness(.45) saturate(.55);transition:filter .3s ease}
+#s-battle.charging .hud,#s-battle.charging .logrow,#s-battle.charging .dock{
+  filter:brightness(.3) saturate(.5);transition:filter .3s ease}
+.arena.charging .unit:not(.charge){filter:brightness(.4) saturate(.4);transition:filter .3s ease}
+.arena.charging::after{content:"";position:absolute;inset:0;z-index:6;pointer-events:none;
+  background:radial-gradient(70% 55% at 50% 50%,transparent 30%,rgba(6,3,12,.72) 100%);
+  animation:chargeVig .42s ease-out both}
+@keyframes chargeVig{from{opacity:0}to{opacity:1}}
+.unit.charge{z-index:7}
+.unit.charge .figure{animation:chargeShiver .42s linear both;
+  filter:brightness(1.5) drop-shadow(0 0 16px rgba(255,214,110,.95))}
+@keyframes chargeShiver{0%{transform:none}
+  20%{transform:translate3d(-1.5px,0,0) scale(1.01)}40%{transform:translate3d(1.5px,-1px,0) scale(1.02)}
+  60%{transform:translate3d(-2px,0,0) scale(1.03)}80%{transform:translate3d(2px,-1px,0) scale(1.04)}
+  100%{transform:scale(1.05)}}
+.unit.charge .stand::after{border-color:rgba(255,226,160,.9);
+  background:radial-gradient(closest-side,rgba(255,206,110,.4),transparent 72%)}
+/* ---------- 決着の一撃 ----------
+   倒れた瞬間、舞台から色が抜けて時間が伸びたように見せる */
+.arena.settled .stage{filter:saturate(.35) brightness(.72);transition:filter .7s ease}
+.arena.settled .unit.down .avwrap{animation-duration:1.3s}
+.arena.settled .unit:not(.down) .figure{filter:drop-shadow(0 0 14px rgba(255,226,160,.5))}
+.deathring{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;
+  border-radius:50%;border:2px solid rgba(255,244,214,.95);box-shadow:0 0 50px rgba(255,226,160,.8);
+  pointer-events:none;z-index:6;animation:deathRing .9s cubic-bezier(.1,.8,.2,1) forwards}
+@keyframes deathRing{0%{opacity:0;transform:scale(.3)}14%{opacity:1}100%{opacity:0;transform:scale(7)}}
+@media (prefers-reduced-motion:reduce){ .deathring{animation-duration:.3s} }
+
+/* 幕が引けた瞬間、足元から金の波。舞台に「降り立った」ことを見せる */
+.awkland{position:absolute;left:50%;bottom:-14px;width:150%;height:46px;margin-left:-75%;
+  border-radius:50%;pointer-events:none;z-index:1;
+  border:2px solid rgba(255,226,160,.9);box-shadow:0 0 40px rgba(255,206,110,.7);
+  animation:awkLand .9s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes awkLand{0%{opacity:0;transform:scale(.2)}22%{opacity:1;transform:scale(.7)}
+  100%{opacity:0;transform:scale(2.2)}}
+.unit.landed .stand{animation:landPop .5s cubic-bezier(.2,1.5,.4,1)}
+@keyframes landPop{0%{transform:scale(1.08)}100%{transform:none}}
+/* 覚醒が続いているあいだ、立ち姿に金の縁が残る。誰が覚醒中かひと目で分かる */
+.unit.awakened .figure{filter:drop-shadow(0 0 10px rgba(255,206,110,.55))}
+.unit.awakened .stand::after{border-color:rgba(255,226,160,.55);
+  background:radial-gradient(closest-side,rgba(255,206,110,.2),transparent 72%);
+  animation:awkFoot 2.4s ease-in-out infinite}
+@keyframes awkFoot{0%,100%{opacity:.75;transform:translateX(-50%) scale(1)}
+  50%{opacity:1;transform:translateX(-50%) scale(1.06)}}
+.unit.awakened .st-aura{opacity:1;background:radial-gradient(closest-side,rgba(255,206,110,.26),transparent 72%)}
+@media (prefers-reduced-motion:reduce){
+  .unit.charge .figure,.unit.awakened .stand::after,.arena.charging::after{animation:none}
+}
+
 /* ---------- 当たり演出 ---------- */
 /* 踏み込みは必ず相手の方向へ。--dir が自分=1（上へ）／敵=-1（下へ） */
 .unit.act .avwrap{animation:lunge .45s cubic-bezier(.3,.9,.3,1)}
@@ -275,6 +326,8 @@
 .cue.status{color:#2B1550;background:linear-gradient(180deg,#D9C9FF,#9B7BE8);box-shadow:0 4px 16px rgba(155,123,232,.5)}
 .cue.status.good{color:#062E2A;background:linear-gradient(180deg,#9FF3E8,#3FC2B4)}
 .cue.nullify{color:#2A1C00;background:linear-gradient(180deg,#FFE79E,#E5AE31)}
+.cue.awk{color:#2A1C00;background:linear-gradient(180deg,#FFF3CE,#F0C550);
+  box-shadow:0 4px 20px rgba(240,197,80,.65);letter-spacing:.18em}
 .cue.break{color:#2A0A0E;background:linear-gradient(180deg,#FFD9A0,#F2566A);box-shadow:0 4px 18px rgba(242,86,106,.6)}
 
 .banner{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:7}

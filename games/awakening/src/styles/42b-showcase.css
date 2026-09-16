@@ -1,0 +1,206 @@
+/* ===== 42b. 完成の一枚 — 通常形態と覚醒形態を一枚の舞台で見比べる ===== */
+.showcase{position:relative;border-radius:24px;overflow:hidden;
+  border:1px solid rgba(240,197,80,.42);
+  background:linear-gradient(180deg,#241B42,#160F2B);
+  box-shadow:0 16px 44px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+.showcase.r-SS{border-color:rgba(242,86,106,.52)}
+/* 覚醒を見ているあいだは、一枚まるごと朱に寄せる */
+.showcase{transition:border-color .4s,background .4s}
+.showcase[data-f="awake"]{border-color:rgba(242,86,106,.55);
+  background:linear-gradient(180deg,#331B3D,#190F27)}
+.showcase[data-f="awake"] .sc-awk{border-color:rgba(242,86,106,.4);
+  background:linear-gradient(180deg,rgba(242,86,106,.14),rgba(242,86,106,.03))}
+.showcase[data-f="awake"] .sa-h span{color:#FFC2CC}
+.showcase.reveal{animation:scRise .46s cubic-bezier(.2,.9,.25,1) both}
+@keyframes scRise{from{opacity:0;transform:translateY(16px) scale(.975)}to{opacity:1;transform:none}}
+
+/* ---- 舞台 ---- */
+.sc-stage{position:relative;width:100%;aspect-ratio:1/1;max-height:min(46vh,420px);
+  overflow:hidden;cursor:pointer;background:radial-gradient(120% 90% at 50% 8%,#3A2C63,#120C22 70%)}
+.sc-art{position:absolute;inset:0;display:grid;place-items:center}
+.sc-art img{width:100%;height:100%;object-fit:cover;display:block}
+.sc-glyph{font-size:min(30vw,132px);line-height:1;color:var(--gold);
+  text-shadow:0 8px 30px rgba(0,0,0,.6)}
+.sc-art.sc-a{transition:clip-path .5s cubic-bezier(.3,.8,.25,1)}
+/* 斜めの境目。clip-path の切り口に光の線を重ねる（位置は transform だけで動かす） */
+.sc-seam{position:absolute;top:-14%;bottom:-14%;left:0;width:100%;pointer-events:none;
+  transform:translateX(calc(120% - 140% * var(--split)));
+  transition:transform .5s cubic-bezier(.3,.8,.25,1)}
+.sc-seam::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;margin-left:-2px;
+  transform:rotate(11.3deg);
+  background:linear-gradient(180deg,rgba(255,240,200,.15),rgba(255,232,170,.95) 40%,rgba(255,150,130,.9));
+  box-shadow:0 0 18px 4px rgba(240,197,80,.5)}
+.showcase[data-f="normal"] .sc-seam,.showcase[data-f="awake"] .sc-seam{opacity:0}
+.sc-seam{transition:transform .5s cubic-bezier(.3,.8,.25,1),opacity .35s}
+.sc-art.sc-a::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(242,86,106,.16),rgba(240,197,80,.1))}
+.sc-art.sc-a .sc-glyph{color:#FFD9E0;text-shadow:0 0 26px rgba(242,86,106,.8)}
+.sc-vig{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(10,7,20,.45) 0%,transparent 26%,transparent 44%,rgba(10,7,20,.86) 100%)}
+.sc-flash{position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:radial-gradient(70% 55% at 62% 42%,rgba(255,244,214,.9),rgba(242,86,106,.35) 45%,transparent 72%)}
+.showcase.burst .sc-flash{animation:scFlash .55s cubic-bezier(.2,.8,.3,1) both}
+@keyframes scFlash{0%{opacity:0;transform:scale(.86)}18%{opacity:1}100%{opacity:0;transform:scale(1.15)}}
+
+/* 形態の札 */
+.sc-tag{position:absolute;top:10px;font-size:10px;letter-spacing:.22em;padding:4px 10px;border-radius:99px;
+  background:rgba(12,8,22,.72);border:1px solid var(--line);color:var(--text-2);
+  transition:opacity .3s,transform .3s}
+.sc-tn{left:10px}
+.sc-ta{right:10px;border-color:rgba(240,197,80,.6);color:#F5E3B0;background:rgba(58,32,22,.75)}
+.showcase[data-f="normal"] .sc-ta{opacity:0;transform:translateX(10px)}
+.showcase[data-f="awake"] .sc-tn{opacity:0;transform:translateX(-10px)}
+
+/* 名前と段位 */
+.sc-id{position:absolute;left:12px;right:12px;bottom:11px;display:flex;align-items:flex-end;gap:11px}
+.sc-id .rankbadge{flex:0 0 auto}
+.sc-names{flex:1;min-width:0}
+.sc-name{display:block;font-family:var(--serif);font-size:27px;line-height:1.15;letter-spacing:.06em;
+  overflow-wrap:anywhere;text-shadow:0 3px 16px rgba(0,0,0,.85)}
+.sc-sub{display:block;font-style:normal;font-size:12px;letter-spacing:.2em;color:var(--gold);margin-top:3px;
+  text-shadow:0 2px 10px rgba(0,0,0,.8)}
+.showcase[data-f="awake"] .sc-sub{color:#FFC2CC}
+
+/* ---- 形態の切り替え ---- */
+.sc-seg{display:flex;gap:6px;margin:11px 12px 0}
+.sc-seg button{flex:1;min-height:44px;border-radius:13px;font-size:12.5px;color:var(--text-2);
+  border:1px solid var(--line);background:rgba(255,255,255,.04);transition:.16s}
+.sc-seg button.on{border-color:rgba(240,197,80,.66);background:rgba(240,197,80,.15);
+  color:#F5E3B0;font-weight:700}
+
+.sc-desc{font-size:12.5px;color:var(--text-2);line-height:1.65;margin:11px 13px 0}
+
+/* ---- 能力 ---- */
+.sc-mid{display:flex;gap:10px;align-items:center;margin:11px 12px 0;padding:10px;
+  border-radius:16px;background:rgba(0,0,0,.28)}
+.sc-radar .rw{fill:rgba(242,86,106,.2);stroke:#F2566A;stroke-width:1.5;stroke-dasharray:4 3}
+/* 狭い端末では形のほうを縮める（数字は読めなくなると意味がない） */
+.sc-mid .sc-radar{flex:0 1 auto;width:150px;max-width:44%;height:auto}
+.sc-stats{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.scr{display:flex;align-items:baseline;gap:6px;border-radius:10px;padding:5px 8px;
+  background:rgba(255,255,255,.05);transition:background .25s}
+.scr.sc-head{background:none;padding:0 8px;font-size:9.5px;letter-spacing:.14em;color:var(--text-3)}
+.scr.sc-head .scr-n,.scr.sc-head .scr-a{font-family:inherit;font-size:9.5px;color:var(--text-3)}
+.scr-k{flex:0 0 auto;width:30px;font-size:10px;letter-spacing:.1em;color:var(--text-3)}
+.scr-n{flex:1;text-align:right;font-family:var(--serif);font-size:15.5px;color:var(--text-1)}
+.scr-a{flex:1.35;text-align:right;font-family:var(--serif);font-size:15.5px;color:var(--text-3)}
+.scr-a em{font-style:normal;font-size:10.5px;margin-left:5px}
+.scr-a em.up{color:#9DF0E4}.scr-a em.dn{color:#FFA9B6}.scr-a em.eq{color:var(--text-3)}
+.showcase[data-f="awake"] .scr-a{color:#FFD9E0}
+.showcase[data-f="awake"] .scr-n{color:var(--text-3)}
+.scr.lit{background:rgba(242,86,106,.12)}
+@media (max-width:359px){.sc-mid{flex-direction:column}.sc-radar{align-self:center}}
+
+/* ---- 技 ---- */
+.sc-skills{margin:11px 12px 0}
+.sc-skills .sk-h{font-size:10.5px;letter-spacing:.14em;color:var(--text-3);margin-bottom:6px}
+.sc-skills .sk-h em{font-style:normal;color:var(--gold);margin-left:8px;letter-spacing:0}
+.sc-skills .sk-c{display:flex;flex-wrap:wrap;gap:5px}
+.sc-skills .mchip em{font-style:normal;color:#9DF0E4;margin-left:5px}
+
+/* ---- 覚醒の内訳 ---- */
+.sc-awk{margin:12px;border-radius:16px;padding:11px 12px;
+  border:1px solid rgba(240,197,80,.34);
+  background:linear-gradient(180deg,rgba(240,197,80,.14),rgba(240,197,80,.03))}
+.sc-awk.off{color:var(--text-3);font-size:12px;border-style:dashed;border-color:var(--line);background:none}
+.sa-h{display:flex;align-items:baseline;gap:9px}
+.sa-h span{font-size:10px;letter-spacing:.24em;color:var(--gold)}
+.sa-h b{font-family:var(--serif);font-size:17px}
+.sa-r{display:flex;gap:9px;margin-top:6px;font-size:11.5px;color:var(--text-2);line-height:1.5}
+.sa-r span:first-child{flex:0 0 auto;width:66px;color:var(--text-3)}
+.sa-r span:last-child{flex:1;min-width:0;overflow-wrap:anywhere}
+
+@media (prefers-reduced-motion:reduce){
+  .showcase.reveal,.showcase.burst .sc-flash{animation:none}
+  .sc-art.sc-a,.sc-tag,.scr,.sc-seam{transition:none}
+}
+
+/* ===== ためし斬り — 作りかけの技を実際に戦わせたログ ===== */
+.tryout{margin-top:12px;border-radius:16px;border:1px solid var(--line);background:rgba(0,0,0,.24);
+  padding:11px 12px}
+.ty-h{font-size:11px;letter-spacing:.14em;color:var(--gold);display:flex;flex-wrap:wrap;gap:8px;
+  align-items:baseline}
+.ty-h em{font-style:normal;letter-spacing:0;color:var(--text-3);font-size:10.5px}
+.ty-list{list-style:none;margin:9px 0 0;padding:0;display:flex;flex-direction:column;gap:7px}
+.tyr{display:flex;gap:9px;align-items:flex-start}
+.ty-t{flex:0 0 auto;width:22px;height:22px;border-radius:8px;display:grid;place-items:center;
+  font-size:11px;font-weight:700;color:#E7D9AE;background:rgba(240,197,80,.16);
+  border:1px solid rgba(240,197,80,.3)}
+.ty-b{flex:1;min-width:0}
+.ty-l{display:flex;flex-direction:column;gap:2px}
+.ty-l span{font-size:11.5px;color:var(--text-2);line-height:1.5;overflow-wrap:anywhere}
+.ty-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.09);margin-top:5px;overflow:hidden}
+.ty-bar i{display:block;height:100%;border-radius:99px;transform-origin:left;
+  background:linear-gradient(90deg,#F2566A,var(--gold));transition:transform .3s ease}
+.tyr b{flex:0 0 auto;font-family:var(--serif);font-size:15px;min-width:52px;text-align:right}
+.tyr b.ty-d{color:#FFA9B6}.tyr b.ty-h2{color:#9DF0E4}.tyr b.ty-z{color:var(--text-3);font-size:13px}
+.ty-f{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:11.5px;color:var(--text-2)}
+.ty-f b{font-family:var(--serif);font-size:17px;color:var(--gold);margin:0 2px}
+.presetcard.more{border-style:dashed;border-color:rgba(240,197,80,.45)}
+.presetcard.more b{color:#F5E3B0}
+@media (prefers-reduced-motion:reduce){.ty-bar i{transition:none}}
+
+/* ===== 置いているもの（メディアの内訳） ===== */
+.vgauge{border:1px solid rgba(240,197,80,.3);border-radius:16px;padding:12px;
+  background:linear-gradient(180deg,rgba(240,197,80,.1),rgba(240,197,80,.02))}
+.vg-top{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#E7D9AE}
+.vg-top b{font-family:var(--serif);font-size:16px;color:var(--gold)}
+.vg-track{height:8px;border-radius:99px;background:rgba(0,0,0,.35);overflow:hidden;margin:9px 0 7px}
+.vg-track i{display:block;height:100%;border-radius:99px;transform-origin:left;
+  background:linear-gradient(90deg,var(--jade),var(--gold));transition:transform .3s ease}
+.vrow{border:1px solid var(--line);border-radius:16px;padding:10px 11px;background:rgba(255,255,255,.04);
+  margin-bottom:8px}
+.vr-h{display:flex;align-items:center;gap:10px}
+.vr-i{flex:0 0 auto;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:18px;
+  color:#9DF0E4;background:rgba(79,214,200,.16)}
+.vr-t{flex:1;min-width:0}
+.vr-t b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vr-t span{display:block;font-size:11px;color:var(--text-3);margin-top:2px}
+.vr-b{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.vchip{display:flex;align-items:center;gap:7px;min-height:44px;padding:8px 12px;border-radius:13px;
+  border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:12px;color:var(--text-2)}
+.vchip b{font-weight:600;font-size:12.5px;color:var(--text-1)}
+.vchip span{color:var(--text-3);font-size:11px}
+.vchip em{font-style:normal;color:var(--gold);font-size:11px;margin-left:2px}
+.vchip:active{border-color:rgba(240,197,80,.7);background:rgba(240,197,80,.13)}
+.vchip.danger em,.vchip.danger b{color:#FFA9B6}
+.vchip.danger{border-color:rgba(242,86,106,.35)}
+@media (prefers-reduced-motion:reduce){.vg-track i{transition:none}}
+
+/* ===== 覚醒の段：通常と覚醒を並べて見せる ===== */
+.facepair{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:4px;
+  padding:12px;border-radius:18px;border:1px solid var(--line);
+  background:linear-gradient(110deg,rgba(155,123,232,.12),rgba(242,86,106,.12))}
+.facepair.same{background:rgba(255,255,255,.035)}
+.facepair .fp{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.facepair figcaption{font-size:10.5px;letter-spacing:.16em;color:var(--text-3)}
+.facepair .fp.after figcaption{color:var(--gold)}
+.facepair.same .fp.after figcaption{color:var(--text-3)}
+.fp-ar{font-size:18px;color:var(--gold);opacity:.85}
+.facepair.same .fp-ar{opacity:.35}
+.fp-av .av{box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.fp.after .fp-av .av{box-shadow:0 0 0 2px rgba(240,197,80,.55),0 8px 26px rgba(242,86,106,.3)}
+.facepair.same .fp.after .fp-av .av{box-shadow:0 8px 24px rgba(0,0,0,.45);opacity:.6}
+.fp-note{margin-top:8px}
+
+/* 作成の画面は、上部のバーを左右いっぱいに出すために負のマージンを使っている。
+   そのぶん画面の外へ 14px はみ出し、狭い端末で横スクロールが起きていた。
+   clip なら（hidden と違って）position:sticky を殺さずにはみ出しだけを止められる。 */
+#s-edit,#s-skill{overflow-x:clip}
+
+/* ===== 技の段：戦闘で並ぶ手札のプレビュー ===== */
+.sum-top em{font-style:normal;float:right;font-size:10.5px;color:var(--text-3);letter-spacing:.08em}
+.handlist{display:flex;flex-direction:column;gap:6px}
+.hand{position:relative;display:flex;align-items:center;gap:8px;min-height:44px;
+  border-radius:13px;border:1px solid var(--line);background:rgba(255,255,255,.05);
+  padding:8px 11px 8px 15px}
+.hand::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:4px;border-radius:99px;
+  background:var(--violet)}
+.hand.t-ATTACK::before{background:#F2566A}.hand.t-DEFENSE::before{background:#4FD6C8}
+.hand.t-SUPPORT::before{background:var(--gold)}.hand.base::before{background:rgba(255,255,255,.3)}
+.hand .hd-n{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hand .hd-c{flex:0 0 auto;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;
+  background:rgba(79,214,200,.16);color:#9DF0E4;border:1px solid rgba(79,214,200,.35)}
+.hand .hd-t{flex:0 0 auto;font-size:10.5px;color:var(--text-3);min-width:82px;text-align:right}
+.hand .hd-t.late{color:#FFC9A0}
+@media (max-width:359px){.hand .hd-t{min-width:0}}

@@ -18,6 +18,18 @@ const Music = {
       // BGM と効果音を別系統にして、曲の裏でも打撃音が埋もれないようにする
       this.bgmBus=this.ctx.createGain(); this.bgmBus.gain.value=1;   this.bgmBus.connect(this.master);
       this.sfxBus=this.ctx.createGain(); this.sfxBus.gain.value=1.3; this.sfxBus.connect(this.master);
+      this.centerBus=this.sfxBus;
+      // 立ち位置で音の左右を振る。自分は手前（左下）、相手は奥（右上）。
+      // StereoPanner を持たない古い環境では中央のまま鳴らす。
+      if(this.ctx.createStereoPanner){
+        this.pans=[0,1].map(v=>{
+          const g=this.ctx.createGain(), pan=this.ctx.createStereoPanner();
+          pan.pan.value=v===0?-0.32:0.32;
+          g.connect(pan); pan.connect(this.master);
+          g.gain.value=1.3;
+          return g;
+        });
+      }
       return true;
     }catch(e){ return false; }
   },
@@ -273,36 +285,69 @@ const Music = {
   /* =======================================================================
      打撃音の組み立て。技の「音色」は FxKit が技データから決めた timbre で選ぶ。
      ======================================================================= */
-  strikeSynth(timbre,t,tier,index,crit){
+  /* 技の色から音の硬さを決める。青〜藍（氷・水）ほど硬く高く、
+     赤〜橙（炎・血）ほど太く低い。利用者が作った技でも、色に合った音が出る。 */
+  hueTone(h){
+    h=((Number(h)||0)%360+360)%360;
+    const d=Math.abs(((h-210+180)%360)-180);      // 210度からの隔たり 0..180
+    return 1.18-0.36*(d/180);
+  },
+  strikeSynth(timbre,t,tier,index,crit,hue){
     // 連撃は1発ごとに少しずつ高くして、刻んでいるように聞かせる
     const k=Math.pow(1.055,Math.min(6,Math.max(0,index-1)));
+    const c=this.hueTone(hue);                    // 色から来る硬さ
     const g=0.15+0.05*tier;
     switch(timbre){
       case "blunt":
-        this.nz(t,0.08+0.03*tier,g*1.15,{type:"lowpass",f0:1700,f1:180,q:1});
-        this.blip(t,150-18*tier,36,0.22+0.06*tier,"sine",0.34+0.06*tier);
+        this.nz(t,0.08+0.03*tier,g*1.15,{type:"lowpass",f0:1700*c,f1:180,q:1});
+        this.blip(t,(150-18*tier)*c,36,0.22+0.06*tier,"sine",0.34+0.06*tier);
         if(tier>=3) this.blip(t+0.012,78,30,0.5,"sine",0.32);
         break;
+      /* 割合で削る技・押し潰す技。低く軋んでから落ちる */
+      case "crush":
+        this.nz(t,0.05,0.16,{type:"bandpass",f0:900*c,q:.8});
+        this.blip(t,120*c,28,0.6,"sawtooth",0.2);
+        this.nz(t+0.06,0.4,0.2,{type:"lowpass",f0:1400*c,f1:110});
+        this.blip(t+0.07,62,24,0.8,"sine",0.4);
+        break;
+      /* 連撃。短い金属音を細かく刻む */
+      case "wave":
+        this.nz(t,0.035,g*0.9,{type:"bandpass",f0:3000*k*c,q:2.2});
+        this.blip(t,1900*k*c,900,0.06,"square",0.08);
+        this.blip(t,(215-16*tier)*c,60,0.13+0.03*tier,"sine",0.24+0.05*tier);
+        break;
       case "magic":
-        this.blip(t,880*k,240,0.22,"triangle",0.18);
-        this.blip(t+0.01,1760*k,520,0.26,"sine",0.12);
-        this.nz(t,0.22,0.07,{type:"highpass",f0:2200,f1:6400});
+        this.blip(t,880*k*c,240,0.22,"triangle",0.18);
+        this.blip(t+0.01,1760*k*c,520,0.26,"sine",0.12);
+        this.nz(t,0.22,0.07,{type:"highpass",f0:2200*c,f1:6400});
         this.blip(t+0.02,170,52,0.26+0.04*tier,"sine",0.26+0.05*tier);
         break;
       case "pierce":
-        this.nz(t,0.05,0.14,{type:"highpass",f0:2600,f1:8200,q:.8});
-        this.blip(t,2300*k,780,0.09,"square",0.1);
+        this.nz(t,0.05,0.14,{type:"highpass",f0:2600*c,f1:8200,q:.8});
+        this.blip(t,2300*k*c,780,0.09,"square",0.1);
         this.blip(t+0.005,240,70,0.16+0.04*tier,"sine",0.26+0.05*tier);
         break;
       case "drain":
-        this.blip(t,640*k,150,0.36,"sine",0.2);
-        this.nz(t,0.3,0.09,{type:"lowpass",f0:1100,f1:130});
+        this.blip(t,640*k*c,150,0.36,"sine",0.2);
+        this.nz(t,0.3,0.09,{type:"lowpass",f0:1100*c,f1:130});
         this.blip(t+0.02,180,48,0.3,"sine",0.24);
         break;
+      /* 守りを固める技が当たり判定を持つとき（反射など）は、鈍い鐘にする */
+      case "ward":
+        this.nz(t,0.12,0.16,{type:"bandpass",f0:620*c,q:3});
+        this.blip(t,330*c,160,0.34,"triangle",0.2);
+        this.blip(t+0.02,140,60,0.3,"sine",0.22);
+        break;
+      /* 癒やしや祝福が相手に触れるとき。柔らかく澄んだ音 */
+      case "bless":
+        this.blip(t,760*k*c,1140,0.28,"sine",0.14);
+        this.blip(t+0.05,1140*k*c,1520,0.3,"triangle",0.08);
+        this.nz(t,0.24,0.03,{type:"highpass",f0:3200});
+        break;
       default: // metal
-        this.nz(t,0.05+0.02*tier,g,{type:"bandpass",f0:2400*k,q:1.4});
-        this.blip(t,1450*k,520,0.1,"square",0.09);
-        this.blip(t,205-22*tier,52,0.18+0.05*tier,"sine",0.3+0.06*tier);
+        this.nz(t,0.05+0.02*tier,g,{type:"bandpass",f0:2400*k*c,q:1.4});
+        this.blip(t,1450*k*c,520,0.1,"square",0.09);
+        this.blip(t,(205-22*tier)*c,52,0.18+0.05*tier,"sine",0.3+0.06*tier);
         if(tier>=4) this.nz(t+0.03,0.45,0.1,{type:"lowpass",f0:900,f1:140});
     }
     if(crit){
@@ -316,6 +361,9 @@ const Music = {
     o=o||{};
     const t=this.ctx.currentTime+0.005;
     const tier=Math.max(1,Math.min(4,o.tier||1));
+    // 立ち位置ぶんだけ左右に振る。鳴らし終えたら元の系統に戻す
+    const keepBus=this.sfxBus;
+    if(o.view!=null&&this.pans&&this.pans[o.view]) this.sfxBus=this.pans[o.view];
     try{
       switch(name){
         case "tap":
@@ -326,17 +374,41 @@ const Music = {
           const p=o.plan||{};
           if(o.crit){ this.sfx("crit",{tier}); break; }
           if(o.counter){ this.sfx("counter",{tier}); break; }
-          this.strikeSynth(p.timbre||"metal",t,tier,o.index||1,false);
+          this.strikeSynth(p.timbre||"metal",t,tier,o.index||1,false,p.hue);
           break;
         }
-        /* 詠唱・溜め。当たる前に「何か来る」と分かるための音 */
-        case "cast":
-          this.blip(t,420,1180,0.26,"triangle",0.07);
-          this.nz(t+0.04,0.22,0.04,{type:"highpass",f0:2600,f1:5200});
+        /* 詠唱。何が来るのかが音で分かるように、技の性質で色を変える */
+        case "cast": {
+          const p=o.plan||{};
+          const c=this.hueTone(p.hue);
+          if(p.heal){                                  // 癒やし：上がっていく澄んだ三和音
+            [0,1,2].forEach(i=>this.blip(t+i*0.06,this.freq(67+i*4),this.freq(69+i*4),0.3,"sine",0.075));
+            this.nz(t,0.3,0.03,{type:"highpass",f0:3400});
+          }else if(p.type==="DEFENSE"){                // 守り：閉じていく低い音
+            this.blip(t,520*c,300,0.3,"triangle",0.08);
+            this.nz(t+0.04,0.26,0.04,{type:"bandpass",f0:700*c,q:2});
+          }else if(p.heavy){                           // 重い技：地から吸い上げる
+            this.blip(t,150*c,520*c,0.36,"sawtooth",0.07);
+            this.nz(t+0.06,0.3,0.05,{type:"lowpass",f0:500,f1:2600});
+          }else{                                       // 普通の詠唱：上がっていく光
+            this.blip(t,420*c,1180*c,0.26,"triangle",0.07);
+            this.nz(t+0.04,0.22,0.04,{type:"highpass",f0:2600*c,f1:5200});
+          }
           break;
-        case "charge":
-          this.blip(t,90,260,0.34,"sawtooth",0.07);
-          this.nz(t+0.1,0.26,0.05,{type:"lowpass",f0:600,f1:2200});
+        }
+        /* 溜め。重い技が来ることを、当たる前に知らせる */
+        case "charge": {
+          const c=this.hueTone((o.plan||{}).hue);
+          this.blip(t,90*c,260*c,0.34,"sawtooth",0.07);
+          this.nz(t+0.1,0.26,0.05,{type:"lowpass",f0:600,f1:2200*c});
+          this.blip(t+0.16,62,150,0.3,"sine",0.1);
+          break;
+        }
+        /* 覚醒できるようになった合図。遠くで鈴が鳴る */
+        case "ready":
+          this.blip(t,1568,1568,0.5,"sine",0.06);
+          this.blip(t+0.09,2093,2093,0.6,"sine",0.045);
+          this.blip(t+0.18,2637,2637,0.7,"sine",0.03);
           break;
         /* 防御が砕ける */
         case "break":
@@ -369,9 +441,15 @@ const Music = {
           this.nz(t,0.16,0.2,{type:"bandpass",f0:520,q:2.5});
           this.blip(t,130,72,0.22,"sine",0.26);
           break;
-        case "miss":
-          this.nz(t,0.24,0.11,{type:"highpass",f0:700,f1:5600,q:0.7});
+        case "miss": {
+          // 空振り。重い技ほど低く長く空を切る
+          const p=o.plan||{};
+          const heavy=!!p.heavy;
+          this.nz(t,heavy?0.34:0.24,heavy?0.13:0.11,
+            {type:"highpass",f0:heavy?380:700,f1:heavy?3600:5600,q:0.7});
+          if(heavy) this.blip(t+0.05,120,60,0.3,"sine",0.08);
           break;
+        }
         case "heal":
           [0,1,2].forEach(i=>this.blip(t+i*0.07,[660,880,1320][i],[660,880,1320][i],0.22,"triangle",0.085));
           this.nz(t,0.3,0.03,{type:"highpass",f0:3000});
@@ -393,19 +471,59 @@ const Music = {
           }else if(fam==="edge"){                 // 研ぎ澄ます
             this.blip(t,1480,2200,0.12,"square",0.06);
             this.blip(t+0.08,2200,3000,0.14,"triangle",0.045);
+          }else if(fam==="arrow"){                // 能力の上げ下げ：音そのものが上がる／下がる
+            const a=up?[440,660,880]:[880,660,440];
+            a.forEach((f,i)=>this.blip(t+i*0.055,f,f,0.2,"triangle",0.075));
+            if(!up) this.nz(t+0.11,0.24,0.04,{type:"lowpass",f0:1200,f1:260});
+          }else if(fam==="spark"){                // 気力の増減：弾ける粒
+            this.blip(t,up?1320:660,up?1980:330,0.1,"square",0.055);
+            this.blip(t+0.06,up?1760:440,up?2640:220,0.12,"triangle",0.05);
+            this.nz(t,0.12,0.04,{type:"highpass",f0:3600});
+          }else if(fam==="hex"){                  // 呪い・沈黙：濁って絡みつく
+            this.blip(t,320,190,0.42,"sawtooth",0.07);
+            this.blip(t+0.03,470,240,0.4,"triangle",0.05);
+            this.nz(t,0.4,0.05,{type:"bandpass",f0:520,f1:190,q:2.4});
           }else{
             this.blip(t,up?620:760,up?930:470,0.16,"triangle",0.08);
             this.blip(t+0.09,up?930:470,up?1240:330,0.2,"triangle",0.06);
           }
           break;
         }
+        /* とどめ。芯の太い一撃と、引き伸ばされた余韻 */
+        case "deathblow":
+          this.nz(t,0.16,0.34,{type:"lowpass",f0:3200,f1:200,q:1});
+          this.blip(t,170,34,0.5,"sine",0.5);
+          this.blip(t+0.01,74,26,0.9,"sine",0.42);
+          this.blip(t+0.02,2200,700,0.22,"triangle",0.07);
+          this.nz(t+0.12,0.9,0.12,{type:"lowpass",f0:1400,f1:110});
+          break;
         case "down":
           this.blip(t,240,48,0.7,"sine",0.32);
           this.nz(t,0.5,0.14,{type:"lowpass",f0:1200,f1:120});
           break;
+        /* 覚醒の「溜め」。息を呑む間に、低いうねりと鈴が near-silence から立ち上がる */
+        case "awakenRise": {
+          const len=0.42;
+          const c=this.ctx, o1=c.createOscillator(), g1=c.createGain(), lp=c.createBiquadFilter();
+          o1.type="triangle";
+          o1.frequency.setValueAtTime(48,t);
+          o1.frequency.exponentialRampToValueAtTime(96,t+len);
+          lp.type="lowpass"; lp.frequency.setValueAtTime(180,t);
+          lp.frequency.exponentialRampToValueAtTime(900,t+len);
+          g1.gain.setValueAtTime(0.0001,t);
+          g1.gain.exponentialRampToValueAtTime(0.16,t+len);
+          g1.gain.exponentialRampToValueAtTime(0.0001,t+len+0.1);
+          o1.connect(lp); lp.connect(g1); g1.connect(this.sfxBus);
+          o1.start(t); o1.stop(t+len+0.16);
+          // 空気が吸い込まれる音（逆再生の雰囲気を、伸びる帯域で作る）
+          this.nz(t,len,0.05,{type:"bandpass",f0:400,f1:4200,q:1.2});
+          this.blip(t+0.02,2640,2640,0.5,"sine",0.05);      // 遠くの鈴
+          this.blip(t+0.2,3520,3520,0.4,"sine",0.035);
+          break;
+        }
+        /* 覚醒の本体。唸り → 一閃（金属の断ち音）→ 太鼓 → 鐘と和音 */
         case "awaken": {
-          const len=o.brief?0.45:0.95;
-          // 立ち上がる唸り → 炸裂 → 和音
+          const len=o.brief?0.36:0.86;
           const c=this.ctx, saw=c.createOscillator(), sg=c.createGain(), lp=c.createBiquadFilter();
           saw.type="sawtooth";
           saw.frequency.setValueAtTime(70,t);
@@ -417,9 +535,21 @@ const Music = {
           sg.gain.exponentialRampToValueAtTime(0.0001,t+len+0.12);
           saw.connect(lp); lp.connect(sg); sg.connect(this.sfxBus);
           saw.start(t); saw.stop(t+len+0.2);
-          this.nz(t+len,0.7,0.26,{type:"lowpass",f0:2600,f1:160});
-          this.blip(t+len,110,36,0.9,"sine",0.45);
-          this.chord(t+len+0.02,[62,66,69,74],o.brief?0.7:1.3,"triangle",0.085);
+          // 一閃：抜き身が空気を裂く
+          this.nz(t+len-0.06,0.1,0.2,{type:"highpass",f0:1800,f1:9000,q:.7});
+          this.blip(t+len-0.04,4200,1400,0.12,"square",0.06);
+          // 断つ：太鼓の芯＋衝撃
+          this.nz(t+len,0.75,0.3,{type:"lowpass",f0:2600,f1:140});
+          this.blip(t+len,110,32,1.0,"sine",0.5);
+          this.blip(t+len+0.01,64,28,1.3,"sine",0.34);
+          // 鐘。覚醒が「決まった」と分かる高い残響
+          this.blip(t+len+0.03,1319,1319,o.brief?1.1:1.9,"sine",0.09);
+          this.blip(t+len+0.03,1976,1976,o.brief?0.8:1.4,"sine",0.05);
+          this.chord(t+len+0.04,[50,57,62,66,69],o.brief?0.9:1.8,"triangle",0.075);
+          if(!o.brief){
+            // 余韻に上がっていく光の粒
+            [0,1,2,3].forEach(i=>this.blip(t+len+0.42+i*0.14,this.freq(74+i*3),this.freq(76+i*3),0.5,"sine",0.05));
+          }
           break;
         }
         case "win":
@@ -434,6 +564,7 @@ const Music = {
           break;
       }
     }catch(e){ /* 音が出なくても進行は止めない */ }
+    this.sfxBus=keepBus;
   }
 };
 

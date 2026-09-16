@@ -572,6 +572,16 @@ const Editor = {
     $("#e-mkskill").onclick=()=>{ this.touch(); this.returnTo="edit"; this.openSkill(); };
     this.skillSummary();
   },
+  /* そのコストの技を初めて撃てるターン。SPの決まりは BALANCE から読む。 */
+  firstTurn(cost){
+    const sp=BALANCE.sp;
+    let have=sp.start;
+    for(let t=1;t<=20;t++){
+      if(cost<=have) return t;
+      have=Math.min(sp.max,have+sp.regenPerTurn);
+    }
+    return 99;
+  },
   skillSummary(){
     const ids=this.draft.skills, sp=BALANCE.sp;
     const list=ids.map(id=>SKILLS[id]).filter(Boolean);
@@ -587,10 +597,22 @@ const Editor = {
     if(!kinds.has("DEFENSE")&&!kinds.has("SUPPORT")) tips.push("攻め手だけの構成です。守りや補助を1つ入れると粘れます。");
     if(heavy>=3) tips.push("重い技が多めです。SPが足りず撃てない場面が増えます。");
     if(list.length>6) tips.push("技が多すぎると戦闘中に選びにくくなります。4〜5個が目安です。");
+    /* 戦闘で並ぶ手札のまま見せる。いつから撃てるかまで書く。 */
+    const hand=list.map(s=>{
+      const t=this.firstTurn(s.cost);
+      return `<div class="hand t-${s.type}">
+        <span class="hd-n">${esc(s.name)}</span>
+        <span class="hd-c">SP${s.cost}${s.costMax?"〜"+s.costMax:""}</span>
+        <span class="hd-t${t>1?" late":""}">${t>1?t+"ターン目から":"最初から撃てる"}</span>
+      </div>`;
+    }).join("");
     $("#e-sk-sum").innerHTML=`
       <div class="sumcard">
-        <div class="sum-top"><b>${list.length}個</b>の技を選んでいます</div>
-        <div class="sum-chips">${list.map(s=>`<span class="mchip">${esc(s.name)} SP${s.cost}</span>`).join("")}</div>
+        <div class="sum-top"><b>${list.length}個</b>の技を選んでいます<em>戦闘ではこの並びで出ます</em></div>
+        <div class="handlist">
+          <div class="hand base"><span class="hd-n">攻撃</span><span class="hd-c">SP0</span>
+            <span class="hd-t">いつでも撃てる</span></div>
+          ${hand}</div>
         ${tips.length?`<div class="sum-tips">${tips.map(t=>`<div>・${esc(t)}</div>`).join("")}</div>`
           :`<div class="sum-tips ok">・軽い技と重い技のバランスが取れています。</div>`}
       </div>`;
@@ -634,7 +656,6 @@ const Editor = {
         <input type="text" id="e-awkname" maxlength="16" value="${esc(a.name||"")}" placeholder="例：鬼神・開眼"></div>
 
       <div class="h-rule">覚醒時の立ち絵</div>
-      <p class="note">覚醒した瞬間、この絵に切り替わります。決めなければ通常の立ち絵のままです。</p>
       ${this.awakenPortraitHtml()}
       <div id="e-awkimg-err" class="err"></div>
 
@@ -680,11 +701,19 @@ const Editor = {
       portrait:f.portrait||d.portrait||"◆"};
   },
   awakenPortraitHtml(){
-    const f=this.draft.awakening.form;
+    const d=this.draft, f=d.awakening.form;
     const set=!!f.portraitImage;
-    return `<div class="portrow">
-      <div class="portprev">${UI.avatar(this.awakenFace(),"72","awkface")}
-        ${set?"":`<span class="portsame">通常と同じ</span>`}</div>
+    const same=!this.facesDiffer();
+    /* 2枚を並べて、変身の前後をその場で見せる。ここが作っていて一番たのしい所。 */
+    return `<div class="facepair${same?" same":""}">
+      <figure class="fp"><div class="fp-av">${UI.avatar(d,"84")}</div><figcaption>通常</figcaption></figure>
+      <span class="fp-ar" aria-hidden="true">➜</span>
+      <figure class="fp after"><div class="fp-av">${UI.avatar(this.awakenFace(),"84","awkface")}</div>
+        <figcaption>${same?"いまは同じ":"覚醒"}</figcaption></figure>
+    </div>
+    <p class="note fp-note">${same?"2枚目を決めると、覚醒した瞬間に姿が切り替わります。"
+      :"覚醒した瞬間、右の姿に切り替わります。"}</p>
+    <div class="portrow">
       <div class="portacts">
         <label class="btn btn-line filebtn" for="e-awkfile"><span class="ic">▣</span>${set?"画像を選び直す":"覚醒用の画像を選ぶ"}
           <input type="file" id="e-awkfile" accept="image/*" style="display:none"></label>
@@ -709,7 +738,7 @@ const Editor = {
         this.lastAwkPhoto=url;
         Cropper.open(url,cropped=>{ f.portraitImage=cropped; this.touch(); this.renderStep();
           Kit.toast("覚醒したらこの絵に変わります。",{tone:"ok"}); });
-      },msg=>{ err(msg); Kit.toast(msg,{tone:"bad"}); },12);
+      },msg=>{ err(msg); Kit.toast(msg,{tone:"bad"}); },48);
     };
     const ed=$("#e-awkfile-edit");
     if(ed) ed.onclick=()=>Cropper.open(this.lastAwkPhoto||f.portraitImage,
@@ -848,45 +877,6 @@ const Editor = {
   },
 
   /* ================= 5. 確認 ================= */
-  /* 覚醒したあとの姿も1枚で見せる。ここで「作った」という実感が決まる。 */
-  finaleHtml(){
-    const d=this.draft, a=d.awakening;
-    const near=this.nearestChar(d.stats);
-    const rank=this.rankOf(d.stats);
-    const skills=d.skills.map(id=>SKILLS[id]).filter(Boolean);
-    const awkStats=a.enabled?a.form.stats:null;
-    const nums=["hp","atk","def","spd"].map(k=>{
-      const up=awkStats&&k!=="hp"?awkStats[k]-d.stats[k]:0;
-      return `<div class="fn"><span>${STAT_LABEL[k]}</span><b>${d.stats[k]}</b>
-        ${up?`<em class="${up>0?"up":"dn"}">${up>0?"+":""}${up}</em>`:""}</div>`;
-    }).join("");
-    const awkSkills=a.enabled?(a.form.skills.length?a.form.skills:d.skills).map(id=>SKILLS[id]).filter(Boolean):[];
-    return `<div class="finale r-${rank.k}" id="e-finale">
-      <i class="fin-sweep" aria-hidden="true"></i>
-      <div class="fin-top">
-        <div class="fin-port">${UI.avatar(d,"96")}</div>
-        <div class="fin-id">
-          <div class="rankbadge r-${rank.k}"><b>${rank.k}</b><i>${esc(rank.note)}</i></div>
-          <div class="fin-name">${esc(d.name||"名もなき者")}</div>
-          <div class="fin-title">${esc(this.archetype(d.stats))}</div>
-        </div>
-      </div>
-      <div class="fin-desc">${esc(d.description||"ひとことの説明はありません。")}</div>
-      <div class="fin-mid">${this.radar(d.stats,near?near.stats:null,140)}
-        <div class="fin-nums">${nums}</div></div>
-      <div class="fin-sec"><span class="fs-k">技</span>
-        <span class="fs-v">${skills.map(x=>
-          `<span class="mchip t-${x.type}">${esc(x.name)}<em>SP${x.cost}</em></span>`).join("")||"なし"}</span></div>
-      ${a.enabled?`<div class="fin-awk">
-        <div class="fa-h"><span class="fa-k">覚醒</span><b>${esc(a.name||"覚醒形態")}</b></div>
-        <div class="fa-r"><span>開く条件</span><span>${esc(this.condLabel())}</span></div>
-        <div class="fa-r"><span>代償</span><span>${esc(this.costLabel())}</span></div>
-        <div class="fa-r"><span>覚醒中の技</span><span>${awkSkills.map(x=>esc(x.name)).join("・")||"通常と同じ"}</span></div>
-        ${a.form.portraitImage||a.form.portrait?`<div class="fa-face">${UI.avatar(this.awakenFace(),"56")}
-          <span>覚醒するとこの姿になります</span></div>`:""}
-      </div>`:`<div class="fin-sec"><span class="fs-k">覚醒</span><span class="fs-v">なし</span></div>`}
-    </div>`;
-  },
   step_check(){
     const d=this.draft, B=BALANCE.build;
     const checks=[
@@ -899,7 +889,7 @@ const Editor = {
     ];
     const ng=checks.filter(c=>!c.ok).length;
     return `<p class="steplead">${this.STEPS[4].hint}</p>
-      ${this.finaleHtml()}
+      ${this.showcaseHtml()}
       <div class="h-rule">できているか</div>
       <div class="checks">${checks.map(c=>
         `<button class="chk ${c.ok?"ok":"ng"}" data-jump="${c.step}">
@@ -913,11 +903,7 @@ const Editor = {
     $$("#edit-body .chk").forEach(b=>b.onclick=()=>this.goStep(+b.dataset.jump));
     $("#e-saveonly").onclick=()=>this.saveCharacter();
     /* 完成の一枚は毎回きちんと「立ち上がる」 */
-    const fin=$("#e-finale");
-    if(fin&&!Kit.reduced()){
-      fin.classList.remove("reveal"); void fin.offsetWidth; fin.classList.add("reveal");
-      Kit.buzz([8,60,14]);
-    }
+    this.bindShowcase();
   },
   costLabel(){
     const a=this.draft.awakening, hp=(a.cost&&a.cost.hpPerTurn)||0;
@@ -1050,6 +1036,7 @@ const Editor = {
           <b>${esc(p.name)}</b><span>${esc((p.description||"").slice(0,22))}</span>
           <em>${TYPE_LABEL[p.type]||"技"}・SP${p.cost}</em></button>`).join("")}
         <button class="presetcard blank" data-preset=""><b>まっさらから</b><span>ぜんぶ自分で決める</span><em>自由</em></button>
+        <button class="presetcard more" id="k-morepreset"><b>ほかの技から</b><span>ぜんぶの技から選んで改造する</span><em>${Object.keys(SKILLS).length-1}個</em></button>
       </div>
 
       <div id="k-forge" class="forgecard"></div>
@@ -1101,8 +1088,8 @@ const Editor = {
       </details>
 
       <div class="h-rule">効果音</div>
-      <p class="note">この技を撃ったときに鳴らす音です。${Math.round(Media.MAX_BYTES/1024)}KB・${(Media.MAX_MS/1000).toFixed(0)}秒までの
-        ${Media.EXT.join("／")}が使えます。音は端末の中だけに残ります。</p>
+      <p class="note">この技を撃ったときに鳴らす音です。${(Media.MAX_BYTES/1048576).toFixed(0)}MB・${Math.round(Media.MAX_MS/1000)}秒までの
+        ${Media.EXT.join("／")}が使えます。音は端末の中だけに残り、選んだらその場で鳴らして確かめられます。</p>
       <div id="k-sfx"></div>
       <div id="k-sfx-err" class="err"></div>
 
@@ -1120,6 +1107,7 @@ const Editor = {
       <button class="btn btn-gold" id="k-save">${this.skillEditId?"上書き保存":"技を保存する"}</button>`;
 
     $$("#skill-body [data-preset]").forEach(b=>b.onclick=()=>this.applyPreset(b.dataset.preset));
+    $("#k-morepreset").onclick=()=>this.openPresetPicker();
     $("#k-addeff").onclick=()=>this.openEffectPicker(null);
     $("#k-save").onclick=()=>this.saveSkill();
     $("#k-cancel").onclick=()=>this.closeSkill();
@@ -1223,6 +1211,7 @@ const Editor = {
         this.paintForge(this.collectSkill());
         Kit.buzz(12);
         Kit.toast(`「${info.name}」を鳴らします。`,{tone:"ok"});
+        if(this.canPreviewSfx()) try{ Music.previewSfx(info.id); }catch(e){}   // その場で聴かせる
         if(prev&&prev!==info.id) this.releaseSfx(prev);
       }).catch(e=>{
         this.renderSfx();
@@ -1587,7 +1576,8 @@ const Editor = {
         </div></div>
       <div class="simbars">${bars}</div>
       <div class="simwords">${words.map(w=>`<div>・${esc(w)}</div>`).join("")}</div>
-      <p class="note">HP${hp}・ATK130の相手に何度も戦わせた平均です（${TURNS}ターン観測）。</p>`;
+      <p class="note">HP${hp}・ATK130の相手に何度も戦わせた平均です（${TURNS}ターン観測）。</p>
+      ${this.tryoutHtml(s)}`;
   },
   /* 作りかけの技が戦闘でどう並ぶかを、その場に出しておく */
   paintForge(s){

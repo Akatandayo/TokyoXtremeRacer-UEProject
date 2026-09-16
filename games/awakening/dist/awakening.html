@@ -951,6 +951,57 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 /* 行動できない状態は立ち絵そのものを止めて見せる */
 .unit.held .figure{animation:none;filter:saturate(.35) brightness(.8)}
 
+/* ---------- 覚醒：溜めと、覚醒後の立ち姿 ----------
+   幕（#awk）が上がる前の「間」。舞台が息を呑み、覚醒する本人だけが光る。 */
+.arena.charging .stage,.arena.charging .plate{filter:brightness(.45) saturate(.55);transition:filter .3s ease}
+#s-battle.charging .hud,#s-battle.charging .logrow,#s-battle.charging .dock{
+  filter:brightness(.3) saturate(.5);transition:filter .3s ease}
+.arena.charging .unit:not(.charge){filter:brightness(.4) saturate(.4);transition:filter .3s ease}
+.arena.charging::after{content:"";position:absolute;inset:0;z-index:6;pointer-events:none;
+  background:radial-gradient(70% 55% at 50% 50%,transparent 30%,rgba(6,3,12,.72) 100%);
+  animation:chargeVig .42s ease-out both}
+@keyframes chargeVig{from{opacity:0}to{opacity:1}}
+.unit.charge{z-index:7}
+.unit.charge .figure{animation:chargeShiver .42s linear both;
+  filter:brightness(1.5) drop-shadow(0 0 16px rgba(255,214,110,.95))}
+@keyframes chargeShiver{0%{transform:none}
+  20%{transform:translate3d(-1.5px,0,0) scale(1.01)}40%{transform:translate3d(1.5px,-1px,0) scale(1.02)}
+  60%{transform:translate3d(-2px,0,0) scale(1.03)}80%{transform:translate3d(2px,-1px,0) scale(1.04)}
+  100%{transform:scale(1.05)}}
+.unit.charge .stand::after{border-color:rgba(255,226,160,.9);
+  background:radial-gradient(closest-side,rgba(255,206,110,.4),transparent 72%)}
+/* ---------- 決着の一撃 ----------
+   倒れた瞬間、舞台から色が抜けて時間が伸びたように見せる */
+.arena.settled .stage{filter:saturate(.35) brightness(.72);transition:filter .7s ease}
+.arena.settled .unit.down .avwrap{animation-duration:1.3s}
+.arena.settled .unit:not(.down) .figure{filter:drop-shadow(0 0 14px rgba(255,226,160,.5))}
+.deathring{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;
+  border-radius:50%;border:2px solid rgba(255,244,214,.95);box-shadow:0 0 50px rgba(255,226,160,.8);
+  pointer-events:none;z-index:6;animation:deathRing .9s cubic-bezier(.1,.8,.2,1) forwards}
+@keyframes deathRing{0%{opacity:0;transform:scale(.3)}14%{opacity:1}100%{opacity:0;transform:scale(7)}}
+@media (prefers-reduced-motion:reduce){ .deathring{animation-duration:.3s} }
+
+/* 幕が引けた瞬間、足元から金の波。舞台に「降り立った」ことを見せる */
+.awkland{position:absolute;left:50%;bottom:-14px;width:150%;height:46px;margin-left:-75%;
+  border-radius:50%;pointer-events:none;z-index:1;
+  border:2px solid rgba(255,226,160,.9);box-shadow:0 0 40px rgba(255,206,110,.7);
+  animation:awkLand .9s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes awkLand{0%{opacity:0;transform:scale(.2)}22%{opacity:1;transform:scale(.7)}
+  100%{opacity:0;transform:scale(2.2)}}
+.unit.landed .stand{animation:landPop .5s cubic-bezier(.2,1.5,.4,1)}
+@keyframes landPop{0%{transform:scale(1.08)}100%{transform:none}}
+/* 覚醒が続いているあいだ、立ち姿に金の縁が残る。誰が覚醒中かひと目で分かる */
+.unit.awakened .figure{filter:drop-shadow(0 0 10px rgba(255,206,110,.55))}
+.unit.awakened .stand::after{border-color:rgba(255,226,160,.55);
+  background:radial-gradient(closest-side,rgba(255,206,110,.2),transparent 72%);
+  animation:awkFoot 2.4s ease-in-out infinite}
+@keyframes awkFoot{0%,100%{opacity:.75;transform:translateX(-50%) scale(1)}
+  50%{opacity:1;transform:translateX(-50%) scale(1.06)}}
+.unit.awakened .st-aura{opacity:1;background:radial-gradient(closest-side,rgba(255,206,110,.26),transparent 72%)}
+@media (prefers-reduced-motion:reduce){
+  .unit.charge .figure,.unit.awakened .stand::after,.arena.charging::after{animation:none}
+}
+
 /* ---------- 当たり演出 ---------- */
 /* 踏み込みは必ず相手の方向へ。--dir が自分=1（上へ）／敵=-1（下へ） */
 .unit.act .avwrap{animation:lunge .45s cubic-bezier(.3,.9,.3,1)}
@@ -1017,6 +1068,8 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 .cue.status{color:#2B1550;background:linear-gradient(180deg,#D9C9FF,#9B7BE8);box-shadow:0 4px 16px rgba(155,123,232,.5)}
 .cue.status.good{color:#062E2A;background:linear-gradient(180deg,#9FF3E8,#3FC2B4)}
 .cue.nullify{color:#2A1C00;background:linear-gradient(180deg,#FFE79E,#E5AE31)}
+.cue.awk{color:#2A1C00;background:linear-gradient(180deg,#FFF3CE,#F0C550);
+  box-shadow:0 4px 20px rgba(240,197,80,.65);letter-spacing:.18em}
 .cue.break{color:#2A0A0E;background:linear-gradient(180deg,#FFD9A0,#F2566A);box-shadow:0 4px 18px rgba(242,86,106,.6)}
 
 .banner{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:7}
@@ -1163,70 +1216,152 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 #shockwave.on{display:block;animation:flashBang .45s ease forwards}
 @keyframes flashBang{0%{opacity:1}100%{opacity:0}}
 
-/* ---------- 覚醒 ---------- */
-#awk{position:fixed;inset:0;display:none;place-items:center;z-index:80;overflow:hidden;--t:2.4s;
+/* ---------- 覚醒：この作品の題名そのもの。最大の見せ場にする ----------
+   組み立て：闇が覚醒した者の位置から広がる → 元の姿が浮かぶ → 一閃で断つ
+   → 白光 → 新しい姿が現れる → 「覚醒」の二文字 → 名と形態 → 舞台へ戻る。
+   時間は --t の割合だけで書いてあるので、2回目以降（.brief）は同じ形のまま短くなる。 */
+#awk{position:fixed;inset:0;display:none;place-items:center;z-index:80;overflow:hidden;
+  --t:2.7s;--ox:50%;--oy:44%;
   background:none;-webkit-tap-highlight-color:transparent}
 #awk.brief{--t:1.15s}
 #awk.on{display:grid;animation:awkHold var(--t) linear forwards}
-@keyframes awkHold{0%,99%{opacity:1}100%{opacity:0}}
-#awk .awk-void{position:absolute;inset:0;
-  background:radial-gradient(58% 58% at 50% 50%,rgba(255,214,120,.34),rgba(10,7,18,.96) 68%,#07040E 100%);
-  animation:awkVoid var(--t) cubic-bezier(.2,.8,.2,1) both}
-@keyframes awkVoid{0%{opacity:0;transform:scale(1.35)}9%{opacity:1;transform:scale(1)}
-  82%{opacity:1;transform:scale(1.04)}100%{opacity:0;transform:scale(1.1)}}
-#awk .rays{position:absolute;left:50%;top:50%;width:190vmax;height:190vmax;margin:-95vmax 0 0 -95vmax;
+@keyframes awkHold{0%,97%{opacity:1}100%{opacity:0}}
+
+/* 覚醒した者の足元から広がる墨。ここが「切った」瞬間の起点になる */
+#awk .awk-ink{position:absolute;left:var(--ox);top:var(--oy);width:24px;height:24px;margin:-12px 0 0 -12px;
+  border-radius:50%;background:radial-gradient(closest-side,#160C24 0%,#0A0614 62%,#07040E 100%);
+  transform:scale(0);animation:awkInk var(--t) cubic-bezier(.16,.9,.24,1) both;will-change:transform}
+@keyframes awkInk{0%{transform:scale(0);opacity:1}5%{transform:scale(170);opacity:1}
+  90%{transform:scale(170);opacity:1}100%{transform:scale(170);opacity:0}}
+/* 墨の上に乗る光。断つ瞬間に一段明るくなる */
+#awk .awk-void{position:absolute;inset:0;z-index:1;
+  background:radial-gradient(58% 46% at 50% 38%,rgba(255,214,120,.30),rgba(10,7,18,.25) 62%,rgba(7,4,14,.7) 100%);
+  animation:awkVoid var(--t) linear both}
+@keyframes awkVoid{0%{opacity:0}8%{opacity:.5}30%{opacity:.6}34%{opacity:1}
+  46%{opacity:.85}88%{opacity:.85}100%{opacity:0}}
+#awk .rays{position:absolute;left:50%;top:38%;width:190vmax;height:190vmax;margin:-95vmax 0 0 -95vmax;z-index:1;
   background:repeating-conic-gradient(from 0deg,rgba(255,232,176,.20) 0deg 2.4deg,rgba(255,232,176,0) 2.4deg 13deg);
-  animation:spin 11s linear infinite,awkRays var(--t) cubic-bezier(.2,.8,.2,1) both;
+  animation:spin 11s linear infinite,awkRays var(--t) linear both;
   will-change:transform,opacity}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes awkRays{0%{opacity:0}16%{opacity:1}78%{opacity:.9}100%{opacity:0}}
-#awk .awk-ring{position:absolute;left:50%;top:50%;width:44vmax;height:44vmax;margin:-22vmax 0 0 -22vmax;
+@keyframes awkRays{0%,30%{opacity:0}38%{opacity:1}84%{opacity:.75}100%{opacity:0}}
+#awk .awk-ring{position:absolute;left:50%;top:38%;width:44vmax;height:44vmax;margin:-22vmax 0 0 -22vmax;z-index:2;
   border-radius:50%;border:2px solid rgba(255,240,200,.85);box-shadow:0 0 70px rgba(255,214,110,.6);
-  animation:awkRing calc(var(--t)*.62) cubic-bezier(.15,.85,.25,1) both;will-change:transform,opacity}
-#awk .awk-ring.r2{border-color:rgba(255,205,120,.5);animation-delay:calc(var(--t)*.16)}
-@keyframes awkRing{0%{opacity:0;transform:scale(.12)}22%{opacity:1}100%{opacity:0;transform:scale(2.6)}}
-#awk .awk-slash{position:absolute;left:-30%;top:50%;width:160%;height:3px;
+  animation:awkRing calc(var(--t)*.5) cubic-bezier(.15,.85,.25,1) both;
+  animation-delay:calc(var(--t)*.31);will-change:transform,opacity}
+#awk .awk-ring.r2{border-color:rgba(255,205,120,.5);animation-delay:calc(var(--t)*.4)}
+@keyframes awkRing{0%{opacity:0;transform:scale(.06)}18%{opacity:1}100%{opacity:0;transform:scale(2.6)}}
+
+/* 立ち姿。断つ前の姿と、断ったあとの姿を同じ場所で入れ替える */
+#awk .awk-stage{position:absolute;left:50%;top:38%;z-index:2;
+  width:min(46vmin,230px);height:min(46vmin,230px);margin:0;transform:translate3d(-50%,-50%,0)}
+#awk .awk-fig{position:absolute;inset:0;display:grid;place-items:center}
+#awk .awk-fig .av{width:100%;height:100%;border-radius:26px;font-size:min(22vmin,108px);border-width:2px}
+#awk .awk-fig .av.awake{animation:none}
+/* 断つ前：沈んだ影。輪郭にだけ光が当たっている */
+#awk #awk-sil{filter:brightness(.26) saturate(.35) contrast(1.15);
+  animation:awkSil var(--t) cubic-bezier(.2,.8,.2,1) both}
+@keyframes awkSil{0%{opacity:0;transform:translate3d(0,7%,0) scale(1.16);filter:brightness(.05) blur(6px)}
+  8%{opacity:1;transform:none;filter:brightness(.26) saturate(.35)}
+  29%{opacity:1;filter:brightness(.26) saturate(.35)}
+  33%{opacity:1;filter:brightness(7) saturate(0)}
+  38%{opacity:0;transform:scale(1.1);filter:brightness(9) saturate(0)}
+  100%{opacity:0}}
+/* 断ったあと：新しい姿。金の縁取りと共に現れ、最後まで残る */
+#awk #awk-fig{animation:awkNew var(--t) cubic-bezier(.2,.8,.2,1) both}
+@keyframes awkNew{0%,32%{opacity:0;transform:scale(1.22);filter:brightness(6) saturate(0) blur(8px)}
+  38%{opacity:1;transform:scale(1.02);filter:brightness(2.2) saturate(.6) blur(0)}
+  48%{opacity:1;transform:scale(1);filter:none}
+  90%{opacity:1;transform:scale(1.03);filter:none}
+  100%{opacity:0;transform:scale(1.06)}}
+#awk #awk-fig::after{content:"";position:absolute;inset:-14%;border-radius:34px;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(255,206,110,.5),transparent 72%);
+  animation:awkHalo var(--t) ease-in-out both}
+@keyframes awkHalo{0%,32%{opacity:0;transform:scale(.7)}40%{opacity:1;transform:scale(1.12)}
+  60%{opacity:.7;transform:scale(1)}88%{opacity:.85;transform:scale(1.06)}100%{opacity:0}}
+/* 断たれた影の破片 */
+#awk .awk-shards{position:absolute;inset:0;z-index:3;pointer-events:none}
+#awk .awk-shards i{position:absolute;left:50%;top:50%;width:3px;height:26%;margin:-13% 0 0 -1.5px;
+  background:linear-gradient(180deg,rgba(255,244,214,.95),rgba(255,196,90,0));
+  transform-origin:50% 50%;transform:rotate(var(--r)) translate3d(0,0,0) scaleY(0);
+  animation:awkShard calc(var(--t)*.34) cubic-bezier(.1,.8,.3,1) both;animation-delay:calc(var(--t)*.32)}
+@keyframes awkShard{0%{opacity:0;transform:rotate(var(--r)) translate3d(0,0,0) scaleY(.2)}
+  22%{opacity:1;transform:rotate(var(--r)) translate3d(0,-14%,0) scaleY(1)}
+  100%{opacity:0;transform:rotate(var(--r)) translate3d(0,-120%,0) scaleY(.5)}}
+/* 立ちのぼる光の粒。画面が止まって見えないようにする */
+#awk .awk-motes{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
+#awk .awk-motes i{position:absolute;bottom:-6%;width:5px;height:5px;border-radius:50%;
+  background:radial-gradient(closest-side,#FFF3D2,rgba(255,196,90,0));
+  animation:awkMote calc(var(--t)*.9) linear infinite both}
+#awk .awk-motes i:nth-child(1){left:12%;animation-delay:calc(var(--t)*.30)}
+#awk .awk-motes i:nth-child(2){left:26%;animation-delay:calc(var(--t)*.36);transform:scale(1.5)}
+#awk .awk-motes i:nth-child(3){left:38%;animation-delay:calc(var(--t)*.33)}
+#awk .awk-motes i:nth-child(4){left:50%;animation-delay:calc(var(--t)*.42);transform:scale(.8)}
+#awk .awk-motes i:nth-child(5){left:62%;animation-delay:calc(var(--t)*.31);transform:scale(1.3)}
+#awk .awk-motes i:nth-child(6){left:74%;animation-delay:calc(var(--t)*.45)}
+#awk .awk-motes i:nth-child(7){left:86%;animation-delay:calc(var(--t)*.35);transform:scale(1.2)}
+#awk .awk-motes i:nth-child(8){left:94%;animation-delay:calc(var(--t)*.48);transform:scale(.7)}
+@keyframes awkMote{0%{opacity:0;transform:translate3d(0,0,0)}
+  12%{opacity:.95}100%{opacity:0;transform:translate3d(6px,-108vh,0)}}
+
+/* 一閃。これが「切った」手応えの本体 */
+#awk .awk-slash{position:absolute;left:-30%;top:38%;width:160%;height:4px;z-index:4;
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.95) 45%,#FFE9B4 55%,transparent);
-  box-shadow:0 0 26px rgba(255,226,160,.9);transform-origin:center;
-  animation:awkSlash calc(var(--t)*.4) cubic-bezier(.2,.9,.2,1) both;will-change:transform,opacity}
-#awk .awk-slash.s1{animation-delay:calc(var(--t)*.1)}
-#awk .awk-slash.s2{animation-delay:calc(var(--t)*.2)}
+  box-shadow:0 0 30px rgba(255,226,160,.95);transform-origin:center;
+  animation:awkSlash calc(var(--t)*.26) cubic-bezier(.1,.9,.2,1) both;will-change:transform,opacity}
+#awk .awk-slash.s1{animation-delay:calc(var(--t)*.24)}
+#awk .awk-slash.s2{animation-delay:calc(var(--t)*.29)}
 @keyframes awkSlash{0%{opacity:0;transform:rotate(-28deg) scaleX(0)}
-  30%{opacity:1;transform:rotate(-28deg) scaleX(1)}100%{opacity:0;transform:rotate(-28deg) scaleX(1.12)}}
+  22%{opacity:1;transform:rotate(-28deg) scaleX(1)}100%{opacity:0;transform:rotate(-28deg) scaleX(1.14)}}
 #awk .awk-slash.s2{animation-name:awkSlash2}
 @keyframes awkSlash2{0%{opacity:0;transform:rotate(19deg) scaleX(0)}
-  30%{opacity:1;transform:rotate(19deg) scaleX(1)}100%{opacity:0;transform:rotate(19deg) scaleX(1.12)}}
-#awk .awk-core{position:relative;text-align:center;z-index:3}
-#awk .awk-form{font-family:var(--serif);font-size:15px;letter-spacing:.42em;color:#FFE9B4;margin-bottom:10px;
-  text-shadow:0 0 22px rgba(240,197,80,.8);animation:awkForm calc(var(--t)*.7) cubic-bezier(.2,.8,.2,1) both;
-  animation-delay:calc(var(--t)*.14)}
+  22%{opacity:1;transform:rotate(19deg) scaleX(1)}100%{opacity:0;transform:rotate(19deg) scaleX(1.14)}}
+
+/* 文字。立ち姿より下に置いて、顔を隠さない */
+#awk .awk-core{position:relative;text-align:center;z-index:5;margin-top:34vh;padding:0 16px}
+#awk .awk-form{font-family:var(--serif);font-size:15px;letter-spacing:.42em;color:#FFE9B4;margin-bottom:8px;
+  text-shadow:0 0 22px rgba(240,197,80,.8);animation:awkForm calc(var(--t)*.5) cubic-bezier(.2,.8,.2,1) both;
+  animation-delay:calc(var(--t)*.44)}
 @keyframes awkForm{0%{opacity:0;transform:translate3d(0,10px,0);letter-spacing:1.2em}
-  40%{opacity:1;transform:none;letter-spacing:.42em}100%{opacity:1}}
+  60%{opacity:1;transform:none;letter-spacing:.42em}100%{opacity:1}}
 #awk .big{display:flex;justify-content:center;gap:.12em;font-family:var(--serif);font-weight:800;
-  font-size:clamp(66px,23vw,124px);line-height:1;color:#FFF8E4}
+  font-size:clamp(58px,20vw,112px);line-height:1;color:#FFF8E4}
 #awk .big i{display:block;font-style:normal;
   text-shadow:0 0 12px rgba(255,236,180,.95),0 0 60px rgba(240,197,80,.85),0 6px 0 rgba(120,70,0,.35);
-  animation:awkKanji calc(var(--t)*.55) cubic-bezier(.16,.9,.2,1) both}
-#awk .big i:nth-child(2){animation-delay:calc(var(--t)*.1)}
-@keyframes awkKanji{0%{opacity:0;transform:scale(2.1) rotate(-6deg);filter:blur(14px)}
+  animation:awkKanji calc(var(--t)*.42) cubic-bezier(.16,.9,.2,1) both;animation-delay:calc(var(--t)*.33)}
+#awk .big i:nth-child(2){animation-delay:calc(var(--t)*.38)}
+@keyframes awkKanji{0%{opacity:0;transform:scale(2.3) rotate(-6deg);filter:blur(14px)}
   55%{opacity:1;transform:scale(1) rotate(0);filter:blur(0)}
   100%{opacity:1;transform:scale(1.04)}}
-#awk .who2{margin-top:12px;color:#F6E7BC;letter-spacing:.2em;font-size:13.5px;
-  animation:awkWho calc(var(--t)*.5) ease both;animation-delay:calc(var(--t)*.28)}
+#awk .who2{margin-top:10px;color:#F6E7BC;letter-spacing:.2em;font-size:13.5px;
+  animation:awkWho calc(var(--t)*.4) ease both;animation-delay:calc(var(--t)*.5)}
 @keyframes awkWho{0%{opacity:0;transform:translate3d(0,8px,0)}100%{opacity:1;transform:none}}
-#awk .awk-bar{position:absolute;left:0;right:0;height:9vh;background:linear-gradient(#07040E,rgba(7,4,14,.6));
-  z-index:4;animation:awkBarIn calc(var(--t)*.3) cubic-bezier(.2,.8,.2,1) both}
+#awk .awk-bar{position:absolute;left:0;right:0;height:9vh;background:linear-gradient(#07040E,rgba(7,4,14,.55));
+  z-index:6;animation:awkBarIn calc(var(--t)*.9) cubic-bezier(.2,.8,.2,1) both}
 #awk .awk-bar.t{top:0}
-#awk .awk-bar.b{bottom:0;background:linear-gradient(rgba(7,4,14,.6),#07040E);animation-name:awkBarInB}
-@keyframes awkBarIn{from{transform:translate3d(0,-100%,0)}to{transform:none}}
-@keyframes awkBarInB{from{transform:translate3d(0,100%,0)}to{transform:none}}
-#awk .awk-skip{position:absolute;right:16px;bottom:calc(16px + var(--safe-b));z-index:6;
+#awk .awk-bar.b{bottom:0;background:linear-gradient(rgba(7,4,14,.55),#07040E);animation-name:awkBarInB}
+@keyframes awkBarIn{0%{transform:translate3d(0,-100%,0)}10%{transform:none}
+  88%{transform:none}100%{transform:translate3d(0,-100%,0)}}
+@keyframes awkBarInB{0%{transform:translate3d(0,100%,0)}10%{transform:none}
+  88%{transform:none}100%{transform:translate3d(0,100%,0)}}
+#awk .awk-skip{position:absolute;right:16px;bottom:calc(16px + var(--safe-b));z-index:7;
   min-height:44px;padding:0 18px;border-radius:99px;font-size:12.5px;letter-spacing:.14em;font-weight:700;
   color:#F4E7C4;background:rgba(20,14,34,.72);border:1px solid rgba(255,226,160,.45);
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  animation:awkSkipIn .4s ease both;animation-delay:.25s}
+  animation:awkSkipIn .4s ease both;animation-delay:.2s}
 #awk .awk-skip:active{transform:scale(.95)}
 @keyframes awkSkipIn{from{opacity:0}to{opacity:.92}}
+/* 2回目以降は「断つ前の姿」を省いて、一閃から見せる */
+#awk.brief #awk-sil,#awk.brief .awk-motes{display:none}
+#awk.brief .awk-stage{top:36%}
+/* 動きを減らす設定：光り物を止め、静かに知らせるだけにする */
+@media (prefers-reduced-motion:reduce){
+  #awk .rays,#awk .awk-motes,#awk .awk-shards,#awk .awk-slash{display:none}
+  #awk .awk-ink,#awk .awk-void,#awk .awk-ring,#awk #awk-sil,#awk #awk-fig,
+  #awk #awk-fig::after,#awk .big i,#awk .awk-form,#awk .who2,#awk .awk-bar{animation-duration:.01s}
+  #awk #awk-sil{display:none}
+  #awk #awk-fig{opacity:1;filter:none;transform:none;animation:none}
+}
 
 /* ---------- ローカル対戦の目隠し ---------- */
 #veil{position:fixed;inset:0;z-index:70;display:none;padding:24px;
@@ -1253,6 +1388,50 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 #veil .vs{color:var(--dim);font-size:12.5px;margin:16px 0 20px;line-height:1.7}
 #veil .veil-hint{color:#7E729A;font-size:11px;letter-spacing:.06em;margin-top:12px}
 #veil #veil-ok{min-height:56px}
+
+/* ---------- 決着 ----------
+   最後の一撃で舞台から色が抜け、札が落ちて、そのままリザルトへ溶ける。 */
+#hitflash.final{background:radial-gradient(120% 90% at 50% 50%,rgba(255,255,255,.55) 0%,rgba(255,236,190,.7) 100%)}
+.decide{position:fixed;inset:0;z-index:78;display:none;pointer-events:none;--t:1500ms}
+.decide.on{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px}
+.decide .dc-dim{position:absolute;inset:0;background:radial-gradient(70% 55% at 50% 50%,rgba(6,3,12,.84),rgba(3,1,7,.97));
+  animation:dcDim var(--t) ease-out both}
+@keyframes dcDim{0%{opacity:0}18%{opacity:1}100%{opacity:1}}
+.decide .dc-word{position:relative;display:flex;gap:.16em;font-family:var(--serif);font-weight:800;
+  font-size:clamp(52px,17vw,96px);line-height:1;letter-spacing:.04em;z-index:2}
+.decide .dc-word span{display:block;
+  animation:dcWord calc(var(--t)*.5) cubic-bezier(.16,.9,.2,1) both}
+.decide .dc-word span:nth-child(2){animation-delay:calc(var(--t)*.07)}
+.decide .dc-word span:nth-child(3){animation-delay:calc(var(--t)*.14)}
+@keyframes dcWord{0%{opacity:0;transform:translate3d(0,-26px,0) scale(1.5);filter:blur(10px)}
+  60%{opacity:1;transform:none;filter:blur(0)}100%{opacity:1}}
+.decide.win .dc-word span{color:transparent;background:linear-gradient(170deg,#FFF6D8,#F0C550 48%,#B07C12);
+  -webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 6px 30px rgba(240,197,80,.6))}
+.decide.draw .dc-word span{color:#F3E8CC;text-shadow:0 0 28px rgba(240,197,80,.5)}
+.decide.lose .dc-word span{color:#8B7FA6;text-shadow:0 0 26px rgba(40,26,64,.9)}
+.decide .dc-sub{position:relative;z-index:2;margin-top:16px;font-size:13px;letter-spacing:.18em;color:#CFC6DE;
+  animation:dcSub calc(var(--t)*.4) ease both;animation-delay:calc(var(--t)*.22)}
+@keyframes dcSub{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
+/* 札の下を横切る一本線。勝ちは金、負けは灰 */
+.decide .dc-rule{position:absolute;left:0;right:0;top:50%;height:2px;z-index:1;transform-origin:left center;
+  margin-top:calc(min(17vw,96px) * .66);
+  background:linear-gradient(90deg,transparent,rgba(255,226,160,.85),transparent);
+  animation:dcRule calc(var(--t)*.55) cubic-bezier(.16,.9,.2,1) both}
+.decide.lose .dc-rule{background:linear-gradient(90deg,transparent,rgba(150,138,180,.7),transparent)}
+@keyframes dcRule{0%{opacity:0;transform:scaleX(0)}35%{opacity:1;transform:scaleX(1)}100%{opacity:.5;transform:scaleX(1)}}
+.decide.out{animation:dcOut .42s ease forwards}
+@keyframes dcOut{to{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  .decide .dc-word span,.decide .dc-sub,.decide .dc-rule,.decide .dc-dim{animation-duration:.01s}
+}
+
+/* リザルトは決着の温度を引き継ぐ */
+#s-result.won .rz-head::before{content:"";position:absolute;left:0;right:0;top:0;height:320px;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(240,197,80,.22),transparent 70%);
+  animation:winIn 1s ease both}
+#s-result.lost .rz-head::before{content:"";position:absolute;left:0;right:0;top:0;height:320px;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(120,106,160,.2),transparent 70%)}
+.rz-head{position:relative}
 
 /* ---------- リザルト ---------- */
 #s-result.on{display:flex;flex-direction:column;min-height:calc(100vh - 36px);min-height:calc(100dvh - 36px)}
@@ -1306,10 +1485,10 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
   background:linear-gradient(#1B1433,rgba(27,20,51,.92));border-bottom:1px solid rgba(255,255,255,.07)}
 
 /* 覚醒で立ち姿が差し替わる瞬間。光が回り込んでから新しい姿が出る。 */
-.figure.morph{animation:morphIn .9s cubic-bezier(.2,.8,.2,1) both}
+.figure.morph{animation:morphIn .8s cubic-bezier(.2,.8,.2,1) both}
 @keyframes morphIn{
-  0%{opacity:0;transform:scale(1.14);filter:brightness(2.6) saturate(.2) blur(6px)}
-  36%{opacity:1;filter:brightness(1.7) saturate(.7) blur(1px)}
+  0%{opacity:.25;transform:scale(1.18);filter:brightness(3.2) saturate(.15) blur(7px)}
+  26%{opacity:1;transform:scale(1.05);filter:brightness(1.9) saturate(.7) blur(1px)}
   100%{opacity:1;transform:none;filter:none}}
 @media (prefers-reduced-motion:reduce){ .figure.morph{animation:none} }
 
@@ -1837,7 +2016,8 @@ body.noscroll{overflow:hidden}
 .wizfoot{position:sticky;bottom:calc(8px + var(--safe-b));z-index:7;display:flex;gap:9px;margin-top:16px;
   padding:9px;border-radius:22px;background:rgba(20,15,36,.86);border:1px solid var(--line);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(0,0,0,.45)}
-.wizfoot .btn{flex:1;min-height:52px}
+.wizfoot .btn{flex:1;min-height:52px;white-space:nowrap}
+@media (max-width:379px){.wizfoot{gap:7px;padding:8px}.wizfoot .btn{font-size:13.5px;padding-left:9px;padding-right:9px}}
 .draftnote{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;
   font-size:11.5px;color:var(--dim)}
 .draftnote #e-draft.bad{color:#FFA9B6}
@@ -2084,56 +2264,6 @@ body.noscroll{overflow:hidden}
   box-shadow:0 4px 14px rgba(79,214,200,.3),inset 0 1px 0 rgba(255,255,255,.7)}
 .rankbadge.r-C b{background:linear-gradient(160deg,#E6E1F0,#9A8EB6);color:#1A1226;box-shadow:none}
 
-/* ---- 完成の一枚 ---- */
-.finale{position:relative;overflow:hidden;border-radius:24px;padding:16px 15px 15px;
-  border:1px solid rgba(240,197,80,.42);
-  background:
-    radial-gradient(120% 78% at 50% -12%,rgba(240,197,80,.24),transparent 62%),
-    linear-gradient(180deg,#241B42,#160F2B);
-  box-shadow:0 16px 44px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
-.finale.r-SS{border-color:rgba(242,86,106,.5);
-  background:radial-gradient(120% 78% at 50% -12%,rgba(242,86,106,.26),transparent 62%),
-    linear-gradient(180deg,#2B1733,#180E27)}
-.fin-sweep{position:absolute;top:0;bottom:0;width:46%;left:-60%;pointer-events:none;
-  background:linear-gradient(100deg,transparent,rgba(255,255,255,.16),transparent);opacity:0}
-.finale.reveal{animation:finRise .5s cubic-bezier(.2,.9,.25,1) both}
-.finale.reveal .fin-sweep{animation:finSweep 1.05s .22s cubic-bezier(.3,.7,.3,1) both}
-.finale.reveal .fin-port .av{animation:finPop .55s .1s cubic-bezier(.2,1.5,.4,1) both}
-@keyframes finRise{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
-@keyframes finSweep{0%{left:-60%;opacity:0}22%{opacity:1}100%{left:115%;opacity:0}}
-@keyframes finPop{from{transform:scale(.7);opacity:0}to{transform:none;opacity:1}}
-.fin-top{display:flex;gap:13px;align-items:center}
-.fin-port{flex:0 0 auto}
-.fin-port .av{box-shadow:0 0 0 2px rgba(240,197,80,.5),0 10px 26px rgba(0,0,0,.5)}
-.fin-id{flex:1;min-width:0}
-.fin-name{font-family:var(--serif);font-size:25px;line-height:1.2;letter-spacing:.06em;margin-top:6px;
-  overflow-wrap:anywhere}
-.fin-title{font-size:12px;letter-spacing:.22em;color:var(--gold);margin-top:2px}
-.fin-desc{font-size:12.5px;color:#CDC3DC;line-height:1.65;margin-top:11px}
-.fin-mid{display:flex;gap:10px;align-items:center;margin-top:12px;
-  padding:10px;border-radius:16px;background:rgba(0,0,0,.26)}
-.fin-nums{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:0}
-.fn{display:flex;align-items:baseline;gap:6px;border-radius:11px;padding:6px 9px;background:rgba(255,255,255,.05)}
-.fn span{font-size:10px;letter-spacing:.1em;color:var(--dim);width:28px;flex:0 0 auto}
-.fn b{font-family:var(--serif);font-size:17px;color:var(--ivory)}
-.fn em{font-style:normal;font-size:10.5px;margin-left:auto}
-.fn em.up{color:#9DF0E4}.fn em.dn{color:#FFA9B6}
-.fin-sec{display:flex;gap:9px;align-items:flex-start;margin-top:11px;font-size:12px}
-.fs-k{flex:0 0 auto;width:34px;color:var(--dim);letter-spacing:.1em;padding-top:4px}
-.fs-v{flex:1;display:flex;flex-wrap:wrap;gap:5px;color:var(--dim)}
-.fs-v .mchip em{font-style:normal;color:#9DF0E4;margin-left:5px}
-.mchip.t-ATTACK{border-color:rgba(242,86,106,.4)}
-.mchip.t-DEFENSE{border-color:rgba(79,214,200,.4)}
-.mchip.t-SUPPORT{border-color:rgba(240,197,80,.4)}
-.fin-awk{margin-top:12px;border-radius:16px;padding:11px 12px;
-  border:1px solid rgba(240,197,80,.34);background:linear-gradient(180deg,rgba(240,197,80,.14),rgba(240,197,80,.03))}
-.fa-h{display:flex;align-items:baseline;gap:9px}
-.fa-k{font-size:10px;letter-spacing:.24em;color:var(--gold)}
-.fa-h b{font-family:var(--serif);font-size:17px}
-.fa-r{display:flex;gap:9px;margin-top:6px;font-size:11.5px;color:#CDC3DC;line-height:1.5}
-.fa-r span:first-child{flex:0 0 auto;width:70px;color:var(--dim)}
-.fa-r span:last-child{flex:1;min-width:0;overflow-wrap:anywhere}
-
 /* ---- 技づくり：作りかけの一枚 ---- */
 .forgecard{position:relative;border-radius:16px;border:1px solid var(--line);padding:12px 12px 12px 17px;
   background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03))}
@@ -2216,7 +2346,6 @@ body.noscroll{overflow:hidden}
   border:1px solid var(--line);white-space:nowrap}
 
 @media (prefers-reduced-motion:reduce){
-  .finale.reveal,.finale.reveal .fin-sweep,.finale.reveal .fin-port .av{animation:none}
   .radar .rp{transition:none}
 }
 
@@ -2252,10 +2381,6 @@ body.noscroll{overflow:hidden}
 .fg-res.t-hot .fr-w{color:#FFC2CC}
 .fg-res.t-bad .fr-w{color:#FFA9B6}
 
-/* ---- 完成の一枚：立ち絵の大きさと数値の並び ---- */
-.fin-port .av-96{width:96px;height:96px;font-size:44px;border-radius:26px}
-.fin-nums{grid-template-columns:1fr}
-
 /* ---- 技の効果音 ---- */
 .sfxrow{display:flex;align-items:center;gap:11px;border:1px solid rgba(79,214,200,.34);border-radius:16px;
   padding:10px 12px;background:rgba(79,214,200,.07)}
@@ -2268,13 +2393,7 @@ body.noscroll{overflow:hidden}
 
 /* ---- 覚醒形態の立ち絵 ---- */
 .portprev{position:relative}
-.portsame{position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);white-space:nowrap;
-  font-size:9.5px;letter-spacing:.06em;color:var(--dim);padding:2px 8px;border-radius:99px;
-  background:rgba(20,15,36,.92);border:1px solid var(--line)}
 .awkface{box-shadow:0 0 0 2px rgba(240,197,80,.45)}
-.fa-face{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;
-  border-top:1px solid rgba(240,197,80,.24)}
-.fa-face span{font-size:11.5px;color:#E7D9AE}
 
 /* ---- 選ばせるカード（書き出しの形など） ---- */
 .pickcard{display:block;width:100%;text-align:left;border-radius:16px;border:1px solid var(--line);
@@ -2283,6 +2402,214 @@ body.noscroll{overflow:hidden}
 .pickcard span{display:block;font-size:11.5px;color:var(--dim);line-height:1.5}
 .pickcard em{display:inline-block;font-style:normal;margin-top:6px;font-size:11px;color:#9DF0E4}
 .pickcard:active{border-color:rgba(240,197,80,.7);background:rgba(240,197,80,.13)}
+
+/* ===== 42b-showcase.css ===== */
+/* ===== 42b. 完成の一枚 — 通常形態と覚醒形態を一枚の舞台で見比べる ===== */
+.showcase{position:relative;border-radius:24px;overflow:hidden;
+  border:1px solid rgba(240,197,80,.42);
+  background:linear-gradient(180deg,#241B42,#160F2B);
+  box-shadow:0 16px 44px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+.showcase.r-SS{border-color:rgba(242,86,106,.52)}
+/* 覚醒を見ているあいだは、一枚まるごと朱に寄せる */
+.showcase{transition:border-color .4s,background .4s}
+.showcase[data-f="awake"]{border-color:rgba(242,86,106,.55);
+  background:linear-gradient(180deg,#331B3D,#190F27)}
+.showcase[data-f="awake"] .sc-awk{border-color:rgba(242,86,106,.4);
+  background:linear-gradient(180deg,rgba(242,86,106,.14),rgba(242,86,106,.03))}
+.showcase[data-f="awake"] .sa-h span{color:#FFC2CC}
+.showcase.reveal{animation:scRise .46s cubic-bezier(.2,.9,.25,1) both}
+@keyframes scRise{from{opacity:0;transform:translateY(16px) scale(.975)}to{opacity:1;transform:none}}
+
+/* ---- 舞台 ---- */
+.sc-stage{position:relative;width:100%;aspect-ratio:1/1;max-height:min(46vh,420px);
+  overflow:hidden;cursor:pointer;background:radial-gradient(120% 90% at 50% 8%,#3A2C63,#120C22 70%)}
+.sc-art{position:absolute;inset:0;display:grid;place-items:center}
+.sc-art img{width:100%;height:100%;object-fit:cover;display:block}
+.sc-glyph{font-size:min(30vw,132px);line-height:1;color:var(--gold);
+  text-shadow:0 8px 30px rgba(0,0,0,.6)}
+.sc-art.sc-a{transition:clip-path .5s cubic-bezier(.3,.8,.25,1)}
+/* 斜めの境目。clip-path の切り口に光の線を重ねる（位置は transform だけで動かす） */
+.sc-seam{position:absolute;top:-14%;bottom:-14%;left:0;width:100%;pointer-events:none;
+  transform:translateX(calc(120% - 140% * var(--split)));
+  transition:transform .5s cubic-bezier(.3,.8,.25,1)}
+.sc-seam::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;margin-left:-2px;
+  transform:rotate(11.3deg);
+  background:linear-gradient(180deg,rgba(255,240,200,.15),rgba(255,232,170,.95) 40%,rgba(255,150,130,.9));
+  box-shadow:0 0 18px 4px rgba(240,197,80,.5)}
+.showcase[data-f="normal"] .sc-seam,.showcase[data-f="awake"] .sc-seam{opacity:0}
+.sc-seam{transition:transform .5s cubic-bezier(.3,.8,.25,1),opacity .35s}
+.sc-art.sc-a::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(242,86,106,.16),rgba(240,197,80,.1))}
+.sc-art.sc-a .sc-glyph{color:#FFD9E0;text-shadow:0 0 26px rgba(242,86,106,.8)}
+.sc-vig{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(10,7,20,.45) 0%,transparent 26%,transparent 44%,rgba(10,7,20,.86) 100%)}
+.sc-flash{position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:radial-gradient(70% 55% at 62% 42%,rgba(255,244,214,.9),rgba(242,86,106,.35) 45%,transparent 72%)}
+.showcase.burst .sc-flash{animation:scFlash .55s cubic-bezier(.2,.8,.3,1) both}
+@keyframes scFlash{0%{opacity:0;transform:scale(.86)}18%{opacity:1}100%{opacity:0;transform:scale(1.15)}}
+
+/* 形態の札 */
+.sc-tag{position:absolute;top:10px;font-size:10px;letter-spacing:.22em;padding:4px 10px;border-radius:99px;
+  background:rgba(12,8,22,.72);border:1px solid var(--line);color:var(--text-2);
+  transition:opacity .3s,transform .3s}
+.sc-tn{left:10px}
+.sc-ta{right:10px;border-color:rgba(240,197,80,.6);color:#F5E3B0;background:rgba(58,32,22,.75)}
+.showcase[data-f="normal"] .sc-ta{opacity:0;transform:translateX(10px)}
+.showcase[data-f="awake"] .sc-tn{opacity:0;transform:translateX(-10px)}
+
+/* 名前と段位 */
+.sc-id{position:absolute;left:12px;right:12px;bottom:11px;display:flex;align-items:flex-end;gap:11px}
+.sc-id .rankbadge{flex:0 0 auto}
+.sc-names{flex:1;min-width:0}
+.sc-name{display:block;font-family:var(--serif);font-size:27px;line-height:1.15;letter-spacing:.06em;
+  overflow-wrap:anywhere;text-shadow:0 3px 16px rgba(0,0,0,.85)}
+.sc-sub{display:block;font-style:normal;font-size:12px;letter-spacing:.2em;color:var(--gold);margin-top:3px;
+  text-shadow:0 2px 10px rgba(0,0,0,.8)}
+.showcase[data-f="awake"] .sc-sub{color:#FFC2CC}
+
+/* ---- 形態の切り替え ---- */
+.sc-seg{display:flex;gap:6px;margin:11px 12px 0}
+.sc-seg button{flex:1;min-height:44px;border-radius:13px;font-size:12.5px;color:var(--text-2);
+  border:1px solid var(--line);background:rgba(255,255,255,.04);transition:.16s}
+.sc-seg button.on{border-color:rgba(240,197,80,.66);background:rgba(240,197,80,.15);
+  color:#F5E3B0;font-weight:700}
+
+.sc-desc{font-size:12.5px;color:var(--text-2);line-height:1.65;margin:11px 13px 0}
+
+/* ---- 能力 ---- */
+.sc-mid{display:flex;gap:10px;align-items:center;margin:11px 12px 0;padding:10px;
+  border-radius:16px;background:rgba(0,0,0,.28)}
+.sc-radar .rw{fill:rgba(242,86,106,.2);stroke:#F2566A;stroke-width:1.5;stroke-dasharray:4 3}
+/* 狭い端末では形のほうを縮める（数字は読めなくなると意味がない） */
+.sc-mid .sc-radar{flex:0 1 auto;width:150px;max-width:44%;height:auto}
+.sc-stats{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.scr{display:flex;align-items:baseline;gap:6px;border-radius:10px;padding:5px 8px;
+  background:rgba(255,255,255,.05);transition:background .25s}
+.scr.sc-head{background:none;padding:0 8px;font-size:9.5px;letter-spacing:.14em;color:var(--text-3)}
+.scr.sc-head .scr-n,.scr.sc-head .scr-a{font-family:inherit;font-size:9.5px;color:var(--text-3)}
+.scr-k{flex:0 0 auto;width:30px;font-size:10px;letter-spacing:.1em;color:var(--text-3)}
+.scr-n{flex:1;text-align:right;font-family:var(--serif);font-size:15.5px;color:var(--text-1)}
+.scr-a{flex:1.35;text-align:right;font-family:var(--serif);font-size:15.5px;color:var(--text-3)}
+.scr-a em{font-style:normal;font-size:10.5px;margin-left:5px}
+.scr-a em.up{color:#9DF0E4}.scr-a em.dn{color:#FFA9B6}.scr-a em.eq{color:var(--text-3)}
+.showcase[data-f="awake"] .scr-a{color:#FFD9E0}
+.showcase[data-f="awake"] .scr-n{color:var(--text-3)}
+.scr.lit{background:rgba(242,86,106,.12)}
+@media (max-width:359px){.sc-mid{flex-direction:column}.sc-radar{align-self:center}}
+
+/* ---- 技 ---- */
+.sc-skills{margin:11px 12px 0}
+.sc-skills .sk-h{font-size:10.5px;letter-spacing:.14em;color:var(--text-3);margin-bottom:6px}
+.sc-skills .sk-h em{font-style:normal;color:var(--gold);margin-left:8px;letter-spacing:0}
+.sc-skills .sk-c{display:flex;flex-wrap:wrap;gap:5px}
+.sc-skills .mchip em{font-style:normal;color:#9DF0E4;margin-left:5px}
+
+/* ---- 覚醒の内訳 ---- */
+.sc-awk{margin:12px;border-radius:16px;padding:11px 12px;
+  border:1px solid rgba(240,197,80,.34);
+  background:linear-gradient(180deg,rgba(240,197,80,.14),rgba(240,197,80,.03))}
+.sc-awk.off{color:var(--text-3);font-size:12px;border-style:dashed;border-color:var(--line);background:none}
+.sa-h{display:flex;align-items:baseline;gap:9px}
+.sa-h span{font-size:10px;letter-spacing:.24em;color:var(--gold)}
+.sa-h b{font-family:var(--serif);font-size:17px}
+.sa-r{display:flex;gap:9px;margin-top:6px;font-size:11.5px;color:var(--text-2);line-height:1.5}
+.sa-r span:first-child{flex:0 0 auto;width:66px;color:var(--text-3)}
+.sa-r span:last-child{flex:1;min-width:0;overflow-wrap:anywhere}
+
+@media (prefers-reduced-motion:reduce){
+  .showcase.reveal,.showcase.burst .sc-flash{animation:none}
+  .sc-art.sc-a,.sc-tag,.scr,.sc-seam{transition:none}
+}
+
+/* ===== ためし斬り — 作りかけの技を実際に戦わせたログ ===== */
+.tryout{margin-top:12px;border-radius:16px;border:1px solid var(--line);background:rgba(0,0,0,.24);
+  padding:11px 12px}
+.ty-h{font-size:11px;letter-spacing:.14em;color:var(--gold);display:flex;flex-wrap:wrap;gap:8px;
+  align-items:baseline}
+.ty-h em{font-style:normal;letter-spacing:0;color:var(--text-3);font-size:10.5px}
+.ty-list{list-style:none;margin:9px 0 0;padding:0;display:flex;flex-direction:column;gap:7px}
+.tyr{display:flex;gap:9px;align-items:flex-start}
+.ty-t{flex:0 0 auto;width:22px;height:22px;border-radius:8px;display:grid;place-items:center;
+  font-size:11px;font-weight:700;color:#E7D9AE;background:rgba(240,197,80,.16);
+  border:1px solid rgba(240,197,80,.3)}
+.ty-b{flex:1;min-width:0}
+.ty-l{display:flex;flex-direction:column;gap:2px}
+.ty-l span{font-size:11.5px;color:var(--text-2);line-height:1.5;overflow-wrap:anywhere}
+.ty-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.09);margin-top:5px;overflow:hidden}
+.ty-bar i{display:block;height:100%;border-radius:99px;transform-origin:left;
+  background:linear-gradient(90deg,#F2566A,var(--gold));transition:transform .3s ease}
+.tyr b{flex:0 0 auto;font-family:var(--serif);font-size:15px;min-width:52px;text-align:right}
+.tyr b.ty-d{color:#FFA9B6}.tyr b.ty-h2{color:#9DF0E4}.tyr b.ty-z{color:var(--text-3);font-size:13px}
+.ty-f{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:11.5px;color:var(--text-2)}
+.ty-f b{font-family:var(--serif);font-size:17px;color:var(--gold);margin:0 2px}
+.presetcard.more{border-style:dashed;border-color:rgba(240,197,80,.45)}
+.presetcard.more b{color:#F5E3B0}
+@media (prefers-reduced-motion:reduce){.ty-bar i{transition:none}}
+
+/* ===== 置いているもの（メディアの内訳） ===== */
+.vgauge{border:1px solid rgba(240,197,80,.3);border-radius:16px;padding:12px;
+  background:linear-gradient(180deg,rgba(240,197,80,.1),rgba(240,197,80,.02))}
+.vg-top{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#E7D9AE}
+.vg-top b{font-family:var(--serif);font-size:16px;color:var(--gold)}
+.vg-track{height:8px;border-radius:99px;background:rgba(0,0,0,.35);overflow:hidden;margin:9px 0 7px}
+.vg-track i{display:block;height:100%;border-radius:99px;transform-origin:left;
+  background:linear-gradient(90deg,var(--jade),var(--gold));transition:transform .3s ease}
+.vrow{border:1px solid var(--line);border-radius:16px;padding:10px 11px;background:rgba(255,255,255,.04);
+  margin-bottom:8px}
+.vr-h{display:flex;align-items:center;gap:10px}
+.vr-i{flex:0 0 auto;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:18px;
+  color:#9DF0E4;background:rgba(79,214,200,.16)}
+.vr-t{flex:1;min-width:0}
+.vr-t b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vr-t span{display:block;font-size:11px;color:var(--text-3);margin-top:2px}
+.vr-b{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.vchip{display:flex;align-items:center;gap:7px;min-height:44px;padding:8px 12px;border-radius:13px;
+  border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:12px;color:var(--text-2)}
+.vchip b{font-weight:600;font-size:12.5px;color:var(--text-1)}
+.vchip span{color:var(--text-3);font-size:11px}
+.vchip em{font-style:normal;color:var(--gold);font-size:11px;margin-left:2px}
+.vchip:active{border-color:rgba(240,197,80,.7);background:rgba(240,197,80,.13)}
+.vchip.danger em,.vchip.danger b{color:#FFA9B6}
+.vchip.danger{border-color:rgba(242,86,106,.35)}
+@media (prefers-reduced-motion:reduce){.vg-track i{transition:none}}
+
+/* ===== 覚醒の段：通常と覚醒を並べて見せる ===== */
+.facepair{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:4px;
+  padding:12px;border-radius:18px;border:1px solid var(--line);
+  background:linear-gradient(110deg,rgba(155,123,232,.12),rgba(242,86,106,.12))}
+.facepair.same{background:rgba(255,255,255,.035)}
+.facepair .fp{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.facepair figcaption{font-size:10.5px;letter-spacing:.16em;color:var(--text-3)}
+.facepair .fp.after figcaption{color:var(--gold)}
+.facepair.same .fp.after figcaption{color:var(--text-3)}
+.fp-ar{font-size:18px;color:var(--gold);opacity:.85}
+.facepair.same .fp-ar{opacity:.35}
+.fp-av .av{box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.fp.after .fp-av .av{box-shadow:0 0 0 2px rgba(240,197,80,.55),0 8px 26px rgba(242,86,106,.3)}
+.facepair.same .fp.after .fp-av .av{box-shadow:0 8px 24px rgba(0,0,0,.45);opacity:.6}
+.fp-note{margin-top:8px}
+
+/* 作成の画面は、上部のバーを左右いっぱいに出すために負のマージンを使っている。
+   そのぶん画面の外へ 14px はみ出し、狭い端末で横スクロールが起きていた。
+   clip なら（hidden と違って）position:sticky を殺さずにはみ出しだけを止められる。 */
+#s-edit,#s-skill{overflow-x:clip}
+
+/* ===== 技の段：戦闘で並ぶ手札のプレビュー ===== */
+.sum-top em{font-style:normal;float:right;font-size:10.5px;color:var(--text-3);letter-spacing:.08em}
+.handlist{display:flex;flex-direction:column;gap:6px}
+.hand{position:relative;display:flex;align-items:center;gap:8px;min-height:44px;
+  border-radius:13px;border:1px solid var(--line);background:rgba(255,255,255,.05);
+  padding:8px 11px 8px 15px}
+.hand::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:4px;border-radius:99px;
+  background:var(--violet)}
+.hand.t-ATTACK::before{background:#F2566A}.hand.t-DEFENSE::before{background:#4FD6C8}
+.hand.t-SUPPORT::before{background:var(--gold)}.hand.base::before{background:rgba(255,255,255,.3)}
+.hand .hd-n{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hand .hd-c{flex:0 0 auto;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;
+  background:rgba(79,214,200,.16);color:#9DF0E4;border:1px solid rgba(79,214,200,.35)}
+.hand .hd-t{flex:0 0 auto;font-size:10.5px;color:var(--text-3);min-width:82px;text-align:right}
+.hand .hd-t.late{color:#FFC9A0}
+@media (max-width:359px){.hand .hd-t{min-width:0}}
 </style>
 </head>
 <body>
@@ -2558,9 +2885,16 @@ body.noscroll{overflow:hidden}
 <div class="hitflash" id="hitflash"></div>
 <div class="awk" id="awk" aria-hidden="true">
   <div class="awk-void"></div>
+  <div class="awk-ink"></div>
   <div class="rays"></div>
   <div class="awk-ring"></div>
   <div class="awk-ring r2"></div>
+  <div class="awk-stage">
+    <div class="awk-fig" id="awk-sil" aria-hidden="true"></div>
+    <div class="awk-fig now" id="awk-fig"></div>
+    <div class="awk-shards"><i style="--r:-58deg"></i><i style="--r:-22deg"></i><i style="--r:14deg"></i><i style="--r:46deg"></i><i style="--r:88deg"></i><i style="--r:126deg"></i></div>
+  </div>
+  <div class="awk-motes"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="awk-slash s1"></div>
   <div class="awk-slash s2"></div>
   <div class="awk-core">
@@ -2571,6 +2905,12 @@ body.noscroll{overflow:hidden}
   <div class="awk-bar t"></div>
   <div class="awk-bar b"></div>
   <button class="awk-skip" id="awk-skip">スキップ ▸</button>
+</div>
+<div class="decide" id="decide" aria-hidden="true">
+  <div class="dc-dim"></div>
+  <div class="dc-word" id="decide-word"><span></span></div>
+  <div class="dc-sub" id="decide-sub"></div>
+  <div class="dc-rule"></div>
 </div>
 <script>
 /* ===== 00-version.js ===== */
@@ -4383,6 +4723,18 @@ const Music = {
       // BGM と効果音を別系統にして、曲の裏でも打撃音が埋もれないようにする
       this.bgmBus=this.ctx.createGain(); this.bgmBus.gain.value=1;   this.bgmBus.connect(this.master);
       this.sfxBus=this.ctx.createGain(); this.sfxBus.gain.value=1.3; this.sfxBus.connect(this.master);
+      this.centerBus=this.sfxBus;
+      // 立ち位置で音の左右を振る。自分は手前（左下）、相手は奥（右上）。
+      // StereoPanner を持たない古い環境では中央のまま鳴らす。
+      if(this.ctx.createStereoPanner){
+        this.pans=[0,1].map(v=>{
+          const g=this.ctx.createGain(), pan=this.ctx.createStereoPanner();
+          pan.pan.value=v===0?-0.32:0.32;
+          g.connect(pan); pan.connect(this.master);
+          g.gain.value=1.3;
+          return g;
+        });
+      }
       return true;
     }catch(e){ return false; }
   },
@@ -4638,36 +4990,69 @@ const Music = {
   /* =======================================================================
      打撃音の組み立て。技の「音色」は FxKit が技データから決めた timbre で選ぶ。
      ======================================================================= */
-  strikeSynth(timbre,t,tier,index,crit){
+  /* 技の色から音の硬さを決める。青〜藍（氷・水）ほど硬く高く、
+     赤〜橙（炎・血）ほど太く低い。利用者が作った技でも、色に合った音が出る。 */
+  hueTone(h){
+    h=((Number(h)||0)%360+360)%360;
+    const d=Math.abs(((h-210+180)%360)-180);      // 210度からの隔たり 0..180
+    return 1.18-0.36*(d/180);
+  },
+  strikeSynth(timbre,t,tier,index,crit,hue){
     // 連撃は1発ごとに少しずつ高くして、刻んでいるように聞かせる
     const k=Math.pow(1.055,Math.min(6,Math.max(0,index-1)));
+    const c=this.hueTone(hue);                    // 色から来る硬さ
     const g=0.15+0.05*tier;
     switch(timbre){
       case "blunt":
-        this.nz(t,0.08+0.03*tier,g*1.15,{type:"lowpass",f0:1700,f1:180,q:1});
-        this.blip(t,150-18*tier,36,0.22+0.06*tier,"sine",0.34+0.06*tier);
+        this.nz(t,0.08+0.03*tier,g*1.15,{type:"lowpass",f0:1700*c,f1:180,q:1});
+        this.blip(t,(150-18*tier)*c,36,0.22+0.06*tier,"sine",0.34+0.06*tier);
         if(tier>=3) this.blip(t+0.012,78,30,0.5,"sine",0.32);
         break;
+      /* 割合で削る技・押し潰す技。低く軋んでから落ちる */
+      case "crush":
+        this.nz(t,0.05,0.16,{type:"bandpass",f0:900*c,q:.8});
+        this.blip(t,120*c,28,0.6,"sawtooth",0.2);
+        this.nz(t+0.06,0.4,0.2,{type:"lowpass",f0:1400*c,f1:110});
+        this.blip(t+0.07,62,24,0.8,"sine",0.4);
+        break;
+      /* 連撃。短い金属音を細かく刻む */
+      case "wave":
+        this.nz(t,0.035,g*0.9,{type:"bandpass",f0:3000*k*c,q:2.2});
+        this.blip(t,1900*k*c,900,0.06,"square",0.08);
+        this.blip(t,(215-16*tier)*c,60,0.13+0.03*tier,"sine",0.24+0.05*tier);
+        break;
       case "magic":
-        this.blip(t,880*k,240,0.22,"triangle",0.18);
-        this.blip(t+0.01,1760*k,520,0.26,"sine",0.12);
-        this.nz(t,0.22,0.07,{type:"highpass",f0:2200,f1:6400});
+        this.blip(t,880*k*c,240,0.22,"triangle",0.18);
+        this.blip(t+0.01,1760*k*c,520,0.26,"sine",0.12);
+        this.nz(t,0.22,0.07,{type:"highpass",f0:2200*c,f1:6400});
         this.blip(t+0.02,170,52,0.26+0.04*tier,"sine",0.26+0.05*tier);
         break;
       case "pierce":
-        this.nz(t,0.05,0.14,{type:"highpass",f0:2600,f1:8200,q:.8});
-        this.blip(t,2300*k,780,0.09,"square",0.1);
+        this.nz(t,0.05,0.14,{type:"highpass",f0:2600*c,f1:8200,q:.8});
+        this.blip(t,2300*k*c,780,0.09,"square",0.1);
         this.blip(t+0.005,240,70,0.16+0.04*tier,"sine",0.26+0.05*tier);
         break;
       case "drain":
-        this.blip(t,640*k,150,0.36,"sine",0.2);
-        this.nz(t,0.3,0.09,{type:"lowpass",f0:1100,f1:130});
+        this.blip(t,640*k*c,150,0.36,"sine",0.2);
+        this.nz(t,0.3,0.09,{type:"lowpass",f0:1100*c,f1:130});
         this.blip(t+0.02,180,48,0.3,"sine",0.24);
         break;
+      /* 守りを固める技が当たり判定を持つとき（反射など）は、鈍い鐘にする */
+      case "ward":
+        this.nz(t,0.12,0.16,{type:"bandpass",f0:620*c,q:3});
+        this.blip(t,330*c,160,0.34,"triangle",0.2);
+        this.blip(t+0.02,140,60,0.3,"sine",0.22);
+        break;
+      /* 癒やしや祝福が相手に触れるとき。柔らかく澄んだ音 */
+      case "bless":
+        this.blip(t,760*k*c,1140,0.28,"sine",0.14);
+        this.blip(t+0.05,1140*k*c,1520,0.3,"triangle",0.08);
+        this.nz(t,0.24,0.03,{type:"highpass",f0:3200});
+        break;
       default: // metal
-        this.nz(t,0.05+0.02*tier,g,{type:"bandpass",f0:2400*k,q:1.4});
-        this.blip(t,1450*k,520,0.1,"square",0.09);
-        this.blip(t,205-22*tier,52,0.18+0.05*tier,"sine",0.3+0.06*tier);
+        this.nz(t,0.05+0.02*tier,g,{type:"bandpass",f0:2400*k*c,q:1.4});
+        this.blip(t,1450*k*c,520,0.1,"square",0.09);
+        this.blip(t,(205-22*tier)*c,52,0.18+0.05*tier,"sine",0.3+0.06*tier);
         if(tier>=4) this.nz(t+0.03,0.45,0.1,{type:"lowpass",f0:900,f1:140});
     }
     if(crit){
@@ -4681,6 +5066,9 @@ const Music = {
     o=o||{};
     const t=this.ctx.currentTime+0.005;
     const tier=Math.max(1,Math.min(4,o.tier||1));
+    // 立ち位置ぶんだけ左右に振る。鳴らし終えたら元の系統に戻す
+    const keepBus=this.sfxBus;
+    if(o.view!=null&&this.pans&&this.pans[o.view]) this.sfxBus=this.pans[o.view];
     try{
       switch(name){
         case "tap":
@@ -4691,17 +5079,41 @@ const Music = {
           const p=o.plan||{};
           if(o.crit){ this.sfx("crit",{tier}); break; }
           if(o.counter){ this.sfx("counter",{tier}); break; }
-          this.strikeSynth(p.timbre||"metal",t,tier,o.index||1,false);
+          this.strikeSynth(p.timbre||"metal",t,tier,o.index||1,false,p.hue);
           break;
         }
-        /* 詠唱・溜め。当たる前に「何か来る」と分かるための音 */
-        case "cast":
-          this.blip(t,420,1180,0.26,"triangle",0.07);
-          this.nz(t+0.04,0.22,0.04,{type:"highpass",f0:2600,f1:5200});
+        /* 詠唱。何が来るのかが音で分かるように、技の性質で色を変える */
+        case "cast": {
+          const p=o.plan||{};
+          const c=this.hueTone(p.hue);
+          if(p.heal){                                  // 癒やし：上がっていく澄んだ三和音
+            [0,1,2].forEach(i=>this.blip(t+i*0.06,this.freq(67+i*4),this.freq(69+i*4),0.3,"sine",0.075));
+            this.nz(t,0.3,0.03,{type:"highpass",f0:3400});
+          }else if(p.type==="DEFENSE"){                // 守り：閉じていく低い音
+            this.blip(t,520*c,300,0.3,"triangle",0.08);
+            this.nz(t+0.04,0.26,0.04,{type:"bandpass",f0:700*c,q:2});
+          }else if(p.heavy){                           // 重い技：地から吸い上げる
+            this.blip(t,150*c,520*c,0.36,"sawtooth",0.07);
+            this.nz(t+0.06,0.3,0.05,{type:"lowpass",f0:500,f1:2600});
+          }else{                                       // 普通の詠唱：上がっていく光
+            this.blip(t,420*c,1180*c,0.26,"triangle",0.07);
+            this.nz(t+0.04,0.22,0.04,{type:"highpass",f0:2600*c,f1:5200});
+          }
           break;
-        case "charge":
-          this.blip(t,90,260,0.34,"sawtooth",0.07);
-          this.nz(t+0.1,0.26,0.05,{type:"lowpass",f0:600,f1:2200});
+        }
+        /* 溜め。重い技が来ることを、当たる前に知らせる */
+        case "charge": {
+          const c=this.hueTone((o.plan||{}).hue);
+          this.blip(t,90*c,260*c,0.34,"sawtooth",0.07);
+          this.nz(t+0.1,0.26,0.05,{type:"lowpass",f0:600,f1:2200*c});
+          this.blip(t+0.16,62,150,0.3,"sine",0.1);
+          break;
+        }
+        /* 覚醒できるようになった合図。遠くで鈴が鳴る */
+        case "ready":
+          this.blip(t,1568,1568,0.5,"sine",0.06);
+          this.blip(t+0.09,2093,2093,0.6,"sine",0.045);
+          this.blip(t+0.18,2637,2637,0.7,"sine",0.03);
           break;
         /* 防御が砕ける */
         case "break":
@@ -4734,9 +5146,15 @@ const Music = {
           this.nz(t,0.16,0.2,{type:"bandpass",f0:520,q:2.5});
           this.blip(t,130,72,0.22,"sine",0.26);
           break;
-        case "miss":
-          this.nz(t,0.24,0.11,{type:"highpass",f0:700,f1:5600,q:0.7});
+        case "miss": {
+          // 空振り。重い技ほど低く長く空を切る
+          const p=o.plan||{};
+          const heavy=!!p.heavy;
+          this.nz(t,heavy?0.34:0.24,heavy?0.13:0.11,
+            {type:"highpass",f0:heavy?380:700,f1:heavy?3600:5600,q:0.7});
+          if(heavy) this.blip(t+0.05,120,60,0.3,"sine",0.08);
           break;
+        }
         case "heal":
           [0,1,2].forEach(i=>this.blip(t+i*0.07,[660,880,1320][i],[660,880,1320][i],0.22,"triangle",0.085));
           this.nz(t,0.3,0.03,{type:"highpass",f0:3000});
@@ -4758,19 +5176,59 @@ const Music = {
           }else if(fam==="edge"){                 // 研ぎ澄ます
             this.blip(t,1480,2200,0.12,"square",0.06);
             this.blip(t+0.08,2200,3000,0.14,"triangle",0.045);
+          }else if(fam==="arrow"){                // 能力の上げ下げ：音そのものが上がる／下がる
+            const a=up?[440,660,880]:[880,660,440];
+            a.forEach((f,i)=>this.blip(t+i*0.055,f,f,0.2,"triangle",0.075));
+            if(!up) this.nz(t+0.11,0.24,0.04,{type:"lowpass",f0:1200,f1:260});
+          }else if(fam==="spark"){                // 気力の増減：弾ける粒
+            this.blip(t,up?1320:660,up?1980:330,0.1,"square",0.055);
+            this.blip(t+0.06,up?1760:440,up?2640:220,0.12,"triangle",0.05);
+            this.nz(t,0.12,0.04,{type:"highpass",f0:3600});
+          }else if(fam==="hex"){                  // 呪い・沈黙：濁って絡みつく
+            this.blip(t,320,190,0.42,"sawtooth",0.07);
+            this.blip(t+0.03,470,240,0.4,"triangle",0.05);
+            this.nz(t,0.4,0.05,{type:"bandpass",f0:520,f1:190,q:2.4});
           }else{
             this.blip(t,up?620:760,up?930:470,0.16,"triangle",0.08);
             this.blip(t+0.09,up?930:470,up?1240:330,0.2,"triangle",0.06);
           }
           break;
         }
+        /* とどめ。芯の太い一撃と、引き伸ばされた余韻 */
+        case "deathblow":
+          this.nz(t,0.16,0.34,{type:"lowpass",f0:3200,f1:200,q:1});
+          this.blip(t,170,34,0.5,"sine",0.5);
+          this.blip(t+0.01,74,26,0.9,"sine",0.42);
+          this.blip(t+0.02,2200,700,0.22,"triangle",0.07);
+          this.nz(t+0.12,0.9,0.12,{type:"lowpass",f0:1400,f1:110});
+          break;
         case "down":
           this.blip(t,240,48,0.7,"sine",0.32);
           this.nz(t,0.5,0.14,{type:"lowpass",f0:1200,f1:120});
           break;
+        /* 覚醒の「溜め」。息を呑む間に、低いうねりと鈴が near-silence から立ち上がる */
+        case "awakenRise": {
+          const len=0.42;
+          const c=this.ctx, o1=c.createOscillator(), g1=c.createGain(), lp=c.createBiquadFilter();
+          o1.type="triangle";
+          o1.frequency.setValueAtTime(48,t);
+          o1.frequency.exponentialRampToValueAtTime(96,t+len);
+          lp.type="lowpass"; lp.frequency.setValueAtTime(180,t);
+          lp.frequency.exponentialRampToValueAtTime(900,t+len);
+          g1.gain.setValueAtTime(0.0001,t);
+          g1.gain.exponentialRampToValueAtTime(0.16,t+len);
+          g1.gain.exponentialRampToValueAtTime(0.0001,t+len+0.1);
+          o1.connect(lp); lp.connect(g1); g1.connect(this.sfxBus);
+          o1.start(t); o1.stop(t+len+0.16);
+          // 空気が吸い込まれる音（逆再生の雰囲気を、伸びる帯域で作る）
+          this.nz(t,len,0.05,{type:"bandpass",f0:400,f1:4200,q:1.2});
+          this.blip(t+0.02,2640,2640,0.5,"sine",0.05);      // 遠くの鈴
+          this.blip(t+0.2,3520,3520,0.4,"sine",0.035);
+          break;
+        }
+        /* 覚醒の本体。唸り → 一閃（金属の断ち音）→ 太鼓 → 鐘と和音 */
         case "awaken": {
-          const len=o.brief?0.45:0.95;
-          // 立ち上がる唸り → 炸裂 → 和音
+          const len=o.brief?0.36:0.86;
           const c=this.ctx, saw=c.createOscillator(), sg=c.createGain(), lp=c.createBiquadFilter();
           saw.type="sawtooth";
           saw.frequency.setValueAtTime(70,t);
@@ -4782,9 +5240,21 @@ const Music = {
           sg.gain.exponentialRampToValueAtTime(0.0001,t+len+0.12);
           saw.connect(lp); lp.connect(sg); sg.connect(this.sfxBus);
           saw.start(t); saw.stop(t+len+0.2);
-          this.nz(t+len,0.7,0.26,{type:"lowpass",f0:2600,f1:160});
-          this.blip(t+len,110,36,0.9,"sine",0.45);
-          this.chord(t+len+0.02,[62,66,69,74],o.brief?0.7:1.3,"triangle",0.085);
+          // 一閃：抜き身が空気を裂く
+          this.nz(t+len-0.06,0.1,0.2,{type:"highpass",f0:1800,f1:9000,q:.7});
+          this.blip(t+len-0.04,4200,1400,0.12,"square",0.06);
+          // 断つ：太鼓の芯＋衝撃
+          this.nz(t+len,0.75,0.3,{type:"lowpass",f0:2600,f1:140});
+          this.blip(t+len,110,32,1.0,"sine",0.5);
+          this.blip(t+len+0.01,64,28,1.3,"sine",0.34);
+          // 鐘。覚醒が「決まった」と分かる高い残響
+          this.blip(t+len+0.03,1319,1319,o.brief?1.1:1.9,"sine",0.09);
+          this.blip(t+len+0.03,1976,1976,o.brief?0.8:1.4,"sine",0.05);
+          this.chord(t+len+0.04,[50,57,62,66,69],o.brief?0.9:1.8,"triangle",0.075);
+          if(!o.brief){
+            // 余韻に上がっていく光の粒
+            [0,1,2,3].forEach(i=>this.blip(t+len+0.42+i*0.14,this.freq(74+i*3),this.freq(76+i*3),0.5,"sine",0.05));
+          }
           break;
         }
         case "win":
@@ -4799,6 +5269,7 @@ const Music = {
           break;
       }
     }catch(e){ /* 音が出なくても進行は止めない */ }
+    this.sfxBus=keepBus;
   }
 };
 
@@ -4829,8 +5300,33 @@ const FxKit = {
   /* 行動を奪う系。かかっているあいだ立ち姿の呼吸を止める */
   HOLD:["STUN","SLEEP","PETRIFY","TIMESTOP"],
 
+  /* 状態異常の色。kind から引き、利用者が選んだ記号がはっきり何かを示しているときは
+     そちらを優先する（自作の「氷牙」でも ❄ を選んでいれば青くなる）。 */
+  KIND_HUE:{
+    DOT:96, REGEN:150, STUN:196, SLEEP:226, PETRIFY:34, TIMESTOP:190, TIMESKIP:190,
+    PARALYZE:52, CONFUSE:308, SILENCE:272, HEALBLOCK:330, INVERT:286,
+    SHIELD:166, NEGATE:176, ENDURE:44, CRIT:44, PIERCE:16, COUNTER:274, EXTRA:180,
+    ACC:262, SP:172
+  },
+  GLYPH_HUE:{
+    "❄":198,"✹":18,"🔥":14,"⚡":52,"☠":96,"☣":104,"☾":226,"✚":150,"⛨":166,"✦":44,
+    "◐":262,"⊘":330,"✖":272,"⏳":190,"⏩":190,"◘":34,"✜":44,"➶":16,"↩":274,"⛉":176
+  },
   num(v,d){ const n=Number(v); return Number.isFinite(n)?n:d; },
   family(kind){ return this.FAMILY[kind]||"sigil"; },
+  /* 効果ひとつぶんの色相 */
+  hueOf(e,tone,glyph){
+    if(glyph&&this.GLYPH_HUE[glyph]!=null) return this.GLYPH_HUE[glyph];
+    if(e&&this.KIND_HUE[e.kind]!=null) return this.KIND_HUE[e.kind];
+    return tone==="good"?this.TONE_HUE.good:this.TONE_HUE.bad;
+  },
+  /* 記号の動き方。何が起きているかを、動きでも言う */
+  markMotion(family,tone){
+    if(family==="lock") return "still";       // 止まっている
+    if(family==="hex") return "orbit";        // 絡みつく
+    if(family==="ward") return "shell";       // 包む
+    return tone==="good"?"rise":"sink";       // 立ちのぼる／滴る
+  },
 
   /* 状態異常ひとつぶんの絵。tone と icon は効果の定義から来るので、
      自作の異常でも色と字が決まる。 */
@@ -4838,24 +5334,37 @@ const FxKit = {
     e=e||{};
     const tone=(typeof effTone==="function")?effTone(e):(e.tone||"bad");
     const glyph=(typeof effIcon==="function")?effIcon(e):(e.icon||"◆");
+    const family=this.family(e.kind);
     return {
-      family:this.family(e.kind),
-      tone, glyph,
-      hue:this.TONE_HUE[tone]!=null?this.TONE_HUE[tone]:288,
+      family, tone, glyph,
+      hue:this.hueOf(e,tone,glyph),
+      motion:this.markMotion(family,tone),
       name:e.name||"効果"
     };
   },
-  /* いま体にかかっているものを1つのオーラにまとめる */
+  /* いま体にかかっているものを「立ち姿の見た目」にまとめる。
+     どれか一つを主役（オーラの色と体の扱い）にし、最大3つを記号として体の周りに出す。
+     利用者が自分で足した異常でも、kind と記号から必ず何かしらの絵になる。 */
   bodyState(list){
     const es=list||[];
-    let bad=0, good=0, held=false;
+    if(!es.length) return {aura:false,hue:288,held:false,family:"",tone:"bad",marks:[]};
+    // 主役の決め方：行動を奪うもの＞絡みつくもの＞継続するもの＞守り＞その他
+    const weight=fam=>fam==="lock"?5:fam==="hex"?4:fam==="mote"?3:fam==="ward"?2:1;
+    let bad=0, good=0, held=false, lead=null, leadW=-1;
+    const marks=[];
     es.forEach(e=>{
+      const fx=this.effectFx(e);
       if(this.HOLD.indexOf(e.kind)>=0) held=true;
-      const t=(typeof effTone==="function")?effTone(e):(e.tone||"bad");
-      if(t==="good") good++; else bad++;
+      if(fx.tone==="good") good++; else bad++;
+      const w=weight(fx.family)+(fx.tone==="good"?0:0.5);
+      if(w>leadW){ leadW=w; lead=fx; }
+      if(marks.length<3) marks.push(fx);
     });
-    if(!es.length) return {aura:false,hue:288,held:false};
-    return {aura:true, hue:(bad>=good?this.TONE_HUE.bad:this.TONE_HUE.good), held};
+    return {
+      aura:true,
+      hue:lead?lead.hue:(bad>=good?this.TONE_HUE.bad:this.TONE_HUE.good),
+      held, family:lead?lead.family:"sigil", tone:lead?lead.tone:"bad", marks
+    };
   },
 
   /* --- 技ひとつぶんの演出設計図 --------------------------------------------
@@ -4890,15 +5399,18 @@ const FxKit = {
     }else if(swift){
       motion="dash"; impact="pierce"; timbre="pierce";
     }else if(hits>=3){
-      motion="lunge"; impact="wave"; timbre="metal";
+      motion="lunge"; impact="wave"; timbre="wave";
     }else if(heavy){
-      motion="heavy"; impact=ratio?"crush":"burst"; timbre=magic?"magic":"blunt";
+      motion="heavy"; impact=ratio?"crush":"burst"; timbre=ratio?"crush":(magic?"magic":"blunt");
     }else if(magic){
       motion="cast"; impact="burst"; timbre="magic";
     }else{
       motion="lunge"; impact="slash"; timbre="metal";
     }
     if(drain){ impact="drain"; timbre="drain"; }
+    // 攻撃でも癒やす技・守る技は、音の性格をそちらに寄せる
+    if(damaging&&heal) timbre="bless";
+    if(damaging&&type==="DEFENSE") timbre="ward";
 
     // 色：基本は技の系統。相手に状態異常を乗せる技はその異常の色に寄せる
     let hue=this.TYPE_HUE[type];
@@ -5813,6 +6325,7 @@ Object.assign(UI, {
     this.lastSp=[null,null];
     this.actorSide=null;
     this.guardShown=[false,false];
+    this.awkState=[null,null];
     this.bindBattle();
     this.prewarmSfx();
     this.clearFx();
@@ -5839,8 +6352,11 @@ Object.assign(UI, {
   clearFx(){
     $$("#arena .float,#arena .cue,#arena .gring,#arena .spark,#arena .statusburst,#arena .banner,"
       +"#arena .im,#arena .sb,#arena .column,#arena .gbreak,#arena .proj,#arena .combo").forEach(el=>el.remove());
-    ["sh1","sh2","sh3","sh4"].forEach(c=>$("#arena").classList.remove(c));
+    ["sh1","sh2","sh3","sh4","settled"].forEach(c=>$("#arena").classList.remove(c));
+    $("#s-battle").classList.remove("charging");
     $("#awk").classList.remove("on");
+    $("#decide").className="decide";
+    $("#decide").setAttribute("aria-hidden","true");
     $("#ffcatch").classList.remove("on");
   },
 
@@ -5997,7 +6513,7 @@ Object.assign(UI, {
     // 状態異常は「立ち姿そのもの」に出す。行動を止める系は動きを凍らせる
     const st=FxKit.bodyState(s.effects);
     host.className="unit"+(view===1?" foe":" me")+(s.hp<=0?" down":"")
-      +(st.aura?" has-st":"")+(st.held?" held":"");
+      +(awake?" awakened":"")+(st.aura?" has-st":"")+(st.held?" held":"");
     if(st.aura) host.style.setProperty("--h",st.hue);
     plate.className="plate "+(view===1?"foe":"me");
 
@@ -6028,6 +6544,16 @@ Object.assign(UI, {
     const tone = awake?"awake" : p>0.55?"" : p>0.3?"mid" : p>0.15?"low":"crisis";
     const fc="hpfill"+(tone?" "+tone:"");
     if(fill.className!==fc) fill.className=fc;
+
+    // 覚醒できるようになった瞬間は、音と光で必ず知らせる（見逃させない）
+    if(!this.awkState) this.awkState=[null,null];
+    const prevAwk=this.awkState[view];
+    this.awkState[view]=s.awaken;
+    if(prevAwk&&prevAwk!==s.awaken&&s.awaken==="AVAILABLE"&&!this.skip){
+      Music.sfx("ready",{view});
+      this.cue(view,"覚醒可能","awk");
+      this.column(view,44);
+    }
 
     const line=this.awakenLine(f);
     const mark=q("mark");
@@ -6235,9 +6761,9 @@ Object.assign(UI, {
     if(p.ranged){
       if(p.heal||p.motion==="brace") this.column(view,p.hue);
       else this.projectile(e.actor,p);
-      Music.sfx("cast",{plan:p});
+      Music.sfx("cast",{plan:p,view});
     }else if(p.heavy){
-      Music.sfx("charge",{plan:p});
+      Music.sfx("charge",{plan:p,view});
     }
   },
   /* ログの文からどちらの話かを推測する（エンジンは側を持たないため） */
@@ -6595,7 +7121,9 @@ Object.assign(UI, {
       const isAwk=(e.kind==="awaken"&&e.text.indexOf("AWAKENING")>=0);
       let ms;
       if(isAwk){
-        ms=this.skip?140:this.awakenFlash(e.text);
+        ms=this.skip?140:this.awakenFlash(e.text,e.actor);
+      }else if(e.kind==="win"){
+        ms=this.decideCard(this.skip);           // 最後の一撃からリザルトまでを一続きにする
       }else if(this.skip){
         ms=14;
       }else{
@@ -6616,7 +7144,7 @@ Object.assign(UI, {
       const view=this.viewOf(side);
       const delta=after-before;
       if(delta>0){
-        if(!this.skip){ this.popNumber(view,delta); this.column(view,150); this.flash("heal"); Music.sfx("heal"); }
+        if(!this.skip){ this.popNumber(view,delta); this.column(view,150); this.flash("heal"); Music.sfx("heal",{view}); }
         return;
       }
       const amount=-delta;
@@ -6638,21 +7166,21 @@ Object.assign(UI, {
       this.shake(tier);
       this.flash(crit?"crit":"");
       this.buzz(this.TIERS[tier].vib);
-      Music.sfx("strike",{tier,crit,counter,cost,plan,index:this.hitIndex,
+      Music.sfx("strike",{tier,crit,counter,cost,plan,view,index:this.hitIndex,
         sfxId:(!cost&&!counter&&this.curSkill)?this.curSkill.sfxId:null});
       stop=Math.max(stop,this.TIERS[tier].stop*(crit?1.35:1));
       // 防御していた側が受けたダメージ。貫通する技なら防御が砕ける絵にする
       if(e.snap[side].defending&&!this.guardShown[side]&&!cost&&!counter){
         this.guardShown[side]=true;
         if(plan.breaker){
-          this.shatter(view); this.cue(view,"防御貫通","break"); Music.sfx("break");
+          this.shatter(view); this.cue(view,"防御貫通","break"); Music.sfx("break",{view});
           stop=Math.max(stop,90);
         }else{
           this.cue(view,"防御","guard");
           this.fx(view,"gring",560);
         }
       }
-      if(e.snap[side].hp<=0) Music.sfx("down");
+      if(e.snap[side].hp<=0){ Music.sfx("down",{view}); stop=Math.max(stop,this.deathBlow(view)); }
     });
     if(this.skip) return stop;
 
@@ -6665,17 +7193,17 @@ Object.assign(UI, {
         host.classList.remove("dodge"); void host.offsetWidth; host.classList.add("dodge");
         setTimeout(()=>host.classList.remove("dodge"),460);
         this.cue(view,/効かなかった/.test(e.text)?"無効":"MISS","miss");
-        Music.sfx("miss",{plan:this.curPlan});
+        Music.sfx("miss",{plan:this.curPlan,view});
       }
     }
     if(e.kind==="status") stop=Math.max(stop,this.statusEntry(e));
     if(e.kind==="sys"&&/無効化した/.test(e.text)){
       const side=this.sideFromText(e.text,this.actorSide==null?null:1-this.actorSide);
-      if(side!=null){ this.cue(this.viewOf(side),"NULLIFY","nullify"); Music.sfx("guard"); stop=Math.max(stop,90); }
+      if(side!=null){ this.cue(this.viewOf(side),"NULLIFY","nullify"); Music.sfx("guard",{view:this.viewOf(side)}); stop=Math.max(stop,90); }
     }
     if(e.kind==="sys"&&/を防いだ/.test(e.text)){
       const side=this.sideFromText(e.text,this.actorSide==null?null:1-this.actorSide);
-      if(side!=null){ this.cue(this.viewOf(side),"SHIELD","guard"); Music.sfx("guard"); }
+      if(side!=null){ this.cue(this.viewOf(side),"SHIELD","guard"); Music.sfx("guard",{view:this.viewOf(side)}); }
     }
     if(e.kind==="sys"&&/身を固めた/.test(e.text)){
       const side=this.sideFromText(e.text,e.actor);
@@ -6688,10 +7216,9 @@ Object.assign(UI, {
         setTimeout(()=>host.classList.remove("guard"),440);
         this.statusFx(view,{family:"ward",hue:166,glyph:"⛨"});
         this.column(view,166);
-        Music.sfx("guard");
+        Music.sfx("guard",{view});
       }
     }
-    if(e.kind==="win") Music.sfx(this.engine.winner&&this.engine.winner.side===this.mySide?"win":"lose");
     return stop;
   },
   /* 状態変化の1行。効果の定義（kind・icon・tone）はその場のスナップショットから引くので、
@@ -6715,7 +7242,7 @@ Object.assign(UI, {
     this.statusFx(view,fx);
     if(fx.tone==="good") this.column(view,fx.hue);
     this.cue(view,fx.name,"status"+(fx.tone==="good"?" good":""));
-    Music.sfx("status",{good:fx.tone==="good",family:fx.family});
+    Music.sfx("status",{good:fx.tone==="good",family:fx.family,view});
     return 60;
   },
   /* 再生中に画面を触ったら残りを一気に流す */
@@ -6727,16 +7254,25 @@ Object.assign(UI, {
     if(this._advance) this._advance();
     return true;
   },
-  /* 覚醒の演出だけを飛ばす（その後は通常の速度で続ける） */
+  /* 覚醒の演出だけを飛ばす（その後は通常の速度で続ける）。
+     溜めの最中（まだ幕が上がっていない）でも押せるようにしておく。 */
   cutScene(){
-    if(!$("#awk").classList.contains("on")) return;
+    if(!$("#awk").classList.contains("on")&&!$("#arena").classList.contains("charging")) return;
+    const view=this._awkView;
     this.hideAwaken();
+    if(view!=null) this.morphAvatar(view);          // 幕を飛ばしても姿の切り替わりは見せる
     if(this._advance) this._advance();
   },
   hideAwaken(){
     const o=$("#awk");
+    (this._awkTimers||[]).forEach(clearTimeout);
+    this._awkTimers=[];
     o.classList.remove("on","brief");
     o.setAttribute("aria-hidden","true");
+    $("#arena").classList.remove("charging");
+    $("#s-battle").classList.remove("charging");
+    $$("#arena .unit.charge").forEach(el=>el.classList.remove("charge"));
+    $("#shockwave").classList.remove("on");
   },
   banner(text){
     const a=$("#arena");
@@ -6745,28 +7281,133 @@ Object.assign(UI, {
     a.appendChild(b); a.classList.add("bannering");
     setTimeout(()=>{ b.remove(); a.classList.remove("bannering"); },1000);
   },
-  /* 覚醒：1回目はたっぷり、2回目からは短く。いつでもスキップできる */
-  awakenFlash(text){
+  /* 覚醒：この作品の題名そのもの。
+     ①舞台が息を呑む（溜め）→ ②闇が本人の位置から広がる → ③一閃 → ④新しい姿 → ⑤舞台に戻す。
+     1回目はたっぷり、2回目からは①を省いて短く。いつでもスキップできる。 */
+  awakenFlash(text,actor){
     const brief=this.awkSeen>0;
     this.awkSeen++;
-    const sw=$("#shockwave");
-    sw.classList.remove("on"); void sw.offsetWidth; sw.classList.add("on");
-    setTimeout(()=>sw.classList.remove("on"),460);
-    const o=$("#awk");
+    const calm=this.reduceMotion&&this.reduceMotion();
     const name=text.replace("【AWAKENING】","");
     const m=name.match(/^(.+?)が(.+?)へ移行した/);
     $("#awk-who").textContent=m?m[1]:name;
     $("#awk-form").textContent=m?m[2]:"";
+
+    // 誰が覚醒したのか。その立ち姿を幕の中央に据える（覚醒前の姿→覚醒後の姿）
+    const side=(actor!=null)?actor:this.sideFromText(text,null);
+    const view=(side!=null)?this.viewOf(side):0;
+    this._awkView=(side!=null)?view:null;
+    const f=(side!=null)?this.engine.fighters[side]:null;
+    if(f){
+      $("#awk-sil").innerHTML=this.avatar(this.lookOf(f,false),"84","");
+      $("#awk-fig").innerHTML=this.avatar(this.lookOf(f,true),"84","awake");
+    }else{ $("#awk-sil").innerHTML=""; $("#awk-fig").innerHTML=""; }
+
+    this._awkTimers=(this._awkTimers||[]);
+    this._awkTimers.forEach(clearTimeout);
+    this._awkTimers=[];
+    const at=(ms,fn)=>{ this._awkTimers.push(setTimeout(fn,ms)); };
+
+    const charge=(brief||calm)?0:420;
+    if(charge) this.awakenCharge(view);
+    at(charge,()=>this.awakenCurtain(brief,calm,view));
+    const dur=calm?700:(brief?1150:2700);
+    // 幕が引ける少し前に立ち姿を差し替える。幕の残り香が切り替わりを隠してくれる
+    at(charge+dur-200,()=>{ if($("#awk").classList.contains("on")) this.morphAvatar(view); });
+    at(charge+dur,()=>{ if($("#awk").classList.contains("on")){ this.hideAwaken(); this.awakenLand(view); } });
+    return charge+dur+(brief?60:160);
+  },
+  /* ①溜め。舞台が暗み、本人だけが光る。ここでの「間」が覚醒を重くする */
+  awakenCharge(view){
+    const a=$("#arena");
+    a.classList.add("charging");
+    $("#s-battle").classList.add("charging");
+    const host=$("#view"+view);
+    if(host){ host.classList.add("charge"); }
+    this.column(view,44);
+    Music.sfx("awakenRise");
+    this.buzz([0,12,90,18,110,26]);
+  },
+  /* ⑤舞台に戻る。幕が引けた瞬間、足元から金の波が広がって新しい姿を舞台に据える */
+  awakenLand(view){
+    this.fx(view,"awkland",900);
+    this.column(view,44);
+    const host=$("#view"+view);
+    if(host){
+      host.classList.remove("landed"); void host.offsetWidth; host.classList.add("landed");
+      setTimeout(()=>host.classList.remove("landed"),900);
+    }
+  },
+  /* ②〜④幕。--t は CSS と JS で同じ値を使う */
+  awakenCurtain(brief,calm,view){
+    const o=$("#awk"), a=$("#arena");
+    a.classList.remove("charging");
+    $("#s-battle").classList.remove("charging");
+    const host=$("#view"+view);
+    if(host) host.classList.remove("charge");
+    // 闇の広がる起点を、覚醒した本人の立ち位置に合わせる
+    const wrap=host&&host.querySelector(".avwrap");
+    if(wrap){
+      const r=wrap.getBoundingClientRect();
+      o.style.setProperty("--ox",Math.round(r.left+r.width/2)+"px");
+      o.style.setProperty("--oy",Math.round(r.top+r.height/2)+"px");
+    }else{ o.style.setProperty("--ox","50%"); o.style.setProperty("--oy","44%"); }
+    const dur=calm?700:(brief?1150:2700);
+    o.style.setProperty("--t",dur+"ms");
     o.classList.remove("on","brief");
     void o.offsetWidth;
     o.classList.add("on");
     if(brief) o.classList.add("brief");
     o.setAttribute("aria-hidden","false");
-    const dur=brief?1150:2400;
     Music.sfx("awaken",{brief});
     this.buzz(brief?[0,30,40,30]:[0,40,60,40,80,60]);
-    setTimeout(()=>{ if(o.classList.contains("on")) this.hideAwaken(); },dur);
-    return dur+(brief?60:140);
+    if(!calm){
+      // 断つ瞬間に白が抜ける。幕の 33% 地点＝一閃が交差するところ
+      this._awkTimers.push(setTimeout(()=>{
+        const sw=$("#shockwave");
+        sw.classList.remove("on"); void sw.offsetWidth; sw.classList.add("on");
+        this._awkTimers.push(setTimeout(()=>sw.classList.remove("on"),460));
+        this.buzz([0,50,30,70]);
+      },Math.round(dur*0.32)));
+    }
+  },
+
+  /* ---------- 決着 ----------
+     最後の一撃 → 倒れる → 決着の札 → リザルト、を一続きの体験にする。 */
+  /* とどめ。時間が伸びたように見せ、舞台から色を抜く */
+  deathBlow(view){
+    if(this.skip) return 0;
+    const a=$("#arena");
+    a.classList.add("settled");
+    const host=$("#view"+view);
+    if(host){ this.fx(view,"deathring",900); }
+    this.flash("final");
+    this.shake(4);
+    this.buzz([0,60,50,90,60,140]);
+    Music.sfx("deathblow",{view});
+    return 420;
+  },
+  /* 決着の札。勝ちか負けかを一拍で言い切ってからリザルトへ渡す */
+  decideCard(quick){
+    const e=this.engine, o=$("#decide");
+    const win=e.winner;
+    const mine=!!(win&&win.side===this.mySide);
+    const local=(this.mode==="local");
+    const word=local?"決着":(mine?"勝利":"敗北");
+    const sub=local
+      ? (win?win.name+" の勝ち":"")
+      : (win?win.name+(mine?" が勝った":" に敗れた"):"");
+    $("#decide-word").innerHTML=word.split("").map(c=>`<span>${esc(c)}</span>`).join("");
+    $("#decide-sub").textContent=sub;
+    Music.sfx(local?"win":(mine?"win":"lose"));
+    if(quick){ return 140; }
+    const calm=this.reduceMotion&&this.reduceMotion();
+    const dur=calm?600:1500;
+    o.className="decide on"+(local?" draw":(mine?" win":" lose"));
+    o.style.setProperty("--t",dur+"ms");
+    o.setAttribute("aria-hidden","false");
+    this.buzz(mine||local?[0,30,60,40]:[0,80]);
+    return dur;
   },
 
   /* ---------- リザルト ---------- */
@@ -6835,7 +7476,17 @@ Object.assign(UI, {
     rb.disabled=false; rb.textContent="もう一度たたかう";
     this.hideAwaken();
     $("#ffcatch").classList.remove("on");
+    // 勝ち負けで画面の温度を変え、決着の札からそのまま溶け込ませる
+    const mine=(win.side===this.mySide);
+    $("#s-result").classList.toggle("won",this.mode==="local"||mine);
+    $("#s-result").classList.toggle("lost",this.mode!=="local"&&!mine);
     this.show("result");
+    const dc=$("#decide");
+    if(dc.classList.contains("on")){
+      dc.classList.add("out");
+      setTimeout(()=>{ dc.className="decide"; dc.setAttribute("aria-hidden","true"); },420);
+    }
+    $("#arena").classList.remove("settled");
   },
   rematch(){
     this.tick(14);
@@ -6999,6 +7650,13 @@ Object.assign(UI, {
       if(c.custom) chips.push("自作");
       if(c.awakening&&c.awakening.enabled) chips.push("覚醒あり");
       chips.push("技"+((c.skills||[]).length)+"個");
+      /* 何を持たせたかが一覧で分かるようにする（容量の見当もつく） */
+      const awkFace=c.awakening&&c.awakening.form&&c.awakening.form.portraitImage;
+      if(c.portraitImage) chips.push(awkFace?"立ち絵2枚":"立ち絵");
+      else if(awkFace) chips.push("覚醒の立ち絵");
+      if(c.bgmAudio) chips.push("♪ 曲");
+      const sfx=(c.skills||[]).filter(id=>SKILLS[id]&&SKILLS[id].sfxId).length;
+      if(sfx) chips.push("♪ 技の音"+sfx);
       return `<div class="rcard" data-id="${c.id}">
         <button class="rc-main" data-act="open">
           ${this.avatar(c,"44")}
@@ -7133,7 +7791,10 @@ Object.assign(UI, {
     const box=$("#roster-usage");
     if(!box) return;
     const u=Store.usage();
-    if(!u.bytes){ box.innerHTML=""; return; }
+    if(!u.bytes){
+      box.innerHTML=`<p class="note">端末にはまだ何も置いていません。キャラクターを作ると、ここに使用量が出ます。</p>`;
+      return;
+    }
     const kb=(u.bytes/1024).toFixed(0);
     const pct=Math.min(100,u.bytes/u.limit*100);
     const warn=pct>70;
@@ -7142,7 +7803,10 @@ Object.assign(UI, {
       <div class="us-track"><div class="us-fill" style="transform:scaleX(${(pct/100).toFixed(4)})"></div></div>
       <div class="note" id="us-note">${warn?`残りが少なくなっています。重いのは ${u.heavy.map(h=>esc(h.name)+"（"+(h.bytes/1024).toFixed(0)+"KB）").join("・")} です。ファイルに書き出してから整理してください。`
         :"目安の上限は5MBです。立ち絵つきのキャラは1体あたり20KB前後です。"}</div>
-      <div class="note" id="us-media"></div></div>`;
+      <div class="note" id="us-media"></div>
+      <button class="btn btn-ghost" id="us-manage" style="margin-top:8px">内訳を見て整理する</button></div>`;
+    const mg=$("#us-manage");
+    if(mg) mg.onclick=()=>this.openVault();
     /* 効果音は別の置き場（IndexedDB）なので、別立てで知らせる */
     if(typeof Media==="undefined"||!Media.supported()){
       const m=$("#us-media");
@@ -7982,6 +8646,16 @@ const Editor = {
     $("#e-mkskill").onclick=()=>{ this.touch(); this.returnTo="edit"; this.openSkill(); };
     this.skillSummary();
   },
+  /* そのコストの技を初めて撃てるターン。SPの決まりは BALANCE から読む。 */
+  firstTurn(cost){
+    const sp=BALANCE.sp;
+    let have=sp.start;
+    for(let t=1;t<=20;t++){
+      if(cost<=have) return t;
+      have=Math.min(sp.max,have+sp.regenPerTurn);
+    }
+    return 99;
+  },
   skillSummary(){
     const ids=this.draft.skills, sp=BALANCE.sp;
     const list=ids.map(id=>SKILLS[id]).filter(Boolean);
@@ -7997,10 +8671,22 @@ const Editor = {
     if(!kinds.has("DEFENSE")&&!kinds.has("SUPPORT")) tips.push("攻め手だけの構成です。守りや補助を1つ入れると粘れます。");
     if(heavy>=3) tips.push("重い技が多めです。SPが足りず撃てない場面が増えます。");
     if(list.length>6) tips.push("技が多すぎると戦闘中に選びにくくなります。4〜5個が目安です。");
+    /* 戦闘で並ぶ手札のまま見せる。いつから撃てるかまで書く。 */
+    const hand=list.map(s=>{
+      const t=this.firstTurn(s.cost);
+      return `<div class="hand t-${s.type}">
+        <span class="hd-n">${esc(s.name)}</span>
+        <span class="hd-c">SP${s.cost}${s.costMax?"〜"+s.costMax:""}</span>
+        <span class="hd-t${t>1?" late":""}">${t>1?t+"ターン目から":"最初から撃てる"}</span>
+      </div>`;
+    }).join("");
     $("#e-sk-sum").innerHTML=`
       <div class="sumcard">
-        <div class="sum-top"><b>${list.length}個</b>の技を選んでいます</div>
-        <div class="sum-chips">${list.map(s=>`<span class="mchip">${esc(s.name)} SP${s.cost}</span>`).join("")}</div>
+        <div class="sum-top"><b>${list.length}個</b>の技を選んでいます<em>戦闘ではこの並びで出ます</em></div>
+        <div class="handlist">
+          <div class="hand base"><span class="hd-n">攻撃</span><span class="hd-c">SP0</span>
+            <span class="hd-t">いつでも撃てる</span></div>
+          ${hand}</div>
         ${tips.length?`<div class="sum-tips">${tips.map(t=>`<div>・${esc(t)}</div>`).join("")}</div>`
           :`<div class="sum-tips ok">・軽い技と重い技のバランスが取れています。</div>`}
       </div>`;
@@ -8044,7 +8730,6 @@ const Editor = {
         <input type="text" id="e-awkname" maxlength="16" value="${esc(a.name||"")}" placeholder="例：鬼神・開眼"></div>
 
       <div class="h-rule">覚醒時の立ち絵</div>
-      <p class="note">覚醒した瞬間、この絵に切り替わります。決めなければ通常の立ち絵のままです。</p>
       ${this.awakenPortraitHtml()}
       <div id="e-awkimg-err" class="err"></div>
 
@@ -8090,11 +8775,19 @@ const Editor = {
       portrait:f.portrait||d.portrait||"◆"};
   },
   awakenPortraitHtml(){
-    const f=this.draft.awakening.form;
+    const d=this.draft, f=d.awakening.form;
     const set=!!f.portraitImage;
-    return `<div class="portrow">
-      <div class="portprev">${UI.avatar(this.awakenFace(),"72","awkface")}
-        ${set?"":`<span class="portsame">通常と同じ</span>`}</div>
+    const same=!this.facesDiffer();
+    /* 2枚を並べて、変身の前後をその場で見せる。ここが作っていて一番たのしい所。 */
+    return `<div class="facepair${same?" same":""}">
+      <figure class="fp"><div class="fp-av">${UI.avatar(d,"84")}</div><figcaption>通常</figcaption></figure>
+      <span class="fp-ar" aria-hidden="true">➜</span>
+      <figure class="fp after"><div class="fp-av">${UI.avatar(this.awakenFace(),"84","awkface")}</div>
+        <figcaption>${same?"いまは同じ":"覚醒"}</figcaption></figure>
+    </div>
+    <p class="note fp-note">${same?"2枚目を決めると、覚醒した瞬間に姿が切り替わります。"
+      :"覚醒した瞬間、右の姿に切り替わります。"}</p>
+    <div class="portrow">
       <div class="portacts">
         <label class="btn btn-line filebtn" for="e-awkfile"><span class="ic">▣</span>${set?"画像を選び直す":"覚醒用の画像を選ぶ"}
           <input type="file" id="e-awkfile" accept="image/*" style="display:none"></label>
@@ -8119,7 +8812,7 @@ const Editor = {
         this.lastAwkPhoto=url;
         Cropper.open(url,cropped=>{ f.portraitImage=cropped; this.touch(); this.renderStep();
           Kit.toast("覚醒したらこの絵に変わります。",{tone:"ok"}); });
-      },msg=>{ err(msg); Kit.toast(msg,{tone:"bad"}); },12);
+      },msg=>{ err(msg); Kit.toast(msg,{tone:"bad"}); },48);
     };
     const ed=$("#e-awkfile-edit");
     if(ed) ed.onclick=()=>Cropper.open(this.lastAwkPhoto||f.portraitImage,
@@ -8258,45 +8951,6 @@ const Editor = {
   },
 
   /* ================= 5. 確認 ================= */
-  /* 覚醒したあとの姿も1枚で見せる。ここで「作った」という実感が決まる。 */
-  finaleHtml(){
-    const d=this.draft, a=d.awakening;
-    const near=this.nearestChar(d.stats);
-    const rank=this.rankOf(d.stats);
-    const skills=d.skills.map(id=>SKILLS[id]).filter(Boolean);
-    const awkStats=a.enabled?a.form.stats:null;
-    const nums=["hp","atk","def","spd"].map(k=>{
-      const up=awkStats&&k!=="hp"?awkStats[k]-d.stats[k]:0;
-      return `<div class="fn"><span>${STAT_LABEL[k]}</span><b>${d.stats[k]}</b>
-        ${up?`<em class="${up>0?"up":"dn"}">${up>0?"+":""}${up}</em>`:""}</div>`;
-    }).join("");
-    const awkSkills=a.enabled?(a.form.skills.length?a.form.skills:d.skills).map(id=>SKILLS[id]).filter(Boolean):[];
-    return `<div class="finale r-${rank.k}" id="e-finale">
-      <i class="fin-sweep" aria-hidden="true"></i>
-      <div class="fin-top">
-        <div class="fin-port">${UI.avatar(d,"96")}</div>
-        <div class="fin-id">
-          <div class="rankbadge r-${rank.k}"><b>${rank.k}</b><i>${esc(rank.note)}</i></div>
-          <div class="fin-name">${esc(d.name||"名もなき者")}</div>
-          <div class="fin-title">${esc(this.archetype(d.stats))}</div>
-        </div>
-      </div>
-      <div class="fin-desc">${esc(d.description||"ひとことの説明はありません。")}</div>
-      <div class="fin-mid">${this.radar(d.stats,near?near.stats:null,140)}
-        <div class="fin-nums">${nums}</div></div>
-      <div class="fin-sec"><span class="fs-k">技</span>
-        <span class="fs-v">${skills.map(x=>
-          `<span class="mchip t-${x.type}">${esc(x.name)}<em>SP${x.cost}</em></span>`).join("")||"なし"}</span></div>
-      ${a.enabled?`<div class="fin-awk">
-        <div class="fa-h"><span class="fa-k">覚醒</span><b>${esc(a.name||"覚醒形態")}</b></div>
-        <div class="fa-r"><span>開く条件</span><span>${esc(this.condLabel())}</span></div>
-        <div class="fa-r"><span>代償</span><span>${esc(this.costLabel())}</span></div>
-        <div class="fa-r"><span>覚醒中の技</span><span>${awkSkills.map(x=>esc(x.name)).join("・")||"通常と同じ"}</span></div>
-        ${a.form.portraitImage||a.form.portrait?`<div class="fa-face">${UI.avatar(this.awakenFace(),"56")}
-          <span>覚醒するとこの姿になります</span></div>`:""}
-      </div>`:`<div class="fin-sec"><span class="fs-k">覚醒</span><span class="fs-v">なし</span></div>`}
-    </div>`;
-  },
   step_check(){
     const d=this.draft, B=BALANCE.build;
     const checks=[
@@ -8309,7 +8963,7 @@ const Editor = {
     ];
     const ng=checks.filter(c=>!c.ok).length;
     return `<p class="steplead">${this.STEPS[4].hint}</p>
-      ${this.finaleHtml()}
+      ${this.showcaseHtml()}
       <div class="h-rule">できているか</div>
       <div class="checks">${checks.map(c=>
         `<button class="chk ${c.ok?"ok":"ng"}" data-jump="${c.step}">
@@ -8323,11 +8977,7 @@ const Editor = {
     $$("#edit-body .chk").forEach(b=>b.onclick=()=>this.goStep(+b.dataset.jump));
     $("#e-saveonly").onclick=()=>this.saveCharacter();
     /* 完成の一枚は毎回きちんと「立ち上がる」 */
-    const fin=$("#e-finale");
-    if(fin&&!Kit.reduced()){
-      fin.classList.remove("reveal"); void fin.offsetWidth; fin.classList.add("reveal");
-      Kit.buzz([8,60,14]);
-    }
+    this.bindShowcase();
   },
   costLabel(){
     const a=this.draft.awakening, hp=(a.cost&&a.cost.hpPerTurn)||0;
@@ -8460,6 +9110,7 @@ const Editor = {
           <b>${esc(p.name)}</b><span>${esc((p.description||"").slice(0,22))}</span>
           <em>${TYPE_LABEL[p.type]||"技"}・SP${p.cost}</em></button>`).join("")}
         <button class="presetcard blank" data-preset=""><b>まっさらから</b><span>ぜんぶ自分で決める</span><em>自由</em></button>
+        <button class="presetcard more" id="k-morepreset"><b>ほかの技から</b><span>ぜんぶの技から選んで改造する</span><em>${Object.keys(SKILLS).length-1}個</em></button>
       </div>
 
       <div id="k-forge" class="forgecard"></div>
@@ -8511,8 +9162,8 @@ const Editor = {
       </details>
 
       <div class="h-rule">効果音</div>
-      <p class="note">この技を撃ったときに鳴らす音です。${Math.round(Media.MAX_BYTES/1024)}KB・${(Media.MAX_MS/1000).toFixed(0)}秒までの
-        ${Media.EXT.join("／")}が使えます。音は端末の中だけに残ります。</p>
+      <p class="note">この技を撃ったときに鳴らす音です。${(Media.MAX_BYTES/1048576).toFixed(0)}MB・${Math.round(Media.MAX_MS/1000)}秒までの
+        ${Media.EXT.join("／")}が使えます。音は端末の中だけに残り、選んだらその場で鳴らして確かめられます。</p>
       <div id="k-sfx"></div>
       <div id="k-sfx-err" class="err"></div>
 
@@ -8530,6 +9181,7 @@ const Editor = {
       <button class="btn btn-gold" id="k-save">${this.skillEditId?"上書き保存":"技を保存する"}</button>`;
 
     $$("#skill-body [data-preset]").forEach(b=>b.onclick=()=>this.applyPreset(b.dataset.preset));
+    $("#k-morepreset").onclick=()=>this.openPresetPicker();
     $("#k-addeff").onclick=()=>this.openEffectPicker(null);
     $("#k-save").onclick=()=>this.saveSkill();
     $("#k-cancel").onclick=()=>this.closeSkill();
@@ -8633,6 +9285,7 @@ const Editor = {
         this.paintForge(this.collectSkill());
         Kit.buzz(12);
         Kit.toast(`「${info.name}」を鳴らします。`,{tone:"ok"});
+        if(this.canPreviewSfx()) try{ Music.previewSfx(info.id); }catch(e){}   // その場で聴かせる
         if(prev&&prev!==info.id) this.releaseSfx(prev);
       }).catch(e=>{
         this.renderSfx();
@@ -8997,7 +9650,8 @@ const Editor = {
         </div></div>
       <div class="simbars">${bars}</div>
       <div class="simwords">${words.map(w=>`<div>・${esc(w)}</div>`).join("")}</div>
-      <p class="note">HP${hp}・ATK130の相手に何度も戦わせた平均です（${TURNS}ターン観測）。</p>`;
+      <p class="note">HP${hp}・ATK130の相手に何度も戦わせた平均です（${TURNS}ターン観測）。</p>
+      ${this.tryoutHtml(s)}`;
   },
   /* 作りかけの技が戦闘でどう並ぶかを、その場に出しておく */
   paintForge(s){
@@ -9528,10 +10182,18 @@ const Media = {
     return chain.then(()=>{ this._meta=null; });
   },
 
-  /* ---------- 参照されていない音を片づける ---------- */
+  /* ---------- 参照されていないものを片づける ----------
+     効果音（技の sfxId）だけでなく、立ち絵・覚醒立ち絵・キャラBGM の実体も
+     ここに置いてある。鍵の作り方は Store.stash と同じ決まりなので、
+     キャラが居るあいだは必ず「使用中」に数える（消してしまうと立ち絵が失われる）。 */
   used(){
     const set={};
     Object.keys(SKILLS).forEach(k=>{ if(SKILLS[k]&&SKILLS[k].sfxId) set[SKILLS[k].sfxId]=1; });
+    Object.keys(CHARACTERS).forEach(k=>{
+      const c=CHARACTERS[k];
+      if(!c||!c.custom) return;
+      ["face","bgm","awk"].forEach(t=>{ set[`c_${c.id}_${t}`]=1; });
+    });
     return set;
   },
   sweep(){
@@ -9544,6 +10206,454 @@ const Media = {
     }).catch(()=>0);
   }
 };
+
+/* ===== 15d-showcase.js ===== */
+/* =========================================================================
+   09e. Showcase — ウィザード最後の「完成の一枚」。
+        立ち絵を2枚持てることがこのゲームで一番の見せ場なので、
+        通常形態と覚醒形態を一枚の舞台の上で見比べられるようにする。
+        斜めの境目を指で切り替えると、絵・名前・能力・技がまとめて入れ替わる。
+   ========================================================================= */
+Object.assign(Editor,{
+  showForm:"both",                      // normal / both / awake
+
+  /* 覚醒で見た目が変わるか。変わらないなら見比べの意味がないので出さない。 */
+  facesDiffer(){
+    const d=this.draft, a=d&&d.awakening, f=a&&a.form;
+    if(!a||!a.enabled||!f) return false;
+    if(f.portraitImage) return f.portraitImage!==d.portraitImage;
+    if(d.portraitImage) return false;                       // 覚醒側だけ絵が無い＝同じ絵
+    return !!(f.portrait&&f.portrait!==d.portrait);
+  },
+  /* 舞台に置く絵。立ち絵が無ければ大きな一文字を置く。 */
+  artHtml(face){
+    return face.portraitImage
+      ? `<img src="${face.portraitImage}" alt="">`
+      : `<span class="sc-glyph">${esc(face.portrait||"◆")}</span>`;
+  },
+  /* 斜めの切れ目。s=0 で覚醒側が隠れ、s=1 で覚醒側が全面に出る。 */
+  splitPath(s){
+    const x=120-140*Math.max(0,Math.min(1,s));
+    return `polygon(${(x+10).toFixed(1)}% -2%, 102% -2%, 102% 102%, ${(x-10).toFixed(1)}% 102%)`;
+  },
+  splitOf(form){ return form==="awake"?1:(form==="both"?0.5:0); },
+
+  /* 2つの形を重ねたレーダー。金が通常、朱が覚醒。 */
+  radarPair(st,awk,size){
+    const S=size||150, c=S/2, r=c-18, K=this.RADAR_KEYS;
+    const at=(i,f)=>{ const a=-Math.PI/2+i*Math.PI/2, rr=r*f;
+      return [c+Math.cos(a)*rr,c+Math.sin(a)*rr]; };
+    const poly=o=>K.map((k,i)=>at(i,Math.max(.06,Math.min(1,(o[k]||0)/STAT_MAX[k])))
+      .map(n=>n.toFixed(1)).join(",")).join(" ");
+    const rings=[1,.66,.33].map(f=>
+      `<polygon points="${K.map((k,i)=>at(i,f).map(n=>n.toFixed(1)).join(",")).join(" ")}" class="rr"/>`).join("");
+    const axes=K.map((k,i)=>{ const p=at(i,1);
+      return `<line x1="${c}" y1="${c}" x2="${p[0].toFixed(1)}" y2="${p[1].toFixed(1)}" class="ra"/>`; }).join("");
+    const labels=K.map((k,i)=>{ const p=at(i,1.2);
+      return `<text x="${p[0].toFixed(1)}" y="${(p[1]+3.5).toFixed(1)}" class="rt">${STAT_LABEL[k]}</text>`; }).join("");
+    return `<svg class="radar sc-radar" viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" role="img"
+      aria-label="通常形態と覚醒形態の能力の形">${rings}${axes}
+      ${awk?`<polygon points="${poly(awk)}" class="rw"/>`:""}
+      <polygon points="${poly(st)}" class="rp"/>${labels}</svg>`;
+  },
+
+  /* 覚醒後の能力（HPは変わらない）。覚醒が無ければ null。 */
+  awakenStats(){
+    const d=this.draft, a=d.awakening;
+    if(!a||!a.enabled) return null;
+    return {hp:d.stats.hp,atk:a.form.stats.atk,def:a.form.stats.def,spd:a.form.stats.spd};
+  },
+  skillsOf(which){
+    const d=this.draft, a=d.awakening;
+    const ids=which==="awake"
+      ? ((a.form.skills&&a.form.skills.length)?a.form.skills:d.skills)
+      : d.skills;
+    return ids.map(id=>SKILLS[id]).filter(Boolean);
+  },
+
+  /* ---------- 一枚を組み立てる ---------- */
+  showcaseHtml(){
+    const d=this.draft, a=d.awakening;
+    const on=!!(a&&a.enabled);
+    const two=this.facesDiffer();
+    this.showForm=on?(two?"both":"normal"):"normal";
+    const rank=this.rankOf(d.stats);
+    const awk=this.awakenStats();
+    const rows=["hp","atk","def","spd"].map(k=>{
+      const base=d.stats[k], now=awk?awk[k]:base, dif=now-base;
+      return `<div class="scr" data-k="${k}">
+        <span class="scr-k">${STAT_LABEL[k]}</span>
+        <span class="scr-n">${base}</span>
+        <span class="scr-a">${on?`${now}${dif?`<em class="${dif>0?"up":"dn"}">${dif>0?"+":""}${dif}</em>`:`<em class="eq">±0</em>`}`:"—"}</span>
+      </div>`;
+    }).join("");
+    return `<div class="showcase r-${rank.k}" id="e-show" data-f="${this.showForm}"
+        style="--split:${this.splitOf(this.showForm)}">
+      <div class="sc-stage" id="sc-stage">
+        <div class="sc-art sc-n">${this.artHtml(d)}</div>
+        <div class="sc-art sc-a" id="sc-a" style="clip-path:${this.splitPath(this.splitOf(this.showForm))}">
+          ${this.artHtml(this.awakenFace())}</div>
+        <i class="sc-seam" aria-hidden="true"></i>
+        <i class="sc-flash" aria-hidden="true"></i>
+        <div class="sc-vig" aria-hidden="true"></div>
+        ${on?`<span class="sc-tag sc-tn">通常</span><span class="sc-tag sc-ta">覚醒</span>`:""}
+        <div class="sc-id">
+          <div class="rankbadge r-${rank.k}"><b>${rank.k}</b></div>
+          <div class="sc-names"><b class="sc-name">${esc(d.name||"名もなき者")}</b>
+            <i class="sc-sub">${esc(this.archetype(d.stats))}</i></div>
+        </div>
+      </div>
+      ${on?`<div class="sc-seg" id="sc-seg" role="group" aria-label="見る形態">
+        <button data-f="normal" class="${this.showForm==="normal"?"on":""}">通常</button>
+        <button data-f="both" class="${this.showForm==="both"?"on":""}">見比べ</button>
+        <button data-f="awake" class="${this.showForm==="awake"?"on":""}">覚醒</button>
+      </div>`:""}
+      <p class="sc-desc">${esc(d.description||"ひとことの説明はありません。")}</p>
+      <div class="sc-mid">
+        ${this.radarPair(d.stats,awk,150)}
+        <div class="sc-stats">
+          <div class="scr sc-head"><span class="scr-k"></span>
+            <span class="scr-n">通常</span><span class="scr-a">覚醒</span></div>
+          ${rows}
+        </div>
+      </div>
+      <div class="sc-skills" id="sc-skills">${this.skillChipsHtml(this.showForm)}</div>
+      ${on?`<div class="sc-awk">
+        <div class="sa-h"><span>覚醒</span><b>${esc(a.name||"覚醒形態")}</b></div>
+        <div class="sa-r"><span>開く条件</span><span>${esc(this.condLabel())}</span></div>
+        <div class="sa-r"><span>代償</span><span>${esc(this.costLabel())}</span></div>
+        ${two?`<div class="sa-r"><span>見た目</span><span>覚醒すると立ち絵が切り替わります</span></div>`
+             :`<div class="sa-r"><span>見た目</span><span>通常と同じ絵のままです。「覚醒」の段で2枚目を決められます</span></div>`}
+      </div>`:`<div class="sc-awk off">覚醒なし。追い詰められても姿は変わりません。</div>`}
+    </div>`;
+  },
+  skillChipsHtml(form){
+    const list=this.skillsOf(form==="awake"?"awake":"normal");
+    const head=form==="awake"?"覚醒中に使える技":"通常形態で使う技";
+    return `<div class="sk-h">${head}<em>${list.length}個</em></div>
+      <div class="sk-c">${list.map(s=>
+        `<span class="mchip t-${s.type}">${esc(s.name)}<em>SP${s.cost}</em></span>`).join("")||"<span class=\"mchip\">なし</span>"}</div>`;
+  },
+
+  /* ---------- 配線 ---------- */
+  bindShowcase(){
+    const box=$("#e-show");
+    if(!box) return;
+    const seg=$("#sc-seg");
+    if(seg) seg.querySelectorAll("button").forEach(b=>b.onclick=()=>this.setForm(b.dataset.f));
+    const stage=$("#sc-stage");
+    if(stage&&seg) stage.onclick=()=>{
+      /* 舞台をたたくと 通常 → 見比べ → 覚醒 と回る */
+      const order=["normal","both","awake"];
+      this.setForm(order[(order.indexOf(this.showForm)+1)%order.length]);
+    };
+    if(!Kit.reduced()){
+      box.classList.remove("reveal"); void box.offsetWidth; box.classList.add("reveal");
+      Kit.buzz([8,60,14]);
+    }
+  },
+  setForm(f){
+    const box=$("#e-show"), art=$("#sc-a");
+    if(!box||!art) return;
+    const prev=this.showForm;
+    this.showForm=f;
+    box.dataset.f=f;
+    box.style.setProperty("--split",this.splitOf(f));
+    art.style.clipPath=this.splitPath(this.splitOf(f));
+    const seg=$("#sc-seg");
+    if(seg) seg.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.f===f));
+    const chips=$("#sc-skills");
+    if(chips) chips.innerHTML=this.skillChipsHtml(f);
+    const sub=box.querySelector(".sc-sub");
+    if(sub) sub.textContent=f==="awake"
+      ? (this.draft.awakening.name||"覚醒形態")
+      : this.archetype(this.draft.stats);
+    box.querySelectorAll(".scr").forEach(r=>r.classList.toggle("lit",f==="awake"));
+    if(f!==prev){
+      Kit.buzz(f==="awake"?[12,40,18]:8);
+      if(f==="awake"&&!Kit.reduced()){
+        box.classList.remove("burst"); void box.offsetWidth; box.classList.add("burst");
+      }
+    }
+  }
+});
+
+/* ===== 15e-tryout.js ===== */
+/* =========================================================================
+   09f. Tryout — 作りかけの技を「その場で試し斬り」する。
+        数字の平均だけでは、作った技が実戦でどう振る舞うか分からない。
+        エンジンに本当に戦わせ、出てきた戦闘ログをそのまま見せる。
+        （UIは戦闘計算をしない。計算は 09-engine.js が行う。）
+   ========================================================================= */
+Object.assign(Editor,{
+  /* ログの下ごしらえ。ターンの見出しと「身を固めた」は毎回出るので省く。 */
+  TRY_MUTE:/^ターン|身を固めた/,
+
+  /* 1回だけ本気で戦わせて、ターンごとのログと残HPを返す。 */
+  sampleRun(skill,turns){
+    turns=turns||3;
+    const id=skill.id||"__try_skill";
+    const sk=Object.assign({},skill,{id});
+    const me=this.dummyChar("あなた",88); me.skills=[id];
+    const foe=this.dummyChar("相手",this.DUMMY.mid.def);
+    let eng;
+    try{
+      eng=new BattleEngine(me,foe,{skills:{[id]:sk},seed:20260916,
+        startSp:[BALANCE.sp.max,BALANCE.sp.max]});
+    }catch(e){ return null; }
+    const out=[];
+    let prevFoe=eng.fighters[1].hp, prevMe=eng.fighters[0].hp;
+    for(let t=0;t<turns;t++){
+      if(eng.over) break;
+      /* 1ターン目に技を撃ち、あとは様子を見る（継続ダメージの効きまで見える） */
+      eng.submit(0,t===0?{type:"SKILL",skillId:id,spend:sk.cost}:{type:"DEFEND"});
+      eng.submit(1,{type:"DEFEND"});
+      let lines;
+      try{ lines=eng.resolveTurn(); }catch(e){ return out.length?out:null; }
+      const foeHp=eng.fighters[1].hp, meHp=eng.fighters[0].hp;
+      out.push({
+        turn:t+1,
+        lines:(lines||[]).map(l=>String(l.text||"")).filter(x=>x&&!this.TRY_MUTE.test(x)).slice(0,5),
+        dmg:Math.max(0,prevFoe-foeHp),
+        self:meHp-prevMe,
+        hp:foeHp, maxHp:eng.fighters[1].maxHp
+      });
+      prevFoe=foeHp; prevMe=meHp;
+    }
+    return out;
+  },
+  /* 試し斬りの見た目。ログはそのまま、HPの残りは帯で見せる。 */
+  tryoutHtml(skill){
+    const runs=this.sampleRun(skill,3);
+    if(!runs||!runs.length)
+      return `<div class="status bad">この設定では戦わせられませんでした。数値を見直してください。</div>`;
+    const rows=runs.map(r=>{
+      const pct=Math.max(0,Math.min(1,r.hp/Math.max(1,r.maxHp)));
+      const badge=r.dmg>0?`<b class="ty-d">-${Math.round(r.dmg)}</b>`
+        :(r.self>0?`<b class="ty-h2">+${Math.round(r.self)}</b>`:`<b class="ty-z">—</b>`);
+      return `<li class="tyr">
+        <span class="ty-t">${r.turn}</span>
+        <div class="ty-b">
+          <div class="ty-l">${r.lines.map(t=>`<span>${esc(t)}</span>`).join("")||"<span>何も起きなかった。</span>"}</div>
+          <div class="ty-bar"><i style="transform:scaleX(${pct.toFixed(3)})"></i></div>
+        </div>
+        ${badge}</li>`;
+    }).join("");
+    const last=runs[runs.length-1];
+    return `<div class="tryout">
+      <div class="ty-h">ためし斬り<em>HP${this.SIM_HP}・DEF${this.DUMMY.mid.def}の相手（毎ターン防御）に、1ターン目にこの技を撃つ</em></div>
+      <ol class="ty-list">${rows}</ol>
+      <div class="ty-f">${runs.length}ターン後、相手の残りHPは
+        <b>${Math.max(0,Math.round(last.hp))}</b>／${last.maxHp}（${Math.round(Math.max(0,last.hp)/last.maxHp*100)}%）</div>
+    </div>`;
+  },
+
+  /* 長い説明を切り詰める。切ったことが分かるように「…」を足す。 */
+  clip(text,n){
+    const t=String(text||"");
+    return t.length>n?t.slice(0,n)+"…":t;
+  },
+
+  /* ---------- もとにする技を全部から選ぶ ---------- */
+  openPresetPicker(){
+    const list=Object.values(SKILLS).filter(s=>s.id!=="basic_attack");
+    const groups=["ATTACK","SPECIAL","DEFENSE","SUPPORT"].map(t=>({
+      label:TYPE_LABEL[t]||t, keys:list.filter(s=>s.type===t)
+    })).filter(g=>g.keys.length);
+    const card=s=>`<button class="effpick t-${s.type==="DEFENSE"||s.type==="SUPPORT"?"good":"bad"}"
+      data-preset="${s.id}" data-q="${esc(s.name+" "+(s.description||""))}">
+      <span class="ep-i">${s.custom?"✎":"◈"}</span>
+      <span class="ep-t"><b>${esc(s.name)}</b><span>${esc(this.clip(s.description,34))}</span></span>
+      <span class="ep-side">SP${s.cost}</span></button>`;
+    Kit.sheet({title:"もとにする技を選ぶ",sub:"土台にして作り替える",
+      html:`<div class="effsearch"><input type="search" id="pp-q" placeholder="技を探す（斬・炎・守り…）"
+          aria-label="技を探す" autocomplete="off"></div>
+        <div id="pp-list">${groups.map(g=>`<div class="epgrp">
+          <div class="epg-h">${esc(g.label)}</div>
+          <div class="epg-b">${g.keys.map(card).join("")}</div></div>`).join("")}</div>
+        <p class="note" id="pp-empty" style="display:none">見つかりませんでした。</p>`,
+      onMount:(body,close)=>{
+        body.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{
+          close();
+          this.applyPreset(b.dataset.preset);
+        });
+        const q=body.querySelector("#pp-q");
+        q.oninput=()=>{
+          const t=q.value.trim().toLowerCase();
+          let hit=0;
+          body.querySelectorAll("[data-preset]").forEach(b=>{
+            const ok=!t||b.dataset.q.toLowerCase().indexOf(t)>=0;
+            b.style.display=ok?"":"none";
+            if(ok) hit++;
+          });
+          body.querySelectorAll(".epgrp").forEach(g=>{
+            g.style.display=Array.from(g.querySelectorAll("[data-preset]"))
+              .some(b=>b.style.display!=="none")?"":"none";
+          });
+          body.querySelector("#pp-empty").style.display=hit?"none":"";
+        };
+      }});
+  }
+});
+
+/* ===== 15f-vault.js ===== */
+/* =========================================================================
+   09g. Vault — 端末に置いたもの（立ち絵・覚醒立ち絵・キャラBGM・効果音）の内訳。
+        上限が大きくなったぶん、「何にどれだけ使っているか」が見えないと不安になる。
+        ここでは数えて見せることと、要らないものを消すことだけを行う。
+        実体の置き場は Media（IndexedDB）。差し札の付け外しは Store に任せる。
+   ========================================================================= */
+Object.assign(UI,{
+  /* IndexedDB の鍵の作り方は Store.stash と同じ決まりで作る */
+  mediaKeys(c){ return {face:`c_${c.id}_face`,bgm:`c_${c.id}_bgm`,awk:`c_${c.id}_awk`}; },
+  MEDIA_LABEL:{face:"立ち絵",awk:"覚醒の立ち絵",bgm:"キャラBGM"},
+
+  mb(n){
+    if(!(n>0)) return "0";
+    if(n<1024) return n+"B";
+    if(n<1048576) return (n/1024).toFixed(0)+"KB";
+    return (n/1048576).toFixed(1)+"MB";
+  },
+
+  /* 一覧の「端末に置いている量」から開く。中身は開くたびに数え直す。 */
+  openVault(){
+    const sheet=Kit.sheet({title:"置いているもの",sub:"内訳と整理",
+      html:`<div id="vault"><div class="status">数えています…</div></div>`,
+      onMount:(body)=>{ this._vaultBody=body; this.paintVault(); }});
+    this._vault=sheet;
+    return sheet;
+  },
+  closeVault(){ if(this._vault){ this._vault.close(); this._vault=null; } },
+
+  paintVault(){
+    const box=this._vaultBody&&this._vaultBody.querySelector("#vault");
+    if(!box) return;
+    if(typeof Media==="undefined"||!Media.supported()){
+      const why=typeof Media!=="undefined"?Media.reason():"この環境では立ち絵や音を端末に残せません。";
+      box.innerHTML=`<div class="status bad">${esc(why)}</div>
+        <p class="note">立ち絵や音は端末に残せませんが、ファイルに書き出せば別の端末で戻せます。</p>`;
+      return;
+    }
+    Promise.all([Media.list(),Media.estimate()]).then(([rows,est])=>{
+      const rec={};
+      (rows||[]).forEach(r=>{ rec[r.id]=r; });
+      const used=Media.used();
+      const chars=Object.values(CHARACTERS).filter(c=>c.custom);
+      const skills=Object.values(SKILLS).filter(s=>s.custom&&s.sfxId);
+      let total=0;
+      (rows||[]).forEach(r=>{ total+=r.bytes||0; });
+      const orphan=(rows||[]).filter(r=>!used[r.id]);
+      const orphanBytes=orphan.reduce((a,r)=>a+(r.bytes||0),0);
+
+      /* --- キャラクターごとの内訳 --- */
+      const charRows=chars.map(c=>{
+        const k=this.mediaKeys(c);
+        const parts=["face","awk","bgm"].map(t=>({t,r:rec[k[t]]})).filter(x=>x.r);
+        const sum=parts.reduce((a,x)=>a+(x.r.bytes||0),0);
+        if(!parts.length) return "";
+        return `<div class="vrow" data-c="${esc(c.id)}">
+          <div class="vr-h">${this.avatar(c,"44")}
+            <div class="vr-t"><b>${esc(c.name)}</b><span>${this.mb(sum)}</span></div></div>
+          <div class="vr-b">${parts.map(x=>
+            `<button class="vchip" data-drop="${x.t}" data-id="${esc(c.id)}">
+              <b>${this.MEDIA_LABEL[x.t]}</b><span>${this.mb(x.r.bytes||0)}</span><em>外す</em></button>`).join("")}</div>
+        </div>`;
+      }).filter(Boolean).join("");
+
+      /* --- 技の効果音 --- */
+      const sfxRows=skills.map(s=>{
+        const r=rec[s.sfxId];
+        return `<div class="vrow" data-s="${esc(s.id)}">
+          <div class="vr-h"><span class="vr-i">♪</span>
+            <div class="vr-t"><b>${esc(r?r.name:"見つかりません")}</b>
+              <span>${esc(s.name)}${r?`　${this.mb(r.bytes||0)}${r.durationMs?"／"+(r.durationMs/1000).toFixed(1)+"秒":""}`:"　実体がありません"}</span></div></div>
+          <div class="vr-b">
+            ${r&&typeof Music!=="undefined"&&Music.previewSfx?`<button class="vchip" data-play="${esc(s.sfxId)}"><b>試聴</b><em>▶</em></button>`:""}
+            <button class="vchip danger" data-sfxdrop="${esc(s.id)}"><b>音を外す</b><em>✕</em></button></div>
+        </div>`;
+      }).join("");
+
+      /* 端末側の集計は少し遅れて追いつくので、いま数えた量のほうが大きければそちらを採る */
+      const q=est&&est.quota?est.quota:0;
+      const u=Math.max(est&&est.usage?est.usage:0,total);
+      const pct=q?Math.max(1,Math.min(100,u/q*100)):0;
+      box.innerHTML=`
+        ${q?`<div class="vgauge">
+          <div class="vg-top"><span>端末で使える保存領域</span><b>残り ${this.mb(Math.max(0,q-u))}</b></div>
+          <div class="vg-track"><i style="transform:scaleX(${(pct/100).toFixed(4)})"></i></div>
+          <div class="note">このゲームが置いているのは ${this.mb(total)}（ほかのアプリと合わせて ${this.mb(u)} / ${this.mb(q)}）。
+            立ち絵も音も、この端末の中だけに残ります。</div>
+        </div>`:`<div class="status">端末の空き容量は取得できませんでした。置いている量は ${this.mb(total)} です。</div>`}
+        ${charRows?`<div class="h-rule">キャラクターごと</div>${charRows}`:""}
+        ${sfxRows?`<div class="h-rule">技の効果音</div>${sfxRows}`:""}
+        ${!charRows&&!sfxRows?`<p class="note" style="margin-top:12px">端末にはまだ何も置いていません。
+          立ち絵や効果音を付けると、ここに内訳が出ます。</p>`:""}
+        ${orphan.length?`<div class="h-rule">どこからも使われていないもの</div>
+          <div class="status">${orphan.length}件・${this.mb(orphanBytes)}。消したキャラや、付け替えた音の残りです。</div>
+          <button class="btn btn-line" id="v-sweep" style="margin-top:9px">まとめて消す（${this.mb(orphanBytes)}）</button>`:""}
+        <p class="note" style="margin-top:12px">ここで消したものは元に戻せません。
+          残したいものは先に「ファイルに保存」でまるごと書き出してください。</p>`;
+      this.bindVault();
+    }).catch(()=>{
+      box.innerHTML=`<div class="status bad">内訳を読み取れませんでした。</div>`;
+    });
+  },
+
+  bindVault(){
+    const box=this._vaultBody&&this._vaultBody.querySelector("#vault");
+    if(!box) return;
+    box.querySelectorAll("[data-play]").forEach(b=>b.onclick=()=>{
+      try{ Music.previewSfx(b.dataset.play); }catch(e){ Kit.toast("音を鳴らせませんでした。",{tone:"bad"}); }
+    });
+    box.querySelectorAll("[data-drop]").forEach(b=>b.onclick=()=>
+      this.dropCharMedia(b.dataset.id,b.dataset.drop));
+    box.querySelectorAll("[data-sfxdrop]").forEach(b=>b.onclick=()=>
+      this.dropSkillSfx(b.dataset.sfxdrop));
+    const sw=box.querySelector("#v-sweep");
+    if(sw) sw.onclick=async()=>{
+      if(!await Kit.confirm({title:"使われていないものを消しますか",
+        body:"どのキャラ・どの技からも参照されていないファイルだけを消します。元に戻せません。",
+        ok:"消す",cancel:"やめる",danger:true})) return;
+      Media.sweep().then(n=>{
+        Kit.toast(n?`${n}件を消しました。`:"消せるものはありませんでした。",{tone:n?"ok":null});
+        this.paintVault(); this.renderStorage();
+      });
+    };
+  },
+
+  /* 立ち絵・覚醒立ち絵・キャラBGM を1つだけ外す */
+  async dropCharMedia(id,which){
+    const c=CHARACTERS[id];
+    if(!c) return;
+    const label=this.MEDIA_LABEL[which]||"メディア";
+    if(!await Kit.confirm({title:`${label}を外しますか`,
+      body:`「${c.name}」の${label}を端末から消します。元に戻せません。`,
+      ok:"外す",cancel:"やめる",danger:true})) return;
+    if(which==="face") c.portraitImage=null;
+    else if(which==="bgm"){ c.bgmAudio=null; c.bgmAudioName=null; }
+    else if(which==="awk"&&c.awakening&&c.awakening.form) c.awakening.form.portraitImage=null;
+    const res=Store.save();
+    await Media.remove(this.mediaKeys(c)[which]);
+    Kit.toast(res.ok?`「${c.name}」の${label}を外しました。`:"外しましたが端末に保存できませんでした。",
+      {tone:res.ok?"ok":"bad"});
+    this.paintVault(); this.renderRosterList(); this.renderStorage();
+  },
+  /* 技から効果音を外す（実体も消す） */
+  async dropSkillSfx(id){
+    const s=SKILLS[id];
+    if(!s) return;
+    if(!await Kit.confirm({title:"効果音を外しますか",
+      body:`「${s.name}」の音を端末から消します。元に戻せません。`,
+      ok:"外す",cancel:"やめる",danger:true})) return;
+    const old=s.sfxId;
+    s.sfxId=null;
+    const res=Store.save();
+    if(old) await Media.remove(old);
+    Kit.toast(res.ok?`「${s.name}」の効果音を外しました。`:"外しましたが端末に保存できませんでした。",
+      {tone:res.ok?"ok":"bad"});
+    this.paintVault(); this.renderSkillList(); this.renderStorage();
+  }
+});
 
 /* ===== 16-boot.js ===== */
 /* =========================================================================
