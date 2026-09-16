@@ -143,4 +143,4 @@ obj/
 
 !CookedMeshumap/**
 
-!Content/**
+!Content/**.claude/
