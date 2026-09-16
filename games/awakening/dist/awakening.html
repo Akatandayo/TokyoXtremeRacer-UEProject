@@ -6552,6 +6552,10 @@ Object.assign(UI, {
     if(!bundles||!bundles[0]||!bundles[1]) return;
     this.bundles=bundles;
     this.chars=[bundles[0].char,bundles[1].char];
+    // 束は送信のために実体を抜いてある。相手ぶんはあとから届くが、
+    // 自分ぶんは手元にあるのだから、ここで戻しておく（戻し忘れると
+    // 自分の立ち絵だけが出ない、という形で現れる）。
+    this.restoreOwnMedia();
     this.controllers=this.mySide===0?["local","remote"]:["remote","local"];
     this.remoteBuf={}; this.sentActions={};
     this.stopResend();
@@ -6562,6 +6566,18 @@ Object.assign(UI, {
     const mine=bundles[this.mySide];
     if(mine&&(mine.media||[]).length) this.sendMedia(this.onlinePick,mine);
   },
+  /* 自分の側の立ち絵・覚醒立ち絵・BGMを、手元のキャラクターから戻す */
+  restoreOwnMedia(){
+    const 自分=this.chars&&this.chars[this.mySide];
+    const 手元=CHARACTERS[this.onlinePick];
+    if(!自分||!手元) return;
+    if(手元.portraitImage) 自分.portraitImage=手元.portraitImage;
+    if(手元.bgmAudio){ 自分.bgmAudio=手元.bgmAudio; 自分.bgmAudioName=手元.bgmAudioName; }
+    const 元覚醒=手元.awakening&&手元.awakening.form;
+    const 先覚醒=自分.awakening&&自分.awakening.form;
+    if(元覚醒&&先覚醒&&元覚醒.portraitImage) 先覚醒.portraitImage=元覚醒.portraitImage;
+  },
+
   /* 通信が一度こぼれても止まらないよう、相手の行動が来るまで自分の行動を送り直す */
   startResend(){
     if(this.resendTimer) return;
