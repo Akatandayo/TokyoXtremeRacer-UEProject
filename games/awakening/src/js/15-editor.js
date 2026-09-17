@@ -1135,6 +1135,7 @@ const Editor = {
     $("#k-save").onclick=()=>this.saveSkill();
     $("#k-cancel").onclick=()=>this.closeSkill();
     $$("#skill-body .ksim").forEach(el=>{
+      this.bindClamp(el);
       el.addEventListener("input",()=>this.queueSim());
       el.addEventListener("change",()=>this.queueSim());
     });
@@ -1431,6 +1432,7 @@ const Editor = {
       this.simulate();
     });
     box.querySelectorAll("[data-k]").forEach(el=>{
+      this.bindClamp(el);
       const live=()=>{
         const i=+el.dataset.i, k=el.dataset.k;
         // 負の数は受け取らない。大きさとして扱い、向きはカタログ側が決める。
@@ -1467,6 +1469,35 @@ const Editor = {
       return e;
     });
   },
+  /* 数値欄を min / max のとおりに振る舞わせる。
+     HTML の max は入力を止めてくれない（送信時の検証でしかない）ので、
+     打った値がそのまま残り、保存の時だけ黙って別の数になっていた。
+     打ちすぎたら即座に丸め、なぜ戻ったのかを伝える。 */
+  bindClamp(el){
+    if(!el||el.type!=="number"||el._clamped) return;
+    el._clamped=true;
+    const 上=el.getAttribute("max"), 下=el.getAttribute("min");
+    const max=(上!=null&&上!=="")?Number(上):null;
+    const min=(下!=null&&下!=="")?Number(下):null;
+    const 名=(()=>{ const l=el.id?document.querySelector(`label[for="${el.id}"]`):null;
+                    return (l&&l.textContent.trim())||"この値"; })();
+    const 丸める=(最後)=>{
+      if(el.value==="") return;                       // 入力途中の空欄は触らない
+      let v=Number(el.value);
+      if(!Number.isFinite(v)){ el.value=(min!=null?min:0); return; }
+      let 直した=false;
+      if(max!=null&&v>max){ v=max; 直した=true; }
+      if(最後&&min!=null&&v<min){ v=min; 直した=true; }
+      if(直した){
+        el.value=v;
+        if(typeof Kit!=="undefined"&&Kit.toast) Kit.toast(`${名}は ${min!=null?min:0}〜${max} までです。`);
+      }
+    };
+    el.addEventListener("input",()=>丸める(false));   // 打ちすぎは即座に戻す
+    el.addEventListener("change",()=>丸める(true));   // 離れたときに下限もそろえる
+    el.addEventListener("blur",()=>丸める(true));
+  },
+
   /* 画面の入力を技オブジェクトにまとめる（保存とシミュレーションで共用） */
   collectSkill(){
     /* 入力欄の min は、JS から .value を読むときには効かない（送信時の検証でしかない）。
