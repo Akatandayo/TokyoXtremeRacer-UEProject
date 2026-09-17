@@ -25,7 +25,7 @@
 .draftnote{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;
   font-size:11.5px;color:var(--dim)}
 .draftnote #e-draft.bad{color:#FFA9B6}
-.draftnote .btn{width:auto;font-size:11.5px;min-height:40px}
+.draftnote .btn{width:auto;font-size:11.5px;min-height:44px}
 
 /* ===== ポイント配分 ===== */
 .budget{border:1px solid rgba(240,197,80,.3);border-radius:18px;padding:13px;
@@ -183,15 +183,18 @@
 /* ===== Kit：トースト・ダイアログ・操作シート ===== */
 .kit-layer{position:fixed;inset:0;z-index:120;pointer-events:none}
 .kit-layer>*{pointer-events:auto}
+/* 画面下の主要ボタンに重なるので、トースト自体は指を素通りさせる
+   （取り消しボタンだけは受け取る）。ここを塞ぐと「保存」が押せなくなる。 */
 .kit-toast{position:fixed;left:50%;bottom:calc(20px + var(--safe-b));width:min(420px,calc(100vw - 28px));
+  pointer-events:none;
   transform:translate(-50%,18px);opacity:0;transition:transform .26s cubic-bezier(.2,.9,.25,1),opacity .26s;
   display:flex;align-items:center;gap:10px;border-radius:16px;padding:13px 14px;font-size:13px;
   background:linear-gradient(180deg,#2B2250,#1A1330);border:1px solid var(--line2);
   box-shadow:0 14px 40px rgba(0,0,0,.6)}
 .kit-toast.on{transform:translate(-50%,0);opacity:1}
 .kit-toast .kt-msg{flex:1}
-.kit-toast .kt-act{flex:0 0 auto;color:var(--gold);font-weight:700;font-size:13px;padding:8px 10px;
-  border-radius:11px;border:1px solid rgba(240,197,80,.4);min-height:40px}
+.kit-toast .kt-act{flex:0 0 auto;color:var(--gold);font-weight:700;font-size:13px;padding:8px 12px;
+  border-radius:11px;border:1px solid rgba(240,197,80,.4);min-height:44px;pointer-events:auto}
 .kit-toast.t-ok{border-color:rgba(79,214,200,.45)}
 .kit-toast.t-ok .kt-msg{color:#9DF0E4}
 .kit-toast.t-bad{border-color:rgba(242,86,106,.5)}

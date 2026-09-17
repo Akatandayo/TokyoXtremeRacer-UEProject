@@ -140,6 +140,11 @@ Object.assign(UI, {
         `<span class="mini" title="${k.toUpperCase()}"><i style="transform:scaleX(${Math.min(1,st[k]/STAT_MAX[k]).toFixed(3)})"></i></span>`).join("");
       const chips=[];
       if(c.custom) chips.push("自作");
+      /* RC戦に出せるかどうかは、選ぶ前に知りたい。自作のキャラにだけ印を出す。 */
+      let rcBad=false;
+      if(c.custom&&typeof RC!=="undefined"&&RC.checkCharacter){
+        try{ rcBad=!RC.checkCharacter(c).ok; }catch(e){ rcBad=false; }
+      }
       if(c.awakening&&c.awakening.enabled) chips.push("覚醒あり");
       chips.push("技"+((c.skills||[]).length)+"個");
       /* 何を持たせたかが一覧で分かるようにする（容量の見当もつく） */
@@ -154,7 +159,8 @@ Object.assign(UI, {
           ${this.avatar(c,"44")}
           <span class="rc-t"><b>${esc(c.name)}</b>
             <span class="rc-d">${esc(c.description||"")}</span>
-            <span class="rc-chips">${chips.map(x=>`<span class="mchip">${esc(x)}</span>`).join("")}</span>
+            <span class="rc-chips">${rcBad?`<span class="mchip bad">RC外</span>`:""}${
+              chips.map(x=>`<span class="mchip">${esc(x)}</span>`).join("")}</span>
             <span class="rc-bars">${bars}</span></span>
         </button>
         <button class="rc-more" data-act="more" aria-label="${esc(c.name)}の操作">⋯</button>
@@ -247,15 +253,28 @@ Object.assign(UI, {
       box.innerHTML=`<p class="note">自分で作った技はまだありません。状態異常を組み合わせて作れます。</p>`;
       return;
     }
-    box.innerHTML=mine.map(s=>`<div class="skrow" data-id="${s.id}">
+    /* RC（レギュレーション）に収まっているかを、技一覧でも一目で分かるようにする */
+    const rc=s=>(typeof RC!=="undefined"&&RC.checkSkill)?RC.checkSkill(s,false):null;
+    box.innerHTML=mine.map(s=>{
+      const r=rc(s);
+      return `<div class="skrow" data-id="${s.id}">
       <span class="sk-t"><b>${esc(s.name)}</b>
         <span>${TYPE_LABEL[s.type]||"技"}・SP${s.cost}${s.power>0?"・威力"+s.power:""}${s.sfxId?"・♪":""}</span></span>
+      ${r?`<span class="chip ${r.ok?"jade":"bad"}" title="価値 ${r.value} ／ SP${s.cost||0}の許容 ${r.allowance}">${r.ok?"RC":"RC外"}</span>`:""}
       <button class="btn btn-line" data-act="edit">直す</button>
-      <button class="btn btn-ghost" data-act="del" aria-label="${esc(s.name)}を削除">削除</button></div>`).join("");
+      <button class="btn btn-ghost" data-act="del" aria-label="${esc(s.name)}を削除">削除</button>
+      ${r&&!r.ok?`<div class="skrc"><span>SP${s.cost||0}にしては ${r.over} 点ぶん強すぎます。</span>
+        <button class="btn btn-line" data-act="fit">RCに収める</button></div>`:""}</div>`;
+    }).join("");
     box.querySelectorAll(".skrow").forEach(row=>{
       const id=row.dataset.id;
       row.querySelector('[data-act="edit"]').onclick=()=>{ Editor.returnTo="roster"; Editor.openSkill(id); };
       row.querySelector('[data-act="del"]').onclick=()=>this.deleteSkill(id);
+      const fit=row.querySelector('[data-act="fit"]');
+      if(fit) fit.onclick=()=>{
+        Editor.returnTo="roster";
+        Editor.rcFitSaved(id,()=>{ this.renderSkillList(); this.renderStorage(); });
+      };
     });
   },
   deleteSkill(id){

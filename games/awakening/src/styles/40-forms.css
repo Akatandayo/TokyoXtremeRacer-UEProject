@@ -18,15 +18,25 @@ textarea{min-height:92px;font-size:13px;line-height:1.5;border-radius:16px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 @media (max-width:359px){.grid4{grid-template-columns:repeat(2,1fr)}}
-.pickrow{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:13px;
+/* 本物のチェック箱は指には小さすぎるので、行まるごとを触れる場所にして
+   見えるほうは自前で描く（見た目そのまま・当たり判定は48px） */
+.pickrow{position:relative;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:13px;
   padding:12px;background:rgba(255,255,255,.04);font-size:13.5px;min-height:48px;cursor:pointer}
-.pickrow input{width:auto;flex:0 0 auto;min-height:0;accent-color:#E2A92C;transform:scale(1.25)}
-.pickrow .pn{flex:1}
+.pickrow input{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;opacity:0;
+  min-height:0;cursor:pointer}
+.pickrow .pn{flex:1;display:flex;align-items:center;gap:10px}
+.pickrow .pn::before{content:"";flex:0 0 auto;width:22px;height:22px;border-radius:7px;
+  border:1.5px solid var(--line2);background:rgba(0,0,0,.35);
+  transition:background .14s ease,border-color .14s ease}
+.pickrow input:checked~.pn::before{content:"✓";display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:800;color:#2A1C00;background:var(--gold);border-color:var(--gold)}
+.pickrow input:focus-visible~.pn::before{outline:2px solid var(--gold);outline-offset:2px}
+.pickrow:active{background:rgba(255,255,255,.07)}
 .pickrow .pc{font-size:11px;color:#9DF0E4}
 .effrow{border:1px solid var(--line);border-radius:14px;padding:11px 12px;background:rgba(255,255,255,.04)}
 .effrow .eh{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700;gap:8px}
 .effrow .ed{font-size:11.5px;color:var(--dim);margin-top:3px}
-.effrow .effdel{width:auto;padding:8px 12px;font-size:12px;min-height:40px}
+.effrow .effdel,.effrow .effswap{width:auto;padding:8px 12px;font-size:12px;min-height:44px}
 .err{color:#FFA9B6;font-size:12.5px}
 .err:empty{display:none}
 .steplead{color:#CDC3DC;font-size:13px;margin:0 0 4px}
@@ -82,9 +92,13 @@ textarea{min-height:92px;font-size:13px;line-height:1.5;border-radius:16px}
 .empty .emo{font-size:34px;color:rgba(240,197,80,.5);margin-bottom:10px}
 .empty b{display:block;font-family:var(--serif);font-size:17px;color:var(--ivory);margin-bottom:6px}
 .empty span{font-size:12.5px}
-.skrow{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:14px;
+.skrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--line);border-radius:14px;
   padding:9px 10px;background:rgba(255,255,255,.04)}
 .skrow .sk-t{flex:1;min-width:0}
+/* RCから外れている技だけ、2段目に理由と収める導線を出す */
+.skrow .skrc{flex:1 0 100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+.skrow .skrc span{flex:1;min-width:120px;font-size:11.5px;color:#FFC2CB;line-height:1.45}
 .skrow .sk-t b{display:block;font-size:14px}
 .skrow .sk-t span{font-size:11.5px;color:var(--dim)}
 .skrow .btn{width:auto;padding:10px 12px;font-size:12.5px;min-height:44px}

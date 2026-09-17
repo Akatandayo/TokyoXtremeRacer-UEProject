@@ -222,6 +222,19 @@
 @keyframes columnUp{0%{opacity:0;transform:scale3d(.5,.3,1)}26%{opacity:1;transform:scale3d(1,1,1)}
   100%{opacity:0;transform:scale3d(1.06,1.1,1)}}
 
+/* 早送りを受け付けたことを言う三連の山形。押しても何も起きない、を無くす */
+.ffmark{position:absolute;left:50%;top:50%;z-index:9;pointer-events:none;display:flex;gap:6px;
+  transform:translate3d(-50%,-50%,0)}
+.ffmark i{width:13px;height:13px;border-right:3px solid rgba(255,246,222,.95);
+  border-bottom:3px solid rgba(255,246,222,.95);transform:rotate(-45deg);
+  filter:drop-shadow(0 0 12px rgba(255,214,110,.9));
+  animation:ffChev .5s cubic-bezier(.2,.8,.2,1) both}
+.ffmark i:nth-child(2){animation-delay:.06s}
+.ffmark i:nth-child(3){animation-delay:.12s}
+@keyframes ffChev{0%{opacity:0;transform:rotate(-45deg) translate3d(-8px,8px,0) scale(.7)}
+  36%{opacity:1;transform:rotate(-45deg) scale(1)}
+  100%{opacity:0;transform:rotate(-45deg) translate3d(10px,-10px,0) scale(1.1)}}
+
 /* 動きを減らす設定では、当たった事実だけを短く見せる */
 @media (prefers-reduced-motion:reduce){
   .im::before,.im::after,.sb i,.sb::before,.sb::after,.column,.gbreak i,.proj{animation-duration:.14s!important}

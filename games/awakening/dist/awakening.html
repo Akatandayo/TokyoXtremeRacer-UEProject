@@ -762,6 +762,10 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 .pill.phase{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:center;border-color:transparent;
   background:none;color:var(--dim);letter-spacing:.06em;font-size:11.5px;padding:6px 2px}
 .pill.phase:empty{display:none}
+/* レギュレーション戦の印。判定そのものは触らず、戦っている枠だけを示す */
+.pill.rcmark{font-weight:700;font-size:10px;letter-spacing:.2em;padding:6px 9px;color:#9DF0E4;
+  border-color:rgba(79,214,200,.45);background:rgba(79,214,200,.12)}
+.pill.rcmark[hidden]{display:none}
 .hud-tools{display:flex;gap:6px;margin-left:auto}
 .tool{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
   min-width:46px;min-height:44px;padding:2px 8px;border-radius:14px;
@@ -1083,7 +1087,10 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 .logstrip{flex:1;min-width:0;border-radius:14px;padding:8px 13px;min-height:56px;display:flex;flex-direction:column;
   justify-content:center;gap:2px;background:rgba(0,0,0,.35);border:1px solid var(--line);cursor:pointer;
   text-align:left;overflow:hidden}
+/* ログ行の種類名（status / sys / turn …）は他所の汎用クラスとぶつかりうるので、
+   帯の中では箱の見た目を必ず打ち消してから文字色だけを乗せる。 */
 .logstrip .ll{font-size:13px;line-height:1.35;color:#D9CFE8;animation:lineIn .22s ease both;
+  background:none;border:0;padding:0;margin:0;min-height:0;border-radius:0;box-shadow:none;
   overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .logstrip .ll.old{opacity:.4;font-size:11.5px;-webkit-line-clamp:1}
 @keyframes lineIn{from{opacity:0;transform:translate3d(0,5px,0)}to{opacity:1;transform:none}}
@@ -1113,6 +1120,26 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:359px){.dock-sp .spbar{display:none}}
 
+/* 相手の今。押す前に読みたいことだけを一行に。伸縮は transform でやる */
+.foe-read{display:flex;align-items:center;gap:7px;min-height:22px;padding:0 2px;
+  font-size:10.5px;letter-spacing:.06em;color:var(--dim)}
+.foe-read .fr-lb{flex:none;letter-spacing:.16em}
+.foe-read .fr-bar{flex:1 1 auto;min-width:36px;height:4px;border-radius:99px;overflow:hidden;
+  background:rgba(255,255,255,.1)}
+.foe-read .fr-bar i{display:block;height:100%;border-radius:99px;transform-origin:left center;
+  transform:scaleX(var(--p,1));background:linear-gradient(90deg,#F2566A,#FF8E9E);
+  transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+.foe-read .fr-n{flex:none;font-size:11.5px;color:#FFC0CB;font-variant-numeric:tabular-nums}
+.foe-read .fr-n small{font-size:9px;opacity:.7;margin-left:1px}
+.foe-read .fr-st{display:flex;gap:3px;flex:none}
+.foe-read .fr-st .fm{font-style:normal;font-size:12px;line-height:1;
+  color:hsl(var(--h,288),92%,82%);text-shadow:0 0 8px hsla(var(--h,288),100%,60%,.7)}
+.foe-read .fr-awk{flex:none;padding:1px 7px;border-radius:99px;font-size:9.5px;letter-spacing:.08em;
+  border:1px solid var(--line2);color:var(--dim);white-space:nowrap}
+.foe-read .fr-awk.on{color:#F8DE9E;border-color:rgba(240,197,80,.5);background:rgba(46,34,6,.7)}
+.foe-read .fr-awk.done{opacity:.55}
+@media (max-width:359px){.foe-read .fr-st{display:none}}
+
 .skl-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .sbtn{position:relative;min-height:60px;border-radius:15px;padding:8px 10px 7px;text-align:left;overflow:hidden;
   background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.02)),var(--panel2);
@@ -1130,6 +1157,12 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 .sbtn .sp.free{background:rgba(255,255,255,.08);color:#CFC6DE;border-color:var(--line2)}
 .sbtn .sx{font-size:10px;color:var(--dim);white-space:nowrap}
 .sbtn .sx.hot{color:#FFC9A0}
+.sbtn .sx .sh{font-style:normal;font-size:9px;opacity:.75;margin-left:2px}
+/* 押した結果が変わる一撃だけ、色を付けて先に言う */
+.sbtn .sx.kill{font-weight:700;color:#2A1C00;padding:2px 7px;border-radius:99px;
+  background:linear-gradient(180deg,#FFE79E,#E2A92C);border:1px solid rgba(255,236,178,.6)}
+.sbtn .sx.warn{font-weight:700;color:#FFC9A0;padding:2px 7px;border-radius:99px;
+  background:rgba(226,140,44,.16);border:1px solid rgba(240,170,80,.45)}
 .sbtn:disabled{opacity:.9}
 .sbtn:disabled .sn{color:#8E82A8}
 .sbtn.no{background:rgba(255,255,255,.03);box-shadow:none;border-color:var(--line)}
@@ -1155,6 +1188,9 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
   border-color:rgba(242,86,106,.45)}
 .cbtn.defend{background:linear-gradient(180deg,rgba(79,214,200,.3),rgba(79,214,200,.1)),var(--panel2);
   border-color:rgba(79,214,200,.42)}
+/* 通常攻撃で倒しきれるときは、その一手だけを強く見せる */
+.cbtn.attack.lethal{border-color:rgba(255,236,178,.7)}
+.cbtn.attack.lethal .cs{color:#F8DE9E;font-weight:700;letter-spacing:.06em}
 .cbtn.awaken{color:#2A1C00;border-color:rgba(255,236,178,.6);position:relative;overflow:hidden;min-height:56px;
   background:linear-gradient(180deg,#FFE79E,#E2A92C 62%,#C98A18);animation:awkBtn 1.8s ease-in-out infinite}
 .cbtn.awaken .cl{font-family:var(--serif);font-size:18px;letter-spacing:.3em}
@@ -1385,9 +1421,49 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 #veil .veil-meta .vn{font-family:var(--serif);font-size:18px;letter-spacing:.04em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #veil .veil-meta .vstat{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
-#veil .vs{color:var(--dim);font-size:12.5px;margin:16px 0 20px;line-height:1.7}
+#veil .vs{color:var(--dim);font-size:12.5px;margin:14px 0 18px;line-height:1.7}
 #veil .veil-hint{color:#7E729A;font-size:11px;letter-spacing:.06em;margin-top:12px}
 #veil #veil-ok{min-height:56px}
+/* 直前の連打が突き抜けて手の内が見えないよう、ほんの一瞬だけ受け付けない */
+#veil #veil-ok.arm{pointer-events:none;opacity:.45}
+
+/* 誰から誰へ渡すのか。矢が流れる向きで手渡しの方向を言う */
+#veil .veil-pass{display:flex;align-items:center;justify-content:center;gap:9px;
+  margin-bottom:14px;font-size:11px;letter-spacing:.14em;color:var(--dim);min-height:20px}
+#veil .veil-pass:empty{display:none}
+#veil .vp-turn{padding:2px 10px;border-radius:99px;border:1px solid var(--line);color:#D9CFE8}
+#veil .vp-from,#veil .vp-to{font-weight:800;font-size:12px;letter-spacing:.2em;color:#7E729A}
+#veil .vp-to{color:#FFE79E}
+#veil .vp-to.p2{color:#9FF3E8}
+#veil .vp-arrow{display:flex;gap:3px}
+#veil .vp-arrow i{width:5px;height:5px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
+  transform:rotate(-45deg);color:#7E729A;animation:vpFlow 1.4s ease-in-out infinite}
+#veil .vp-arrow i:nth-child(2){animation-delay:.16s}
+#veil .vp-arrow i:nth-child(3){animation-delay:.32s}
+@keyframes vpFlow{0%,100%{opacity:.25}45%{opacity:1}}
+
+/* 受け取る人の持ち物。HPは scaleX だけで伸ばす */
+#veil .veil-meta .vbar{height:5px;border-radius:99px;margin-top:8px;overflow:hidden;
+  background:rgba(255,255,255,.1)}
+#veil .veil-meta .vbar i{display:block;height:100%;border-radius:99px;transform-origin:left center;
+  background:linear-gradient(90deg,#4FD6C8,#9DF0E4)}
+#veil .veil-meta .vstat{align-items:center}
+#veil .veil-meta .vhp{font-size:15px;font-weight:700;color:#E9E1F5;font-variant-numeric:tabular-nums}
+#veil .veil-meta .vhp small{font-size:10.5px;color:var(--dim);font-weight:400}
+#veil .veil-meta .vsp{font-size:11px;letter-spacing:.1em;color:#9DF0E4}
+#veil .veil-meta .vpips{display:flex;gap:2.5px}
+#veil .veil-meta .vpips .pip{width:7px;height:4px;border-radius:99px;background:rgba(255,255,255,.14)}
+#veil .veil-meta .vpips .pip.on{background:#4FD6C8;box-shadow:0 0 6px rgba(79,214,200,.7)}
+#veil .veil-meta .vchips{margin-top:7px}
+
+/* このターン、その人に何ができるか */
+#veil .veil-cue{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px}
+#veil .veil-cue:empty{display:none}
+#veil .vc{font-size:11px;letter-spacing:.04em;padding:3px 10px;border-radius:99px;
+  border:1px solid var(--line2);color:var(--dim);background:rgba(255,255,255,.04)}
+#veil .vc.gold{color:#F8DE9E;border-color:rgba(240,197,80,.5);background:rgba(46,34,6,.8)}
+#veil .vc.bad{color:#FFA9B6;border-color:rgba(242,86,106,.45);background:rgba(44,12,20,.8)}
+@media (prefers-reduced-motion:reduce){ #veil .vp-arrow i{animation:none;opacity:.8} }
 
 /* ---------- 決着 ----------
    最後の一撃で舞台から色が抜け、札が落ちて、そのままリザルトへ溶ける。 */
@@ -1480,6 +1556,9 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
   background:rgba(240,197,80,.1);border:1px solid rgba(240,197,80,.3);color:#F5E3B0;line-height:1.8}
 .confirm .cf-list b{font-family:var(--serif)}
 .confirm .cf-warn{color:#FFA9B6}
+/* 履歴の1行。種類名（status / sys / turn …）は他所の汎用クラスと名前がぶつかるので、
+   箱としての見た目はここで打ち消し、文字色だけを残す。ターンの区切り線は生かす。 */
+.logfull .le{background:none;border:0;border-radius:0;min-height:0;box-shadow:none;padding:2.5px 0}
 .logfull .lgroup{margin-top:10px}
 .logfull .lg-t{font-size:10.5px;letter-spacing:.2em;color:#7E729A;padding:7px 0 4px;position:sticky;top:0;
   background:linear-gradient(#1B1433,rgba(27,20,51,.92));border-bottom:1px solid rgba(255,255,255,.07)}
@@ -1717,11 +1796,306 @@ summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--c-gold-40
 @keyframes columnUp{0%{opacity:0;transform:scale3d(.5,.3,1)}26%{opacity:1;transform:scale3d(1,1,1)}
   100%{opacity:0;transform:scale3d(1.06,1.1,1)}}
 
+/* 早送りを受け付けたことを言う三連の山形。押しても何も起きない、を無くす */
+.ffmark{position:absolute;left:50%;top:50%;z-index:9;pointer-events:none;display:flex;gap:6px;
+  transform:translate3d(-50%,-50%,0)}
+.ffmark i{width:13px;height:13px;border-right:3px solid rgba(255,246,222,.95);
+  border-bottom:3px solid rgba(255,246,222,.95);transform:rotate(-45deg);
+  filter:drop-shadow(0 0 12px rgba(255,214,110,.9));
+  animation:ffChev .5s cubic-bezier(.2,.8,.2,1) both}
+.ffmark i:nth-child(2){animation-delay:.06s}
+.ffmark i:nth-child(3){animation-delay:.12s}
+@keyframes ffChev{0%{opacity:0;transform:rotate(-45deg) translate3d(-8px,8px,0) scale(.7)}
+  36%{opacity:1;transform:rotate(-45deg) scale(1)}
+  100%{opacity:0;transform:rotate(-45deg) translate3d(10px,-10px,0) scale(1.1)}}
+
 /* 動きを減らす設定では、当たった事実だけを短く見せる */
 @media (prefers-reduced-motion:reduce){
   .im::before,.im::after,.sb i,.sb::before,.sb::after,.column,.gbreak i,.proj{animation-duration:.14s!important}
   .stage .embers i{animation:none;opacity:.4}
   .figure{animation:none}
+}
+
+/* ===== 23-state.css ===== */
+/* =========================================================================
+   23. 状態異常のまとい — 「いま体に何が起きているか」を立ち姿だけで言う。
+
+   FxKit.bodyState() が状態異常の kind / 記号 / 系統から skin を決め、
+   .unit[data-skin] と .st-skin.s-* に降りてくる。ここに無い skin は
+   sigil（紋の輪）に落ちるので、利用者が自作した状態異常でも必ず何かをまとう。
+   動かすのは transform と opacity と filter だけ。
+   ========================================================================= */
+
+/* まといの土台。立ち絵の上に重なるが、当たり演出（z:5〜7）より下 */
+.st-skin{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:22px;--h:288}
+.st-skin::before,.st-skin::after{content:"";position:absolute;inset:0;border-radius:inherit;
+  will-change:transform,opacity}
+.st-skin:not([class*=" s-"])::before,.st-skin:not([class*=" s-"])::after{display:none}
+
+/* 体の周りを巡る記号。最大3つ。中身は状態異常のアイコンそのもの */
+.st-marks{position:absolute;inset:-18%;z-index:4;pointer-events:none;display:grid;place-items:center}
+.stm{grid-area:1/1;font-style:normal;font-size:17px;line-height:1;
+  color:hsl(var(--h,288),95%,86%);text-shadow:0 0 10px hsla(var(--h,288),100%,62%,.95),0 1px 2px rgba(0,0,0,.7);
+  will-change:transform,opacity;--d:calc(var(--i) * -1.1s)}
+
+/* 立ちのぼる（良い効果）／滴る（悪い効果）／絡みつく／張り付く／包む */
+.stm.mo-rise{animation:stmRise 3.2s var(--d) ease-in-out infinite}
+@keyframes stmRise{0%{opacity:0;transform:translate3d(calc(var(--i) * 14px - 14px),16%,0) scale(.8)}
+  20%{opacity:1}75%{opacity:.9}100%{opacity:0;transform:translate3d(calc(var(--i) * 14px - 14px),-58%,0) scale(1.05)}}
+.stm.mo-sink{animation:stmSink 3.2s var(--d) ease-in-out infinite}
+@keyframes stmSink{0%{opacity:0;transform:translate3d(calc(var(--i) * 14px - 14px),-48%,0) scale(1.05)}
+  20%{opacity:1}75%{opacity:.9}100%{opacity:0;transform:translate3d(calc(var(--i) * 14px - 14px),24%,0) scale(.8)}}
+.stm.mo-orbit{animation:stmOrbit 4.4s var(--d) linear infinite}
+@keyframes stmOrbit{0%{transform:rotate(0) translateX(40%) rotate(0);opacity:.95}
+  50%{opacity:.6}100%{transform:rotate(360deg) translateX(40%) rotate(-360deg);opacity:.95}}
+.stm.mo-still{animation:stmStill 2.4s var(--d) ease-in-out infinite;
+  transform:translate3d(calc(var(--i) * 20px - 20px),-40%,0)}
+@keyframes stmStill{0%,100%{opacity:.55}50%{opacity:1}}
+.stm.mo-shell{animation:stmShell 3.6s var(--d) ease-in-out infinite}
+@keyframes stmShell{0%,100%{transform:rotate(calc(var(--i) * 120deg)) translateX(44%) rotate(calc(var(--i) * -120deg)) scale(.92);opacity:.7}
+  50%{transform:rotate(calc(var(--i) * 120deg + 18deg)) translateX(48%) rotate(calc(var(--i) * -120deg - 18deg)) scale(1.04);opacity:1}}
+
+/* ---------- 継続ダメージ（毒・猛毒） ---------- */
+.unit[data-skin=toxic] .figure{filter:saturate(1.25) hue-rotate(-12deg) brightness(.92)}
+.s-toxic::before{background:
+  radial-gradient(3px 3px at 24% 82%,hsla(96,90%,70%,.95),transparent),
+  radial-gradient(2.5px 2.5px at 68% 90%,hsla(96,90%,66%,.9),transparent),
+  radial-gradient(2px 2px at 46% 74%,hsla(96,95%,78%,.85),transparent),
+  radial-gradient(2.5px 2.5px at 84% 68%,hsla(96,90%,70%,.8),transparent);
+  animation:skinBubble 2.8s ease-in-out infinite}
+@keyframes skinBubble{0%{opacity:0;transform:translate3d(0,8%,0)}22%{opacity:1}
+  100%{opacity:0;transform:translate3d(0,-34%,0)}}
+.s-toxic::after{background:linear-gradient(0deg,hsla(96,80%,46%,.3),transparent 62%);
+  animation:skinBreath 3s ease-in-out infinite}
+@keyframes skinBreath{0%,100%{opacity:.5}50%{opacity:1}}
+
+/* ---------- 炎（火傷） ---------- */
+.unit[data-skin=burn] .figure{filter:brightness(1.12) saturate(1.3) drop-shadow(0 0 10px rgba(255,126,52,.65))}
+.s-burn::before{background:
+  radial-gradient(4px 5px at 30% 86%,hsla(24,100%,66%,.95),transparent),
+  radial-gradient(3px 4px at 62% 92%,hsla(14,100%,62%,.9),transparent),
+  radial-gradient(3px 4px at 46% 78%,hsla(36,100%,72%,.85),transparent),
+  radial-gradient(2.5px 3px at 78% 84%,hsla(20,100%,66%,.85),transparent);
+  animation:skinEmber 1.5s ease-out infinite}
+@keyframes skinEmber{0%{opacity:0;transform:translate3d(0,12%,0) scale(1)}
+  18%{opacity:1}100%{opacity:0;transform:translate3d(0,-46%,0) scale(.7)}}
+.s-burn::after{background:linear-gradient(0deg,hsla(18,100%,54%,.42),hsla(30,100%,60%,.12) 46%,transparent 76%);
+  animation:skinFlicker .9s ease-in-out infinite alternate}
+@keyframes skinFlicker{from{opacity:.55;transform:scaleY(.97)}to{opacity:1;transform:scaleY(1.03)}}
+
+/* ---------- 氷 ---------- */
+.unit[data-skin=chill] .figure{filter:saturate(.72) brightness(1.02)
+  drop-shadow(0 0 10px hsla(198,100%,72%,.7))}
+.s-chill::before{background:linear-gradient(150deg,hsla(198,100%,86%,.26),transparent 46%),
+  linear-gradient(20deg,hsla(198,100%,80%,.18),transparent 52%);
+  box-shadow:inset 0 0 20px hsla(198,100%,84%,.42);
+  animation:skinBreath 3.4s ease-in-out infinite}
+/* 表面に張る氷の結晶。立ち絵を潰さないよう、薄く小さく置く */
+.s-chill::after{inset:12%;
+  clip-path:polygon(50% 0,64% 26%,96% 34%,74% 58%,82% 94%,50% 76%,18% 94%,26% 58%,4% 34%,36% 26%);
+  background:hsla(198,100%,92%,.55);border-radius:0;
+  animation:skinCrystal 4s ease-in-out infinite}
+@keyframes skinCrystal{0%,100%{opacity:.2;transform:scale(.94)}50%{opacity:.42;transform:scale(1.02)}}
+
+/* ---------- 痺れ（麻痺・スタン） ---------- */
+.unit[data-skin=jolt] .figure{filter:saturate(1.15) brightness(1.06)}
+.s-jolt::before{background:
+  linear-gradient(72deg,transparent 47%,hsla(52,100%,78%,.95) 48%,transparent 50%),
+  linear-gradient(-58deg,transparent 56%,hsla(52,100%,86%,.8) 57%,transparent 59%);
+  animation:skinZap 1.9s steps(1,end) infinite}
+@keyframes skinZap{0%,78%{opacity:0}80%{opacity:1}84%{opacity:0}88%{opacity:.9}92%,100%{opacity:0}}
+
+/* ---------- 眠り ---------- */
+.unit[data-skin=sleep] .figure,.unit[data-hold=sleep] .figure{filter:brightness(.78) saturate(.7)}
+/* 眠っているあいだは呼吸だけがゆっくり続く（止めない） */
+.unit.held[data-hold=sleep] .figure{animation:sleepBreathe 5.2s ease-in-out infinite!important}
+@keyframes sleepBreathe{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(0,1.5%,0) scale(.985)}}
+.s-sleep::before{background:radial-gradient(closest-side,hsla(226,80%,70%,.3),transparent 72%);
+  animation:skinBreath 4.4s ease-in-out infinite}
+.s-sleep::after{background:
+  radial-gradient(5px 5px at 74% 22%,hsla(226,100%,88%,.9),transparent),
+  radial-gradient(3.5px 3.5px at 86% 8%,hsla(226,100%,92%,.8),transparent);
+  animation:skinDrift 3.4s ease-in-out infinite}
+@keyframes skinDrift{0%{opacity:0;transform:translate3d(-6%,10%,0) scale(.8)}
+  26%{opacity:1}100%{opacity:0;transform:translate3d(10%,-30%,0) scale(1.15)}}
+
+/* ---------- 石化 ---------- */
+.unit[data-skin=stone] .figure,.unit[data-hold=stone] .figure{
+  filter:grayscale(.92) sepia(.35) contrast(1.15) brightness(.82)}
+.s-stone::before{background:
+  linear-gradient(118deg,transparent 46%,rgba(24,18,10,.75) 47%,transparent 49%),
+  linear-gradient(-72deg,transparent 58%,rgba(24,18,10,.6) 59%,transparent 61%),
+  linear-gradient(36deg,transparent 70%,rgba(24,18,10,.5) 71%,transparent 72%);
+  opacity:.9}
+.s-stone::after{background:linear-gradient(180deg,hsla(34,32%,58%,.24),hsla(34,24%,32%,.34));
+  box-shadow:inset 0 0 18px rgba(0,0,0,.55);animation:skinBreath 5s ease-in-out infinite}
+
+/* ---------- 時止め・時飛ばし ---------- */
+.unit[data-skin=stop] .figure,.unit[data-hold=stop] .figure{
+  filter:saturate(.18) brightness(1.06) contrast(1.1)}
+.s-stop::before{border-radius:50%;inset:-6%;
+  border:1.5px solid hsla(190,100%,86%,.65);box-shadow:0 0 26px hsla(190,100%,70%,.45);
+  animation:skinTick 3.2s steps(12,end) infinite}
+@keyframes skinTick{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.s-stop::after{inset:-6%;border-radius:50%;
+  background:conic-gradient(from 0deg,hsla(190,100%,88%,.5) 0 6deg,transparent 6deg 90deg,
+    hsla(190,100%,88%,.35) 90deg 93deg,transparent 93deg);
+  -webkit-mask-image:radial-gradient(closest-side,transparent 74%,#000 76%);
+  mask-image:radial-gradient(closest-side,transparent 74%,#000 76%);
+  animation:skinTick 6.4s steps(12,end) infinite reverse}
+
+/* ---------- 混乱 ---------- */
+.unit[data-skin=swirl] .figure{animation:swirlSway 2.8s ease-in-out infinite}
+@keyframes swirlSway{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
+.s-swirl::before{border-radius:50%;inset:-10%;border:2px dashed hsla(308,90%,80%,.8);
+  animation:skinSpin 5.5s linear infinite}
+@keyframes skinSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.s-swirl::after{border-radius:50%;inset:4%;border:1px solid hsla(308,90%,88%,.55);
+  animation:skinSpin 3.6s linear infinite reverse}
+
+/* ---------- 沈黙（口を封じる） ---------- */
+.unit[data-skin=mute] .figure{filter:saturate(.7) brightness(.9)}
+.s-mute::before{background:linear-gradient(110deg,transparent 42%,hsla(272,90%,78%,.85) 46%,hsla(272,90%,88%,.95) 50%,hsla(272,90%,78%,.85) 54%,transparent 58%);
+  animation:skinBreath 2.6s ease-in-out infinite}
+.s-mute::after{background:radial-gradient(closest-side,transparent 58%,hsla(272,80%,40%,.4) 100%);
+  animation:skinBreath 3.4s ease-in-out infinite}
+
+/* ---------- 呪縛（回復封じ） ---------- */
+.unit[data-skin=curse] .figure{filter:saturate(.8) brightness(.86) hue-rotate(-18deg)}
+.s-curse::before{border-radius:50%;inset:-4%;
+  border:2px solid hsla(330,90%,70%,.7);
+  -webkit-mask-image:conic-gradient(from 0deg,#000 0 42deg,transparent 42deg 90deg,#000 90deg 132deg,transparent 132deg 180deg,#000 180deg 222deg,transparent 222deg 270deg,#000 270deg 312deg,transparent 312deg);
+  mask-image:conic-gradient(from 0deg,#000 0 42deg,transparent 42deg 90deg,#000 90deg 132deg,transparent 132deg 180deg,#000 180deg 222deg,transparent 222deg 270deg,#000 270deg 312deg,transparent 312deg);
+  animation:skinSpin 9s linear infinite}
+.s-curse::after{background:linear-gradient(0deg,hsla(330,80%,40%,.34),transparent 58%);
+  animation:skinBreath 3.2s ease-in-out infinite}
+
+/* ---------- 反転重力 ---------- */
+.unit[data-skin=invert] .figure{animation:invertFloat 3.4s ease-in-out infinite}
+@keyframes invertFloat{0%,100%{transform:translate3d(0,0,0) rotate(0)}
+  50%{transform:translate3d(0,-7%,0) rotate(180deg)}}
+.s-invert::before{background:linear-gradient(0deg,transparent 40%,hsla(286,90%,74%,.4));
+  animation:skinBreath 2.4s ease-in-out infinite}
+
+/* ---------- 障壁・無効化（守り） ---------- */
+.unit[data-skin=ward] .figure{filter:drop-shadow(0 0 8px hsla(166,90%,62%,.55))}
+.s-ward::before{inset:-8%;border-radius:0;
+  clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  background:linear-gradient(160deg,hsla(var(--h),90%,80%,.2),hsla(var(--h),90%,60%,.05));
+  box-shadow:0 0 24px hsla(var(--h),90%,60%,.4);
+  animation:skinBreath 2.8s ease-in-out infinite}
+.s-ward::after{inset:-8%;border-radius:0;
+  clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  background:hsla(var(--h),95%,88%,.85);
+  -webkit-mask-image:radial-gradient(closest-side,transparent 92%,#000 94%);
+  mask-image:radial-gradient(closest-side,transparent 92%,#000 94%);
+  animation:wardRoll 3.6s ease-in-out infinite}
+@keyframes wardRoll{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.95;transform:scale(1.03)}}
+
+/* ---------- 不屈 ---------- */
+.unit[data-skin=endure] .figure{filter:drop-shadow(0 0 9px rgba(255,214,120,.6))}
+.s-endure::before{inset:-6%;border-radius:50%;border:2px solid hsla(44,100%,76%,.7);
+  -webkit-mask-image:linear-gradient(0deg,#000 40%,transparent 92%);
+  mask-image:linear-gradient(0deg,#000 40%,transparent 92%);
+  animation:endurePulse 2.2s ease-in-out infinite}
+@keyframes endurePulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
+
+/* ---------- 貫通・研ぎ澄まし・反撃 ---------- */
+.unit[data-skin=edge] .figure{filter:contrast(1.08) drop-shadow(0 0 7px hsla(var(--h,16),100%,66%,.5))}
+.s-edge::before{background:linear-gradient(64deg,transparent 44%,hsla(var(--h),100%,84%,.9) 47%,transparent 49%);
+  animation:edgeGlide 2.6s ease-in-out infinite}
+@keyframes edgeGlide{0%{opacity:0;transform:translate3d(-14%,14%,0)}
+  24%{opacity:1}60%{opacity:.6}100%{opacity:0;transform:translate3d(14%,-14%,0)}}
+.s-edge::after{background:linear-gradient(64deg,transparent 56%,hsla(var(--h),100%,90%,.6) 58%,transparent 60%);
+  animation:edgeGlide 2.6s .5s ease-in-out infinite}
+
+/* ---------- 能力変化 ---------- */
+.s-stat::before{background:linear-gradient(0deg,hsla(var(--h),90%,64%,.28),transparent 64%);
+  animation:skinBreath 2.6s ease-in-out infinite}
+
+/* ---------- 目くらまし ---------- */
+.unit[data-skin=blind] .figure{filter:brightness(.7) contrast(.9) saturate(.75)}
+.s-blind::before{background:radial-gradient(closest-side,rgba(10,6,18,.62),transparent 78%);
+  animation:skinBreath 3.6s ease-in-out infinite}
+
+/* ---------- 再生・気力 ---------- */
+.unit[data-skin=bloom] .figure{filter:brightness(1.08) drop-shadow(0 0 9px hsla(150,90%,60%,.5))}
+.s-bloom::before{background:
+  radial-gradient(3px 3px at 30% 84%,hsla(150,95%,80%,.95),transparent),
+  radial-gradient(2.5px 2.5px at 66% 90%,hsla(150,95%,74%,.9),transparent),
+  radial-gradient(2px 2px at 50% 72%,hsla(150,100%,88%,.9),transparent);
+  animation:skinBubble 2.4s ease-out infinite}
+
+/* ---------- 知らない状態異常の受け皿：回る紋の輪 ---------- */
+.s-sigil::before{inset:-8%;border-radius:50%;border:1.5px solid hsla(var(--h),90%,78%,.65);
+  box-shadow:0 0 20px hsla(var(--h),90%,60%,.35);animation:skinSpin 8s linear infinite}
+.s-sigil::after{inset:6%;border-radius:50%;border:1px solid hsla(var(--h),95%,88%,.5);
+  animation:skinSpin 5.5s linear infinite reverse}
+
+/* 倒れた相手にまといは要らない */
+.unit.down .st-skin,.unit.down .st-marks{opacity:0;transition:opacity .3s}
+
+/* 動きを減らす設定：まといは「出しっぱなしの静止画」にする（意味は消さない） */
+@media (prefers-reduced-motion:reduce){
+  .st-skin::before,.st-skin::after,.stm,
+  .unit[data-skin=swirl] .figure,
+  .unit[data-skin=invert] .figure,.unit.held[data-hold=sleep] .figure{animation:none!important}
+  .stm{opacity:.95;transform:translate3d(calc(var(--i) * 20px - 20px),-42%,0)}
+  .st-skin::before,.st-skin::after{opacity:.7}
+}
+
+/* ===== 23b-info.css ===== */
+/* =========================================================================
+   23b. 戦闘中の情報シート（状況）— 「いま、何がどうなっているか」を一望する。
+   帯はすべて transform:scaleX で伸ばす。幅のアニメーションはしない。
+   ========================================================================= */
+
+.infhead{display:flex;flex-wrap:wrap;gap:5px}
+
+/* ---------- 能力の比べ方。左が自分、右が相手 ---------- */
+.stcmps{display:flex;flex-direction:column;gap:9px}
+.stcmp{display:flex;align-items:center;gap:9px;font-size:12px}
+.stcmp .sk{flex:0 0 46px;color:var(--dim);letter-spacing:.06em}
+.stcmp .sv{flex:0 0 52px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;color:#E9E1F5}
+.stcmp .sv i{font-style:normal;font-size:9px;margin-left:2px}
+.stcmp .sv.up{color:#9DF0E4}
+.stcmp .sv.down{color:#FFA9B6}
+.stcmp .sv.fo{flex:0 0 52px;text-align:left;font-weight:400;color:var(--dim)}
+.stcmp .sbars{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px}
+.stcmp .sbars .b{height:5px;border-radius:99px;transform-origin:left center;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.stcmp .sbars .b.me{background:linear-gradient(90deg,#4FD6C8,#9DF0E4)}
+.stcmp .sbars .b.fo{background:linear-gradient(90deg,#F2566A,#FF9BA8);opacity:.75}
+
+/* ---------- 覚醒までの道のり ---------- */
+.awkbar{position:relative;height:8px;border-radius:99px;margin-top:10px;overflow:hidden;
+  background:rgba(255,255,255,.09)}
+.awkbar .fill{display:block;height:100%;border-radius:99px;transform-origin:left center;
+  background:linear-gradient(90deg,#4FD6C8,#9DF0E4);
+  transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.awkbar .ln{position:absolute;top:-2px;width:2px;height:12px;border-radius:2px;
+  background:var(--gold,#F0C550);box-shadow:0 0 8px rgba(240,197,80,.9)}
+.awkbar .ln.done{background:#FFF2C8;box-shadow:0 0 12px rgba(255,226,160,1)}
+.awkbar-note{margin-top:6px;font-size:11.5px;color:var(--dim);letter-spacing:.02em}
+
+/* ---------- かかっている効果 ---------- */
+.efrows{display:flex;flex-direction:column;gap:7px}
+.efrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:13px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line);--h:288}
+.efrow .ef-i{flex:0 0 22px;text-align:center;font-size:17px;line-height:1;
+  color:hsl(var(--h),92%,82%);text-shadow:0 0 10px hsla(var(--h),100%,60%,.7)}
+.efrow .ef-b{flex:1 1 auto;min-width:0}
+.efrow .ef-n{display:block;font-size:13px;font-weight:700;color:#E9E1F5}
+.efrow .ef-w{display:block;margin-top:2px;font-size:11.5px;line-height:1.5;color:var(--dim)}
+.efrow .ef-d{flex:0 0 auto;font-size:10.5px;letter-spacing:.06em;color:var(--dim);
+  padding:2px 8px;border-radius:99px;border:1px solid var(--line2);white-space:nowrap}
+.efrow.good{border-color:rgba(79,214,200,.3)}
+.efrow.bad{border-color:rgba(242,86,106,.3)}
+
+@media (max-width:359px){
+  .stcmp .sk{flex-basis:38px}
+  .stcmp .sv,.stcmp .sv.fo{flex-basis:44px}
+  .efrow .ef-d{display:none}
 }
 
 /* ===== 30-overlays.css ===== */
@@ -1878,15 +2252,25 @@ textarea{min-height:92px;font-size:13px;line-height:1.5;border-radius:16px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 @media (max-width:359px){.grid4{grid-template-columns:repeat(2,1fr)}}
-.pickrow{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:13px;
+/* 本物のチェック箱は指には小さすぎるので、行まるごとを触れる場所にして
+   見えるほうは自前で描く（見た目そのまま・当たり判定は48px） */
+.pickrow{position:relative;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:13px;
   padding:12px;background:rgba(255,255,255,.04);font-size:13.5px;min-height:48px;cursor:pointer}
-.pickrow input{width:auto;flex:0 0 auto;min-height:0;accent-color:#E2A92C;transform:scale(1.25)}
-.pickrow .pn{flex:1}
+.pickrow input{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;opacity:0;
+  min-height:0;cursor:pointer}
+.pickrow .pn{flex:1;display:flex;align-items:center;gap:10px}
+.pickrow .pn::before{content:"";flex:0 0 auto;width:22px;height:22px;border-radius:7px;
+  border:1.5px solid var(--line2);background:rgba(0,0,0,.35);
+  transition:background .14s ease,border-color .14s ease}
+.pickrow input:checked~.pn::before{content:"✓";display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:800;color:#2A1C00;background:var(--gold);border-color:var(--gold)}
+.pickrow input:focus-visible~.pn::before{outline:2px solid var(--gold);outline-offset:2px}
+.pickrow:active{background:rgba(255,255,255,.07)}
 .pickrow .pc{font-size:11px;color:#9DF0E4}
 .effrow{border:1px solid var(--line);border-radius:14px;padding:11px 12px;background:rgba(255,255,255,.04)}
 .effrow .eh{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700;gap:8px}
 .effrow .ed{font-size:11.5px;color:var(--dim);margin-top:3px}
-.effrow .effdel{width:auto;padding:8px 12px;font-size:12px;min-height:40px}
+.effrow .effdel,.effrow .effswap{width:auto;padding:8px 12px;font-size:12px;min-height:44px}
 .err{color:#FFA9B6;font-size:12.5px}
 .err:empty{display:none}
 .steplead{color:#CDC3DC;font-size:13px;margin:0 0 4px}
@@ -1942,9 +2326,13 @@ textarea{min-height:92px;font-size:13px;line-height:1.5;border-radius:16px}
 .empty .emo{font-size:34px;color:rgba(240,197,80,.5);margin-bottom:10px}
 .empty b{display:block;font-family:var(--serif);font-size:17px;color:var(--ivory);margin-bottom:6px}
 .empty span{font-size:12.5px}
-.skrow{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:14px;
+.skrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--line);border-radius:14px;
   padding:9px 10px;background:rgba(255,255,255,.04)}
 .skrow .sk-t{flex:1;min-width:0}
+/* RCから外れている技だけ、2段目に理由と収める導線を出す */
+.skrow .skrc{flex:1 0 100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+.skrow .skrc span{flex:1;min-width:120px;font-size:11.5px;color:#FFC2CB;line-height:1.45}
 .skrow .sk-t b{display:block;font-size:14px}
 .skrow .sk-t span{font-size:11.5px;color:var(--dim)}
 .skrow .btn{width:auto;padding:10px 12px;font-size:12.5px;min-height:44px}
@@ -2021,7 +2409,7 @@ body.noscroll{overflow:hidden}
 .draftnote{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;
   font-size:11.5px;color:var(--dim)}
 .draftnote #e-draft.bad{color:#FFA9B6}
-.draftnote .btn{width:auto;font-size:11.5px;min-height:40px}
+.draftnote .btn{width:auto;font-size:11.5px;min-height:44px}
 
 /* ===== ポイント配分 ===== */
 .budget{border:1px solid rgba(240,197,80,.3);border-radius:18px;padding:13px;
@@ -2179,15 +2567,18 @@ body.noscroll{overflow:hidden}
 /* ===== Kit：トースト・ダイアログ・操作シート ===== */
 .kit-layer{position:fixed;inset:0;z-index:120;pointer-events:none}
 .kit-layer>*{pointer-events:auto}
+/* 画面下の主要ボタンに重なるので、トースト自体は指を素通りさせる
+   （取り消しボタンだけは受け取る）。ここを塞ぐと「保存」が押せなくなる。 */
 .kit-toast{position:fixed;left:50%;bottom:calc(20px + var(--safe-b));width:min(420px,calc(100vw - 28px));
+  pointer-events:none;
   transform:translate(-50%,18px);opacity:0;transition:transform .26s cubic-bezier(.2,.9,.25,1),opacity .26s;
   display:flex;align-items:center;gap:10px;border-radius:16px;padding:13px 14px;font-size:13px;
   background:linear-gradient(180deg,#2B2250,#1A1330);border:1px solid var(--line2);
   box-shadow:0 14px 40px rgba(0,0,0,.6)}
 .kit-toast.on{transform:translate(-50%,0);opacity:1}
 .kit-toast .kt-msg{flex:1}
-.kit-toast .kt-act{flex:0 0 auto;color:var(--gold);font-weight:700;font-size:13px;padding:8px 10px;
-  border-radius:11px;border:1px solid rgba(240,197,80,.4);min-height:40px}
+.kit-toast .kt-act{flex:0 0 auto;color:var(--gold);font-weight:700;font-size:13px;padding:8px 12px;
+  border-radius:11px;border:1px solid rgba(240,197,80,.4);min-height:44px;pointer-events:auto}
 .kit-toast.t-ok{border-color:rgba(79,214,200,.45)}
 .kit-toast.t-ok .kt-msg{color:#9DF0E4}
 .kit-toast.t-bad{border-color:rgba(242,86,106,.5)}
@@ -2284,7 +2675,7 @@ body.noscroll{overflow:hidden}
 .effrow.t-bad .eh .ei{background:rgba(242,86,106,.2);color:#FFC2CC}
 .effrow.t-good .eh .ei{background:rgba(79,214,200,.2);color:#9DF0E4}
 .effrow .eh b{flex:1;min-width:0;font-size:14.5px;font-family:var(--serif);letter-spacing:.04em}
-.effrow .effswap{width:auto;padding:8px 11px;font-size:11.5px;min-height:40px;color:#CDC3DC}
+.effrow .effswap{width:auto;padding:8px 11px;font-size:11.5px;min-height:44px;color:#CDC3DC}
 .effrow .ed{line-height:1.6}
 .eseg{display:flex;gap:6px;margin-top:9px}
 .eseg button{flex:1;min-height:44px;border-radius:12px;border:1px solid var(--line);font-size:12.5px;
@@ -2616,10 +3007,13 @@ body.noscroll{overflow:hidden}
    戦闘画面の .chip は #s-battle 配下に閉じてあるので、編成や一覧で使う分を独立して持つ。 */
 .chip.jade{color:#9DF0E4;border-color:rgba(79,214,200,.42);background:rgba(79,214,200,.12)}
 .chip.bad{color:#FFC2CB;border-color:rgba(242,86,106,.45);background:rgba(242,86,106,.12)}
+/* 技の札の中でも同じ印を使う（一覧・作成・編成で同じ見た目に揃える） */
+.mchip.bad{color:#FFC2CB;border-color:rgba(242,86,106,.45);background:rgba(242,86,106,.14)}
+.mchip.jade{color:#9DF0E4;border-color:rgba(79,214,200,.42);background:rgba(79,214,200,.12)}
 
 /* 技ごとの適合ぐあい。許容量に対する比を帯で見せる */
 .rcbar{position:relative;height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
-.rcbar>i{position:absolute;inset:0 auto 0 0;border-radius:99px;transform-origin:left center;
+.rcbar>i{position:absolute;inset:0 0 0 0;width:100%;border-radius:99px;transform-origin:left center;
   background:linear-gradient(90deg,var(--c-jade-400,#4FD6C8),var(--c-violet-400,#9B7BE8));
   transition:transform .4s cubic-bezier(.2,.8,.2,1)}
 .rcbar.over>i{background:linear-gradient(90deg,#F2566A,#FF9BA8)}
@@ -2627,6 +3021,63 @@ body.noscroll{overflow:hidden}
 .rcline .rcn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ivory)}
 .rcline .rcv{flex:0 0 auto;font-variant-numeric:tabular-nums}
 .rcnote{font-size:12px;color:#FFC2CB;line-height:1.5}
+
+/* ===== 技エディタの「適合ぐあい」 =====
+   威力やSPを動かすたびに、価値と許容量の関係をその場で返す一枚。 */
+.rcpanel{border:1px solid var(--line2);border-radius:16px;padding:12px;
+  background:linear-gradient(180deg,rgba(79,214,200,.08),rgba(255,255,255,.03));
+  display:flex;flex-direction:column;gap:9px}
+.rcpanel:empty{display:none}
+.rcpanel.over{background:linear-gradient(180deg,rgba(242,86,106,.11),rgba(255,255,255,.03));
+  border-color:rgba(242,86,106,.42)}
+.rc-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rc-badge{flex:0 0 auto;font-size:11.5px;font-weight:700;letter-spacing:.06em;padding:5px 10px;border-radius:99px;
+  color:#9DF0E4;border:1px solid rgba(79,214,200,.42);background:rgba(79,214,200,.12)}
+.rcpanel.over .rc-badge,.rcverdict.ng .rc-badge{color:#FFC2CB;border-color:rgba(242,86,106,.45);
+  background:rgba(242,86,106,.14)}
+.rc-sum{flex:1;min-width:0;font-size:11.5px;color:var(--dim)}
+.rc-sum b{color:var(--ivory);font-variant-numeric:tabular-nums}
+.rc-pct{flex:0 0 auto;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:#9DF0E4}
+.rcpanel.over .rc-pct{color:#FFC2CB}
+.rc-parts{display:flex;flex-direction:column;gap:5px}
+.rcline .rcw{flex:0 0 68px;height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.rcline .rcw>i{display:block;height:100%;border-radius:99px;transform-origin:left center;
+  background:linear-gradient(90deg,var(--c-violet-400,#9B7BE8),var(--c-jade-400,#4FD6C8))}
+.rcnote.ok{color:var(--dim)}
+.rc-awk{font-size:11.5px;color:#FFE08A;line-height:1.5}
+.rc-fix{display:flex;flex-direction:column;gap:7px}
+.rcfix{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;
+  min-height:var(--tap,44px);padding:10px 12px;border-radius:13px;cursor:pointer;
+  border:1px solid rgba(240,197,80,.42);background:rgba(240,197,80,.10);color:var(--ivory);
+  font:inherit;transition:transform .12s ease,background .12s ease}
+.rcfix:active{transform:scale(.98);background:rgba(240,197,80,.18)}
+.rcfix b{font-size:13.5px;color:#FFE08A}
+/* 余りを活かすほうの一手は、直す一手と色を分ける */
+.rcfix.up{border-color:rgba(79,214,200,.42);background:rgba(79,214,200,.10)}
+.rcfix.up:active{background:rgba(79,214,200,.18)}
+.rcfix.up b{color:#9DF0E4}
+.rcfix span{font-size:11.5px;color:var(--dim)}
+
+/* ===== 確認の段の RC適合 / RC外 ===== */
+.rcverdict{border:1px solid var(--line2);border-radius:16px;padding:12px;
+  background:rgba(79,214,200,.07);display:flex;flex-direction:column;gap:10px}
+.rcverdict.ng{background:rgba(242,86,106,.09);border-color:rgba(242,86,106,.38)}
+.rcv-head{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ivory);line-height:1.5}
+.rcv-head span:last-child{flex:1;min-width:0}
+.rcissues{display:flex;flex-direction:column;gap:7px}
+.rcissue{display:flex;align-items:center;gap:9px;text-align:left;width:100%;min-height:var(--tap,44px);
+  padding:10px 12px;border-radius:13px;cursor:pointer;font:inherit;color:var(--ivory);
+  border:1px solid rgba(242,86,106,.34);background:rgba(242,86,106,.10)}
+.rcissue:active{transform:scale(.99)}
+.rcissue .ri-w{flex:0 0 auto;font-size:11px;color:#FFC2CB;border:1px solid rgba(242,86,106,.4);
+  border-radius:99px;padding:3px 8px}
+.rcissue .ri-t{flex:1;min-width:0;font-size:12.5px;line-height:1.45}
+.rcissue em{flex:0 0 auto;font-style:normal;font-size:11.5px;color:#FFE08A}
+.rcrows{display:flex;flex-direction:column;gap:9px}
+.rcrow{display:flex;flex-direction:column;gap:5px}
+.rcrow .rcn em{font-style:normal;font-size:10.5px;color:#FFE08A;margin-left:5px}
+.rc-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rc-acts .btn{width:auto;padding:9px 13px;font-size:12.5px;min-height:var(--tap,44px)}
 </style>
 </head>
 <body>
@@ -2744,6 +3195,7 @@ body.noscroll{overflow:hidden}
   <section id="s-battle" class="screen">
     <div class="hud">
       <span class="pill turn" id="turn-label">ターン 1</span>
+      <span class="pill rcmark" id="rc-mark" hidden title="レギュレーション戦">RC</span>
       <span class="pill phase" id="phase-label"></span>
       <span class="hud-tools">
         <button class="tool" id="btn-speed" aria-label="演出の速さを変える"><span class="ti">⏩</span><span class="tl">はやい</span></button>
@@ -2866,15 +3318,17 @@ body.noscroll{overflow:hidden}
 <div class="veil" id="veil">
   <div class="veil-in">
     <div class="veil-rule"></div>
+    <div class="veil-pass" id="veil-pass" aria-hidden="true"></div>
     <div class="veil-badge" id="veil-badge">P1</div>
     <div class="vt" id="veil-title"></div>
     <div class="veil-card">
       <div class="veil-av" id="veil-av"></div>
       <div class="veil-meta" id="veil-meta"></div>
     </div>
+    <div class="veil-cue" id="veil-cue"></div>
     <div class="vs" id="veil-sub">画面を見られないように端末を渡してください。</div>
     <button class="btn btn-gold" id="veil-ok">見る準備ができた</button>
-    <div class="veil-hint">受け取った人だけが押してください</div>
+    <div class="veil-hint" id="veil-hint">受け取った人だけが押してください</div>
   </div>
 </div>
 <div class="cropper" id="cropper">
@@ -5554,6 +6008,27 @@ const FxKit = {
   TYPE_HUE:{ATTACK:352, DEFENSE:166, SUPPORT:44, SPECIAL:274},
   TONE_HUE:{good:166, bad:288},
 
+  /* 体にまとわせる見た目。kind から引く。
+     ここに無い kind は family から決まる（下の FAMILY_SKIN）ので、
+     利用者が足した知らない異常でも必ず何かをまとって「何か起きている」と分かる。 */
+  SKIN:{
+    DOT:"toxic", REGEN:"bloom", SP:"bloom",
+    STUN:"jolt", PARALYZE:"jolt",
+    SLEEP:"sleep", PETRIFY:"stone", TIMESTOP:"stop", TIMESKIP:"stop",
+    CONFUSE:"swirl", SILENCE:"mute", HEALBLOCK:"curse", INVERT:"invert",
+    SHIELD:"ward", NEGATE:"ward", ENDURE:"endure",
+    CRIT:"edge", PIERCE:"edge", COUNTER:"edge", EXTRA:"edge",
+    STAT:"stat", ACC:"blind"
+  },
+  /* 記号がはっきり何かを示しているときは kind より優先する。
+     自作の「氷の呪い（DOT・❄）」は毒の緑ではなく氷の見た目になる。 */
+  GLYPH_SKIN:{
+    "❄":"chill","✹":"burn","🔥":"burn","☠":"toxic","☣":"toxic","☾":"sleep",
+    "◘":"stone","⏳":"stop","⏩":"stop","⚡":"jolt","✚":"bloom","⛨":"ward","⛉":"ward"
+  },
+  /* 最後の受け皿。kind も記号も知らないものは、系統だけで見た目を決める */
+  FAMILY_SKIN:{mote:"toxic",arrow:"stat",lock:"stop",hex:"swirl",ward:"ward",edge:"edge",spark:"bloom",sigil:"sigil"},
+
   /* 状態異常の kind を「絵の系統」にまとめる。
      ここに無い kind（＝利用者が足した新しい異常）は sigil に落ちて、
      その異常のアイコンを刻んだ紋が出る。 */
@@ -5580,6 +6055,40 @@ const FxKit = {
     "❄":198,"✹":18,"🔥":14,"⚡":52,"☠":96,"☣":104,"☾":226,"✚":150,"⛨":166,"✦":44,
     "◐":262,"⊘":330,"✖":272,"⏳":190,"⏩":190,"◘":34,"✜":44,"➶":16,"↩":274,"⛉":176
   },
+  STAT_JP:{atk:"攻撃力",def:"防御力",spd:"素早さ"},
+  /* 効果ひとつを「何が起きるか」の一言にする。
+     参照するのは kind と数値だけなので、利用者が自分で作った状態異常でも
+     ちゃんと日本語になる。知らない kind のときだけ空を返す。 */
+  words(e){
+    e=e||{};
+    const n=v=>Math.abs(this.num(v,0));
+    const 量 = e.percent ? `最大HPの${n(e.percent)}%` : (this.num(e.value,0)?String(n(e.value)):"");
+    switch(e.kind){
+      case "DOT":       return 量?`毎ターン ${量} のダメージ`:"毎ターン削られる";
+      case "REGEN":     return 量?`毎ターン ${量} を回復`:"毎ターン回復する";
+      case "STAT":      return `${this.STAT_JP[e.stat]||"能力"}が ${this.num(e.mult,1)}倍`;
+      case "ACC":       return `命中率が ${this.num(e.value,0)>0?"+":""}${this.num(e.value,0)}%`;
+      case "STUN":      return "そのあいだ行動できない";
+      case "SLEEP":     return "行動できない。ダメージを受けると目を覚ます";
+      case "PETRIFY":   return "行動できないが、受けるダメージが半分になる";
+      case "TIMESTOP":  return "止まっているあいだ、ずっと行動できない";
+      case "TIMESKIP":  return "相手の時間が進む。バフは早く切れ、継続ダメージは即座に起きる";
+      case "PARALYZE":  return `毎ターン ${n(e.value)||"一定"}% の確率で行動できない`;
+      case "SILENCE":   return "技が使えず、攻撃と防御しか選べない";
+      case "CONFUSE":   return `${n(e.value)||"一定"}% の確率で自分を殴ってしまう`;
+      case "HEALBLOCK": return "回復ができなくなる";
+      case "SHIELD":    return 量?`合計 ${量} のダメージを肩代わりする`:"ダメージを肩代わりする";
+      case "NEGATE":    return "次に受ける攻撃を丸ごと打ち消す";
+      case "ENDURE":    return "倒れるはずの一撃を一度だけHP1で耐える";
+      case "COUNTER":   return `受けたダメージの ${this.num(e.ratio,0)}倍 を返す`;
+      case "PIERCE":    return "相手の防御と防御バフを無視する";
+      case "CRIT":      return `会心率が +${n(e.value)}%`;
+      case "EXTRA":     return "行動したあとに通常攻撃をもう1回";
+      case "INVERT":    return "かかっている能力変化の上下がひっくり返る";
+      case "SP":        return `SPが +${n(e.value)}`;
+      default:          return "";
+    }
+  },
   num(v,d){ const n=Number(v); return Number.isFinite(n)?n:d; },
   family(kind){ return this.FAMILY[kind]||"sigil"; },
   /* 効果ひとつぶんの色相 */
@@ -5587,6 +6096,12 @@ const FxKit = {
     if(glyph&&this.GLYPH_HUE[glyph]!=null) return this.GLYPH_HUE[glyph];
     if(e&&this.KIND_HUE[e.kind]!=null) return this.KIND_HUE[e.kind];
     return tone==="good"?this.TONE_HUE.good:this.TONE_HUE.bad;
+  },
+  /* 体にまとう見た目をひとつ決める。記号＞kind＞系統 の順に見る */
+  skinOf(e,family,glyph){
+    if(glyph&&this.GLYPH_SKIN[glyph]) return this.GLYPH_SKIN[glyph];
+    if(e&&this.SKIN[e.kind]) return this.SKIN[e.kind];
+    return this.FAMILY_SKIN[family]||"sigil";
   },
   /* 記号の動き方。何が起きているかを、動きでも言う */
   markMotion(family,tone){
@@ -5607,6 +6122,7 @@ const FxKit = {
       family, tone, glyph,
       hue:this.hueOf(e,tone,glyph),
       motion:this.markMotion(family,tone),
+      skin:this.skinOf(e,family,glyph),
       name:e.name||"効果"
     };
   },
@@ -5615,14 +6131,15 @@ const FxKit = {
      利用者が自分で足した異常でも、kind と記号から必ず何かしらの絵になる。 */
   bodyState(list){
     const es=list||[];
-    if(!es.length) return {aura:false,hue:288,held:false,family:"",tone:"bad",marks:[]};
+    if(!es.length) return {aura:false,hue:288,held:false,holdSkin:"",family:"",skin:"",tone:"bad",
+                           marks:[],bad:0,good:0,count:0};
     // 主役の決め方：行動を奪うもの＞絡みつくもの＞継続するもの＞守り＞その他
     const weight=fam=>fam==="lock"?5:fam==="hex"?4:fam==="mote"?3:fam==="ward"?2:1;
-    let bad=0, good=0, held=false, lead=null, leadW=-1;
+    let bad=0, good=0, held=false, lead=null, leadW=-1, holdSkin="";
     const marks=[];
     es.forEach(e=>{
       const fx=this.effectFx(e);
-      if(this.HOLD.indexOf(e.kind)>=0) held=true;
+      if(this.HOLD.indexOf(e.kind)>=0){ held=true; if(!holdSkin) holdSkin=fx.skin; }
       if(fx.tone==="good") good++; else bad++;
       const w=weight(fx.family)+(fx.tone==="good"?0:0.5);
       if(w>leadW){ leadW=w; lead=fx; }
@@ -5631,7 +6148,10 @@ const FxKit = {
     return {
       aura:true,
       hue:lead?lead.hue:(bad>=good?this.TONE_HUE.bad:this.TONE_HUE.good),
-      held, family:lead?lead.family:"sigil", tone:lead?lead.tone:"bad", marks
+      held, holdSkin,
+      family:lead?lead.family:"sigil", skin:lead?lead.skin:"sigil",
+      tone:lead?lead.tone:"bad",
+      marks, bad, good, count:es.length
     };
   },
 
@@ -6635,11 +7155,13 @@ Object.assign(UI, {
     this.prevSnap=this.engine.log[0].snap;
     this.unitBuilt=[false,false];
     this.chipSig=["",""];
+    this.stSig=["",""];
     this.lastSp=[null,null];
     this.actorSide=null;
     this.guardShown=[false,false];
     this.awkState=[null,null];
     this.bindBattle();
+    this.markRc();
     this.prewarmSfx();
     this.clearFx();
     this.renderFighters();
@@ -6662,9 +7184,28 @@ Object.assign(UI, {
     const sk=$("#awk-skip");
     if(sk) sk.onclick=ev=>{ ev.stopPropagation(); this.cutScene(); };
   },
+  /* レギュレーション戦（RC）であることを舞台の上でも分かるようにする。
+     判定そのものは 01b-regulation.js の持ち物。ここは印を出すだけ。 */
+  markRc(){
+    const m=$("#rc-mark");
+    if(!m) return;
+    m.hidden=!this.rcOnly;
+  },
+  /* 技ひとつがSP消費に見合っているか。RC戦のときだけ、状況シートに帯で出す */
+  rcLine(skill,awakened){
+    if(!this.rcOnly||typeof RC==="undefined"||!skill||!skill.id) return "";
+    let r;
+    try{ r=RC.checkSkill(skill,!!awakened); }catch(e){ return ""; }
+    if(!r) return "";
+    const w=Math.max(0,Math.min(1.4,r.ratio))/1.4;
+    return `<div class="rcline" style="margin-top:7px">
+      <span class="rcn">SP${skill.cost||0} の許容に対して</span>
+      <span class="rcbar${r.ok?"":" over"}" style="flex:1"><i style="inset:0;transform:scaleX(${w.toFixed(3)})"></i></span>
+      <span class="rcv">${r.ok?"適合":"超過"} ${Math.round(r.ratio*100)}%</span></div>`;
+  },
   clearFx(){
     $$("#arena .float,#arena .cue,#arena .gring,#arena .spark,#arena .statusburst,#arena .banner,"
-      +"#arena .im,#arena .sb,#arena .column,#arena .gbreak,#arena .proj,#arena .combo").forEach(el=>el.remove());
+      +"#arena .im,#arena .sb,#arena .column,#arena .gbreak,#arena .proj,#arena .combo,#arena .ffmark").forEach(el=>el.remove());
     ["sh1","sh2","sh3","sh4","settled"].forEach(c=>$("#arena").classList.remove(c));
     $("#s-battle").classList.remove("charging");
     $("#awk").classList.remove("on");
@@ -6741,7 +7282,13 @@ Object.assign(UI, {
     this.buzz(pattern||8);
   },
   buzz(p){
-    try{ if(navigator.vibrate&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches) navigator.vibrate(p); }catch(e){}
+    try{ if(navigator.vibrate&&!this.calm()) navigator.vibrate(p); }catch(e){}
+  },
+  /* 「動きを減らす」設定が効いているか。設定画面の motionReduced() が本体で、
+     ここはそれを短く呼ぶためだけのもの（読み込み順で欠けても落ちないようにしておく）。 */
+  calm(){
+    if(typeof this.motionReduced==="function") return this.motionReduced();
+    try{ return matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){ return false; }
   },
 
   /* ---------- 盤面 ---------- */
@@ -6769,6 +7316,8 @@ Object.assign(UI, {
         <div class="avwrap">
           <div class="st-aura" data-aura></div>
           <div class="figure" data-av></div>
+          <div class="st-skin" data-skinfx aria-hidden="true"></div>
+          <div class="st-marks" data-marks aria-hidden="true"></div>
         </div>
       </div>`;
     const plate=$("#plate"+view);
@@ -6797,7 +7346,7 @@ Object.assign(UI, {
   /* 姿が変わる瞬間の演出。減らす設定のときは静かに差し替える。 */
   morphAvatar(view){
     const el=this.unitPart(view,"av");
-    if(!el||this.reduceMotion&&this.reduceMotion()) return;
+    if(!el||this.calm()) return;
     el.classList.remove("morph");
     void el.offsetWidth;                                   // アニメを撃ち直すための再計算
     el.classList.add("morph");
@@ -6824,10 +7373,12 @@ Object.assign(UI, {
     const q=k=>this.unitPart(view,k);
     const awake=s.form==="AWAKENED";
     // 状態異常は「立ち姿そのもの」に出す。行動を止める系は動きを凍らせる
-    const st=FxKit.bodyState(s.effects);
+    const efs=this.effOf(side,s.effects);
+    const st=FxKit.bodyState(efs);
     host.className="unit"+(view===1?" foe":" me")+(s.hp<=0?" down":"")
       +(awake?" awakened":"")+(st.aura?" has-st":"")+(st.held?" held":"");
     if(st.aura) host.style.setProperty("--h",st.hue);
+    this.dressUnit(view,host,st);
     plate.className="plate "+(view===1?"foe":"me");
 
     // 覚醒すると立ち姿そのものが変わる。覚醒用の絵が無いキャラは通常の絵のままにする。
@@ -6896,15 +7447,53 @@ Object.assign(UI, {
     });
     this.lastSp[view]=s.sp;
 
-    const sig=s.effects.map(x=>x.name+x.duration).join("|");
+    const sig=efs.map(x=>x.name+x.duration+(x.icon||"")).join("|");
     if(this.chipSig[view]!==sig){
       const old=this.chipSig[view];
       this.chipSig[view]=sig;
-      q("chips").innerHTML=s.effects.map(x=>{
+      q("chips").innerHTML=efs.map(x=>{
         const d=x.duration>=BALANCE.permanentDuration?"∞":(x.duration>1?x.duration:"");
         const isNew=old.indexOf(x.name)<0;
         return `<span class="chip ${effTone(x)}${isNew?" new":""}"><span class="ci">${effIcon(x)}</span>${esc(x.name)}${d?" "+d:""}</span>`;
       }).join("");
+    }
+  },
+
+  /* engine.snapshot() の効果は名前・kind・持続しか持たない（エンジンは見た目を知らない）。
+     利用者が技エディタで選んだ記号と善悪（icon / tone）は本体側の効果に残っているので、
+     同じ名前のものを重ねて演出用に補う。見つからなければ kind から決まる既定に落ちる。 */
+  effOf(side,list){
+    const live=(this.engine&&this.engine.fighters[side]&&this.engine.fighters[side].effects)||[];
+    if(!live.length) return list||[];
+    return (list||[]).map(e=>{
+      const src=live.find(x=>x.name===e.name);
+      if(!src) return e;
+      return Object.assign({},e,{
+        icon:src.icon||e.icon||null, tone:src.tone||e.tone||null,
+        value:src.value, percent:src.percent, ratio:src.ratio
+      });
+    });
+  },
+
+  /* かかっている状態を「立ち姿のまとい」にする。
+     FxKit が kind / 記号 / 系統 から skin を決めるので、利用者が自分で足した
+     状態異常でも必ず何かをまとい、絵だけで「何か起きている」と分かる。
+     署名が変わったときだけ組み直す（毎ターン作り直すとアニメが撃ち直しになる）。 */
+  dressUnit(view,host,st){
+    if(!this.stSig) this.stSig=["",""];
+    const sig=(st.skin||"")+"/"+(st.holdSkin||"")+"/"+st.marks.map(m=>m.glyph+m.hue+m.motion+m.skin).join(",");
+    if(this.stSig[view]===sig) return;
+    this.stSig[view]=sig;
+    if(st.skin) host.setAttribute("data-skin",st.skin); else host.removeAttribute("data-skin");
+    if(st.holdSkin) host.setAttribute("data-hold",st.holdSkin); else host.removeAttribute("data-hold");
+    const box=this.unitPart(view,"marks");
+    if(box) box.innerHTML=st.marks.map((m,i)=>
+      `<i class="stm mo-${m.motion} sk-${m.skin}" style="--h:${m.hue};--i:${i}">${esc(m.glyph)}</i>`).join("");
+    const skinBox=this.unitPart(view,"skinfx");
+    if(skinBox){
+      const cls="st-skin"+(st.skin?" s-"+st.skin:"");
+      if(skinBox.className!==cls) skinBox.className=cls;
+      skinBox.style.setProperty("--h",st.hue);
     }
   },
 
@@ -7119,22 +7708,54 @@ Object.assign(UI, {
     if(this.mode==="local"&&this.blind) this.showVeil(side);
     else this.renderCommand(side);
   },
-  /* ローカル対戦：端末を渡すあいだの目隠し */
+  /* ローカル対戦：端末を渡すあいだの目隠し。
+     誰から誰へ渡すのか、受け取った人が何を持っているのか、
+     このターン何ができるのかを、伏せたまま渡せる形で出す。 */
   showVeil(side){
     const f=this.engine.fighters[side];
     const s=this.engine.snapshot()[side];
+    const o=this.engine.options(side);
+    const 前=this.li>0?this.localSides[this.li-1]:null;    // 直前に入力した人（＝いま持っている人）
     $("#veil-badge").textContent="P"+(side+1);
     $("#veil-badge").className="veil-badge"+(side===1?" p2":"");
     $("#veil-title").textContent=`プレイヤー${side+1} の番`;
+    // 誰から誰へ。最初の入力のときは渡さないので出さない
+    $("#veil-pass").innerHTML = 前==null
+      ? `<span class="vp-turn">ターン ${this.engine.turn}</span>`
+      : `<span class="vp-turn">ターン ${this.engine.turn}</span>
+         <span class="vp-from">P${前+1}</span><span class="vp-arrow"><i></i><i></i><i></i></span>
+         <span class="vp-to${side===1?" p2":""}">P${side+1}</span>`;
     $("#veil-av").innerHTML=this.avatar(f,"64",side===1?"foe":"me");
-    const chips=s.effects.slice(0,3).map(x=>
+    const efs=this.effOf(side,s.effects);
+    const chips=efs.slice(0,3).map(x=>
       `<span class="chip ${effTone(x)}"><span class="ci">${effIcon(x)}</span>${esc(x.name)}</span>`).join("");
+    const p=Math.max(0,Math.min(1,s.hp/s.maxHp));
+    const pips=Array.from({length:BALANCE.sp.max},(_,k)=>`<span class="pip${k<s.sp?" on":""}"></span>`).join("");
     $("#veil-meta").innerHTML=`<div class="vn">${esc(f.name)}</div>
-      <div class="vstat"><span class="chip">HP ${s.hp}/${s.maxHp}</span><span class="chip">SP ${s.sp}</span>
-      ${s.awaken==="AVAILABLE"?`<span class="chip gold">覚醒できる</span>`:""}${chips}</div>`;
-    $("#veil-sub").textContent="相手に画面を見られないように端末を渡してください。受け取ったら下のボタンを押すとコマンドが出ます。";
+      <div class="vbar"><i style="transform:scaleX(${p.toFixed(3)})"></i></div>
+      <div class="vstat"><span class="vhp">${s.hp}<small>/${s.maxHp}</small></span>
+        <span class="vsp">SP ${s.sp}</span><span class="vpips">${pips}</span></div>
+      ${chips?`<div class="vstat vchips">${chips}</div>`:""}`;
+    // このターン、この人に何ができるか。読んでから受け取れる
+    const cue=[];
+    if(o.canAwaken) cue.push(`<span class="vc gold">覚醒できる</span>`);
+    if(o.silenced) cue.push(`<span class="vc bad">沈黙：技が使えない</span>`);
+    if(Effects.has(f,"CONFUSE")) cue.push(`<span class="vc bad">混乱している</span>`);
+    const 撃てる=o.skills.filter(x=>x.usable).length;
+    cue.push(`<span class="vc">使える技 ${撃てる}／${o.skills.length}</span>`);
+    $("#veil-cue").innerHTML=cue.join("");
+    $("#veil-sub").textContent=前==null
+      ? "画面を見られないように構えてから、下のボタンを押してください。"
+      : `プレイヤー${前+1} は、画面を見られないように端末を渡してください。`;
+    const ok=$("#veil-ok");
+    ok.textContent="見る準備ができた";
+    // 直前の連打がそのまま突き抜けて手の内が見えてしまうのを防ぐ
+    ok.classList.add("arm");
+    clearTimeout(this._veilArm);
+    this._veilArm=setTimeout(()=>ok.classList.remove("arm"),420);
     $("#veil").classList.add("on");
-    $("#veil-ok").onclick=()=>{
+    this.buzz(10);
+    ok.onclick=()=>{
       this.tick();
       $("#veil").classList.remove("on");
       this.renderCommand(side);
@@ -7147,6 +7768,19 @@ Object.assign(UI, {
     $("#cmd-area").innerHTML=`<div class="waiting"><div class="thinking"><i></i><i></i><i></i></div>
       <div>${who}が考えています</div><div class="wsub">まもなく結果が出ます</div></div>`;
   },
+  /* 「この一撃で何が変わるか」を技データと相手の残りHPから言う。
+     倒せる／相手を覚醒させてしまう、の2つは押す前に必ず知らせたい。 */
+  outcomeTag(dmg,foe){
+    if(!(dmg>0)) return "";
+    if(dmg>=foe.hp) return `<span class="sx kill">とどめ</span>`;
+    const line=this.awakenLine(foe);
+    const st=foe.awaken&&foe.awaken.state;
+    if(line!=null&&(st==="LOCKED")){
+      const 境=Math.floor(line*foe.maxHp);
+      if(foe.hp>境&&foe.hp-dmg<=境) return `<span class="sx warn">相手が覚醒</span>`;
+    }
+    return "";
+  },
   /* 技ボタン1つぶんの中身。押す前にコスト・残り回数・使えない理由が読めるようにする */
   skillButton(x,i,side){
     const s=x.skill;
@@ -7156,7 +7790,9 @@ Object.assign(UI, {
     if(x.usable){
       const eff=x.variable?BattleEngine.effectiveSkill(s,x.maxSpend):s;
       const dmg=Math.round(this.engine.preview(me,foe,eff));
-      if(dmg>0) bits.push(`<span class="sx">目安 ${dmg}${s.hits>1?"×"+s.hits:""}</span>`);
+      const tag=this.outcomeTag(dmg,foe);          // preview は手数と命中率を込みで返す
+      if(tag) bits.push(tag);
+      if(dmg>0) bits.push(`<span class="sx">目安 ${dmg}${s.hits>1?`<i class="sh">${s.hits}連</i>`:""}</span>`);
       else if(s.healPercent) bits.push(`<span class="sx">回復 ${s.healPercent}%</span>`);
       else if((s.effects||[]).length) bits.push(`<span class="sx">${effIcon(s.effects[0])} ${esc(s.effects[0].name)}</span>`);
       if(s.priority) bits.push(`<span class="sx hot">先制</span>`);
@@ -7170,11 +7806,42 @@ Object.assign(UI, {
       <span class="sn">${esc(s.name)}</span>
       <span class="srow"><span class="sp${s.cost?"":" free"}">${cost}</span>${bits.slice(0,2).join("")}</span></button>`;
   },
+  /* 押す前に読みたい「相手の今」を一行にまとめる。
+     残りHPの割合／かかっている状態／覚醒ラインまでの距離。字は増やさない。 */
+  foeRead(side){
+    const foe=this.engine.foe(side);
+    const snap=this.engine.snapshot()[1-side];
+    const p=Math.max(0,Math.min(1,foe.hp/foe.maxHp));
+    const efs=this.effOf(1-side,snap.effects);
+    const marks=efs.slice(0,4).map(e=>{
+      const fx=FxKit.effectFx(e);
+      return `<i class="fm ${fx.tone}" style="--h:${fx.hue}" title="${esc(e.name)}">${esc(fx.glyph)}</i>`;
+    }).join("");
+    // 覚醒ラインとの関係。これが分かると「あと一撃入れるか、待つか」を選べる
+    const line=this.awakenLine(foe);
+    const st=foe.awaken&&foe.awaken.state;
+    let awk="";
+    if(st==="ACTIVE") awk=`<span class="fr-awk on">覚醒中 残${foe.awaken.turnsLeft}</span>`;
+    else if(st==="AVAILABLE") awk=`<span class="fr-awk on">いつでも覚醒</span>`;
+    else if(st==="LOCKED"&&line!=null){
+      const 残=foe.hp-Math.floor(line*foe.maxHp);
+      awk=残>0?`<span class="fr-awk">覚醒まで ${残}</span>`:`<span class="fr-awk on">覚醒圏内</span>`;
+    }else if(st==="SPENT") awk=`<span class="fr-awk done">覚醒済み</span>`;
+    return `<div class="foe-read">
+      <span class="fr-lb">相手</span>
+      <span class="fr-bar"><i style="--p:${p.toFixed(3)}"></i></span>
+      <b class="fr-n">${Math.round(p*100)}<small>%</small></b>
+      <span class="fr-st">${marks}</span>${awk}</div>`;
+  },
   renderCommand(side){
     const o=this.engine.options(side);
     const f=this.engine.fighters[side];
     $("#phase-label").textContent=this.mode==="local"?`P${side+1} の入力`:"コマンドを選ぶ";
     const pips=Array.from({length:BALANCE.sp.max},(_,k)=>`<span class="pip${k<f.sp?" on":""}"></span>`).join("");
+    // 通常攻撃も「いくら入るか・倒せるか」を言う。いちばん押される手なので黙らせない
+    const foe=this.engine.foe(side);
+    const bd=Math.round(this.engine.preview(f,foe,this.engine.SK.basic_attack||{type:"ATTACK",power:0,accuracy:95}));
+    const basic={lethal:bd>0&&bd>=foe.hp, note:bd>0?(bd>=foe.hp?"これで倒せる":"目安 "+bd+"・SP不要"):"SPを使わない"};
     const alerts=[];
     if(o.silenced) alerts.push("沈黙中：技が使えない");
     if(Effects.has(f,"CONFUSE")) alerts.push("混乱：自分を殴ることがある");
@@ -7188,10 +7855,11 @@ Object.assign(UI, {
           <span class="spbar">${pips}</span></span>
         <button class="tool" data-cmd="INFO" aria-label="能力値と覚醒条件を見る"><span class="ti">☰</span><span class="tl">状況</span></button>
       </div>
+      ${this.foeRead(side)}
       <div class="skl-grid">${o.skills.map((x,i)=>this.skillButton(x,i,side)).join("")}</div>
       <div class="cmd-grid">
-        <button class="cbtn attack" data-cmd="ATTACK"><span class="ci">⚔</span>
-          <span class="cl">攻撃<span class="cs">SPを使わない</span></span></button>
+        <button class="cbtn attack${basic.lethal?" lethal":""}" data-cmd="ATTACK"><span class="ci">⚔</span>
+          <span class="cl">攻撃<span class="cs">${basic.note}</span></span></button>
         <button class="cbtn defend" data-cmd="DEFEND"><span class="ci">⛊</span>
           <span class="cl">防御<span class="cs">被ダメ半減・SP+${BALANCE.sp.defendBonus}</span></span></button>
         ${o.canAwaken?`<button class="cbtn wide awaken" data-cmd="AWAKEN">
@@ -7271,7 +7939,7 @@ Object.assign(UI, {
   closeSheet(){
     $("#sheet").classList.remove("on"); $("#scrim").classList.remove("on");
   },
-  skillCardHtml(x,i){
+  skillCardHtml(x,i,awakened){
       const s=x.skill;
       const meta=[`<span class="mchip">${TYPE_LABEL[s.type]||"技"}</span>`];
       if(s.power>0) meta.push(`<span class="mchip">威力 ${s.power}${s.hits>1?"×"+s.hits:""}</span>`);
@@ -7291,11 +7959,12 @@ Object.assign(UI, {
         <span class="top"><span class="snm">${esc(s.name)}</span>
         <span class="cost${x.usable?"":" no"}">${costText}</span></span>
         <div class="sds">${esc(s.description||"")}</div>
-        <div class="meta">${meta.join("")}</div></button>`;
+        <div class="meta">${meta.join("")}</div>${this.rcLine(s,awakened)}</button>`;
   },
   openSkills(side){
     const o=this.engine.options(side);
-    const html=`<div class="skill-list">`+o.skills.map((x,i)=>this.skillCardHtml(x,i)).join("")+`</div>`;
+    const awk=this.engine.fighters[side].form==="AWAKENED";
+    const html=`<div class="skill-list">`+o.skills.map((x,i)=>this.skillCardHtml(x,i,awk)).join("")+`</div>`;
     this.openSheet("技をえらぶ",html);
     $("#sheet-body").querySelectorAll(".skl").forEach(b=>{
       b.onclick=()=>{
@@ -7327,22 +7996,75 @@ Object.assign(UI, {
     });
     $("#spend-back").onclick=()=>{ this.tick(); this.closeSheet(); };
   },
+  /* 能力を相手と並べて見せる。バフで動いた値は色と向きで言う */
+  statCompare(f,foe){
+    return ["atk","def","spd"].map(k=>{
+      const mine=Effects.stat(f,k), base=f.base[k];
+      const theirs=Effects.stat(foe,k);
+      const top=Math.max(mine,theirs,1);
+      const dir=mine>base?"up":mine<base?"down":"";
+      return `<div class="stcmp">
+        <span class="sk">${FxKit.STAT_JP[k]}</span>
+        <span class="sv ${dir}">${mine}${dir?`<i>${dir==="up"?"▲":"▼"}</i>`:""}</span>
+        <span class="sbars">
+          <i class="b me" style="transform:scaleX(${(mine/top).toFixed(3)})"></i>
+          <i class="b fo" style="transform:scaleX(${(theirs/top).toFixed(3)})"></i></span>
+        <span class="sv fo">${theirs}</span></div>`;
+    }).join("");
+  },
+  /* 覚醒までの道のり。HPが条件なら、いまどこにいるかを帯で見せる */
+  awakenBlock(f){
+    const a=f.char.awakening;
+    if(!a||!a.enabled) return `<p class="note">このキャラクターに覚醒はありません。</p>`;
+    const state={LOCKED:"条件未達成",AVAILABLE:"いつでも覚醒できる",
+      ACTIVE:`覚醒中（残り${f.awaken.turnsLeft}ターン）`,SPENT:"使用済み"}[f.awaken.state]||"";
+    const line=this.awakenLine(f);
+    const p=Math.max(0,Math.min(1,f.hp/f.maxHp));
+    const bar=(line!=null&&f.awaken.state!=="SPENT")
+      ? `<div class="awkbar"><i class="fill" style="transform:scaleX(${p.toFixed(3)})"></i>
+           <b class="ln${p<=line?" done":""}" style="left:${(line*100).toFixed(1)}%"></b></div>
+         <div class="awkbar-note">${p<=line?"覚醒ラインを割っています":`あと ${f.hp-Math.floor(line*f.maxHp)} 削られると覚醒できる`}</div>`
+      : "";
+    return `<div class="awk-note"><b>${esc(a.name||"覚醒")}</b>：${esc(state)}<br>
+      条件（${a.conditionMode==="ALL"?"すべて":"いずれか"}）：${esc((a.conditions||[]).map(c=>c.label).join(" ／ "))}<br>
+      代償：${esc((a.cost&&a.cost.label)||"なし")}</div>${bar}`;
+  },
+  /* かかっている効果を「名前・残り・何が起きるか」の3点で並べる。
+     説明は FxKit.words() が効果データから作るので、自作の異常でも言葉になる。 */
+  effectRows(side,list){
+    const efs=this.effOf(side,list);
+    if(!efs.length) return `<p class="note">かかっている効果はありません。</p>`;
+    return `<div class="efrows">`+efs.map(e=>{
+      const fx=FxKit.effectFx(e);
+      const 残=e.duration>=BALANCE.permanentDuration?"永続":"残り "+e.duration;
+      const w=FxKit.words(e);
+      return `<div class="efrow ${fx.tone}" style="--h:${fx.hue}">
+        <span class="ef-i">${esc(fx.glyph)}</span>
+        <span class="ef-b"><span class="ef-n">${esc(e.name)}</span>
+          ${w?`<span class="ef-w">${esc(w)}</span>`:""}</span>
+        <span class="ef-d">${残}</span></div>`;
+    }).join("")+`</div>`;
+  },
   openInfo(side){
-    const f=this.engine.fighters[side], a=f.char.awakening;
+    const f=this.engine.fighters[side];
+    const foe=this.engine.foe(side);
     const o=this.engine.options(side);
-    const st=["atk","def","spd"].map(k=>`<span class="mchip">${k.toUpperCase()} ${Effects.stat(f,k)}</span>`).join("");
-    let aw="覚醒なし";
-    if(a&&a.enabled){
-      const state={LOCKED:"条件未達成",AVAILABLE:"いつでも覚醒できる",ACTIVE:`覚醒中（残り${f.awaken.turnsLeft}ターン）`,SPENT:"使用済み"}[f.awaken.state]||"";
-      aw=`<b>${esc(a.name||"覚醒")}</b>：${state}<br>条件（${a.conditionMode==="ALL"?"すべて":"いずれか"}）：${esc((a.conditions||[]).map(c=>c.label).join(" ／ "))}<br>代償：${esc((a.cost&&a.cost.label)||"なし")}`;
-    }
-    const chips=f.effects.map(e=>`<span class="chip ${effTone(e)}"><span class="ci">${effIcon(e)}</span>${esc(e.name)}（${e.duration>=BALANCE.permanentDuration?"永続":"残"+e.duration}）</span>`).join("");
     this.openSheet(f.name+" の状況",
-      `<div class="meta" style="display:flex;gap:5px;flex-wrap:wrap">${st}<span class="mchip">HP ${f.hp}/${f.maxHp}</span><span class="mchip">SP ${f.sp}/${BALANCE.sp.max}</span></div>
-       <div class="awk-note" style="margin-top:12px">${aw}</div>
-       ${chips?`<div class="chips" style="margin-top:12px">${chips}</div>`:`<p class="note" style="margin-top:12px">かかっている効果はありません。</p>`}
+      `<div class="infhead">
+         <span class="mchip">HP ${f.hp}/${f.maxHp}</span>
+         <span class="mchip">SP ${f.sp}/${BALANCE.sp.max}</span>
+         ${this.rcOnly?`<span class="mchip hot">RC戦</span>`:""}
+       </div>
+       <div class="h-rule">能力（右は ${esc(foe.name)}）</div>
+       <div class="stcmps">${this.statCompare(f,foe)}</div>
+       <div class="h-rule">覚醒</div>
+       ${this.awakenBlock(f)}
+       <div class="h-rule">かかっている効果</div>
+       ${this.effectRows(side,this.engine.snapshot()[side].effects)}
+       <div class="h-rule">相手にかかっている効果</div>
+       ${this.effectRows(1-side,this.engine.snapshot()[1-side].effects)}
        <div class="h-rule">技のくわしい内容</div>
-       <div class="skill-list">${o.skills.map((x,i)=>this.skillCardHtml(x,i)).join("")}</div>`);
+       <div class="skill-list">${o.skills.map((x,i)=>this.skillCardHtml(x,i,f.form==="AWAKENED")).join("")}</div>`);
     $("#sheet-body").querySelectorAll(".skl").forEach(b=>{ b.disabled=true; });
   },
   logTap(){ if(!this.fastForward()){ this.tick(); this.openLog(); } },
@@ -7543,7 +8265,7 @@ Object.assign(UI, {
     const m=/「(.+?)」/.exec(e.text);
     let def=null;
     if(m){
-      def=(e.snap[side].effects||[]).find(x=>x.name===m[1])||null;
+      def=this.effOf(side,e.snap[side].effects||[]).find(x=>x.name===m[1])||null;
       if(!def&&this.curSkill) def=(this.curSkill.effects||[]).find(x=>x.name===m[1])||null;
     }
     if(!def&&this.curSkill){
@@ -7561,6 +8283,18 @@ Object.assign(UI, {
   /* 再生中に画面を触ったら残りを一気に流す */
   fastForward(){
     if(!this.playing) return false;
+    // 押したことが必ず分かるようにする（無反応に見えるのがいちばん悪い）
+    if(!this.skip){
+      this.buzz(6);
+      $("#phase-label").textContent="早送り";
+      const a=$("#arena");
+      if(a&&!this.calm()){
+        const d=document.createElement("div");
+        d.className="ffmark"; d.innerHTML="<i></i><i></i><i></i>";
+        a.appendChild(d);
+        setTimeout(()=>d.remove(),520);
+      }
+    }
     this.skip=true;
     this.hideAwaken();
     $("#shockwave").classList.remove("on");
@@ -7597,10 +8331,16 @@ Object.assign(UI, {
   /* 覚醒：この作品の題名そのもの。
      ①舞台が息を呑む（溜め）→ ②闇が本人の位置から広がる → ③一閃 → ④新しい姿 → ⑤舞台に戻す。
      1回目はたっぷり、2回目からは①を省いて短く。いつでもスキップできる。 */
+  /* 見せ場も「演出の速さ」に従う。ただし短くしすぎると覚醒でなくなるので、
+     ふつうを1として、はやい＝0.95／瞬時＝0.57 くらいまでに留める。 */
+  awkPace(){
+    const k=(this.SPEEDS[this.speed]||{k:1}).k;
+    return Math.max(0.5,Math.min(1,k+0.45));
+  },
   awakenFlash(text,actor){
     const brief=this.awkSeen>0;
     this.awkSeen++;
-    const calm=this.reduceMotion&&this.reduceMotion();
+    const calm=this.calm();
     const name=text.replace("【AWAKENING】","");
     const m=name.match(/^(.+?)が(.+?)へ移行した/);
     $("#awk-who").textContent=m?m[1]:name;
@@ -7621,10 +8361,11 @@ Object.assign(UI, {
     this._awkTimers=[];
     const at=(ms,fn)=>{ this._awkTimers.push(setTimeout(fn,ms)); };
 
-    const charge=(brief||calm)?0:420;
+    const pace=this.awkPace();
+    const charge=(brief||calm)?0:Math.round(420*pace);
     if(charge) this.awakenCharge(view);
     at(charge,()=>this.awakenCurtain(brief,calm,view));
-    const dur=calm?700:(brief?1150:2700);
+    const dur=calm?700:Math.round((brief?1150:2700)*pace);
     // 幕が引ける少し前に立ち姿を差し替える。幕の残り香が切り替わりを隠してくれる
     at(charge+dur-200,()=>{ if($("#awk").classList.contains("on")) this.morphAvatar(view); });
     at(charge+dur,()=>{ if($("#awk").classList.contains("on")){ this.hideAwaken(); this.awakenLand(view); } });
@@ -7658,6 +8399,7 @@ Object.assign(UI, {
     $("#s-battle").classList.remove("charging");
     const host=$("#view"+view);
     if(host) host.classList.remove("charge");
+    const pace=this.awkPace();
     // 闇の広がる起点を、覚醒した本人の立ち位置に合わせる
     const wrap=host&&host.querySelector(".avwrap");
     if(wrap){
@@ -7665,7 +8407,7 @@ Object.assign(UI, {
       o.style.setProperty("--ox",Math.round(r.left+r.width/2)+"px");
       o.style.setProperty("--oy",Math.round(r.top+r.height/2)+"px");
     }else{ o.style.setProperty("--ox","50%"); o.style.setProperty("--oy","44%"); }
-    const dur=calm?700:(brief?1150:2700);
+    const dur=calm?700:Math.round((brief?1150:2700)*pace);
     o.style.setProperty("--t",dur+"ms");
     o.classList.remove("on","brief");
     void o.offsetWidth;
@@ -7714,8 +8456,8 @@ Object.assign(UI, {
     $("#decide-sub").textContent=sub;
     Music.sfx(local?"win":(mine?"win":"lose"));
     if(quick){ return 140; }
-    const calm=this.reduceMotion&&this.reduceMotion();
-    const dur=calm?600:1500;
+    const calm=this.calm();
+    const dur=calm?600:Math.round(1500*this.awkPace());
     o.className="decide on"+(local?" draw":(mine?" win":" lose"));
     o.style.setProperty("--t",dur+"ms");
     o.setAttribute("aria-hidden","false");
@@ -7961,6 +8703,11 @@ Object.assign(UI, {
         `<span class="mini" title="${k.toUpperCase()}"><i style="transform:scaleX(${Math.min(1,st[k]/STAT_MAX[k]).toFixed(3)})"></i></span>`).join("");
       const chips=[];
       if(c.custom) chips.push("自作");
+      /* RC戦に出せるかどうかは、選ぶ前に知りたい。自作のキャラにだけ印を出す。 */
+      let rcBad=false;
+      if(c.custom&&typeof RC!=="undefined"&&RC.checkCharacter){
+        try{ rcBad=!RC.checkCharacter(c).ok; }catch(e){ rcBad=false; }
+      }
       if(c.awakening&&c.awakening.enabled) chips.push("覚醒あり");
       chips.push("技"+((c.skills||[]).length)+"個");
       /* 何を持たせたかが一覧で分かるようにする（容量の見当もつく） */
@@ -7975,7 +8722,8 @@ Object.assign(UI, {
           ${this.avatar(c,"44")}
           <span class="rc-t"><b>${esc(c.name)}</b>
             <span class="rc-d">${esc(c.description||"")}</span>
-            <span class="rc-chips">${chips.map(x=>`<span class="mchip">${esc(x)}</span>`).join("")}</span>
+            <span class="rc-chips">${rcBad?`<span class="mchip bad">RC外</span>`:""}${
+              chips.map(x=>`<span class="mchip">${esc(x)}</span>`).join("")}</span>
             <span class="rc-bars">${bars}</span></span>
         </button>
         <button class="rc-more" data-act="more" aria-label="${esc(c.name)}の操作">⋯</button>
@@ -8068,15 +8816,28 @@ Object.assign(UI, {
       box.innerHTML=`<p class="note">自分で作った技はまだありません。状態異常を組み合わせて作れます。</p>`;
       return;
     }
-    box.innerHTML=mine.map(s=>`<div class="skrow" data-id="${s.id}">
+    /* RC（レギュレーション）に収まっているかを、技一覧でも一目で分かるようにする */
+    const rc=s=>(typeof RC!=="undefined"&&RC.checkSkill)?RC.checkSkill(s,false):null;
+    box.innerHTML=mine.map(s=>{
+      const r=rc(s);
+      return `<div class="skrow" data-id="${s.id}">
       <span class="sk-t"><b>${esc(s.name)}</b>
         <span>${TYPE_LABEL[s.type]||"技"}・SP${s.cost}${s.power>0?"・威力"+s.power:""}${s.sfxId?"・♪":""}</span></span>
+      ${r?`<span class="chip ${r.ok?"jade":"bad"}" title="価値 ${r.value} ／ SP${s.cost||0}の許容 ${r.allowance}">${r.ok?"RC":"RC外"}</span>`:""}
       <button class="btn btn-line" data-act="edit">直す</button>
-      <button class="btn btn-ghost" data-act="del" aria-label="${esc(s.name)}を削除">削除</button></div>`).join("");
+      <button class="btn btn-ghost" data-act="del" aria-label="${esc(s.name)}を削除">削除</button>
+      ${r&&!r.ok?`<div class="skrc"><span>SP${s.cost||0}にしては ${r.over} 点ぶん強すぎます。</span>
+        <button class="btn btn-line" data-act="fit">RCに収める</button></div>`:""}</div>`;
+    }).join("");
     box.querySelectorAll(".skrow").forEach(row=>{
       const id=row.dataset.id;
       row.querySelector('[data-act="edit"]').onclick=()=>{ Editor.returnTo="roster"; Editor.openSkill(id); };
       row.querySelector('[data-act="del"]').onclick=()=>this.deleteSkill(id);
+      const fit=row.querySelector('[data-act="fit"]');
+      if(fit) fit.onclick=()=>{
+        Editor.returnTo="roster";
+        Editor.rcFitSaved(id,()=>{ this.renderSkillList(); this.renderStorage(); });
+      };
     });
   },
   deleteSkill(id){
@@ -8898,7 +9659,8 @@ const Editor = {
   },
 
   /* ================= 3. 技 ================= */
-  skillCard(s,checked,group){
+  /* 技の札。覚醒側は許容量が違うので、どちらの枠で見せているかを渡す。 */
+  skillCard(s,checked,group,awakened){
     const eff=(s.effects||[]).map(e=>`${e.icon||effIcon(e)}${esc(e.name||"")}`).join(" ");
     const meta=[];
     if(s.power>0) meta.push("威力"+s.power);
@@ -8909,6 +9671,14 @@ const Editor = {
     if(s.drain) meta.push("吸収"+Math.round(s.drain*100)+"%");
     if(s.costMax) meta.push("SP"+s.cost+"〜"+s.costMax);
     if(s.uses) meta.push("残"+s.uses+"回");
+    /* RCから外れている技はここで分かるようにする（選んでから困らないため） */
+    let rcChip="";
+    if(typeof RC!=="undefined"&&RC.checkSkill){
+      try{
+        const r=RC.checkSkill(s,!!awakened);
+        if(!r.ok) rcChip=`<span class="mchip bad" title="SP${s.cost||0}にしては ${r.over} 点ぶん強すぎます">RC外</span>`;
+      }catch(e){}
+    }
     return `<label class="skcard t-${s.type}${checked?" on":""}">
       <input type="checkbox" data-group="${group}" value="${s.id}" ${checked?"checked":""}>
       <span class="skc-body">
@@ -8917,15 +9687,16 @@ const Editor = {
         <span class="skc-d">${esc(s.description||"")}</span>
         <span class="skc-meta">${[TYPE_LABEL[s.type]||"技"].concat(meta).map(m=>`<span class="mchip">${esc(m)}</span>`).join("")}
           ${eff?`<span class="mchip hot">${eff}</span>`:""}
-          ${s.custom?`<span class="mchip">自作</span>`:""}</span>
+          ${s.custom?`<span class="mchip">自作</span>`:""}${rcChip}</span>
       </span></label>`;
   },
-  skillPickerHtml(selected,group,filterId){
+  skillPickerHtml(selected,group,filterId,awakened){
     const list=Object.values(SKILLS).filter(s=>s.id!=="basic_attack");
     const types=[["all","すべて"],["ATTACK","攻撃"],["SPECIAL","特殊"],["DEFENSE","防御"],["SUPPORT","補助"],["custom","自作"]];
     return `<div class="filterrow" id="${filterId}">${types.map((t,i)=>
         `<button class="fchip${i===0?" on":""}" data-f="${t[0]}">${t[1]}</button>`).join("")}</div>
-      <div class="skgrid" data-group="${group}">${list.map(s=>this.skillCard(s,selected.includes(s.id),group)).join("")}</div>`;
+      <div class="skgrid" data-group="${group}">${list.map(s=>
+        this.skillCard(s,selected.includes(s.id),group,awakened)).join("")}</div>`;
   },
   bindSkillPicker(group,filterId,onChange){
     const grid=$(`#edit-body .skgrid[data-group="${group}"]`);
@@ -8984,6 +9755,14 @@ const Editor = {
     if(!kinds.has("DEFENSE")&&!kinds.has("SUPPORT")) tips.push("攻め手だけの構成です。守りや補助を1つ入れると粘れます。");
     if(heavy>=3) tips.push("重い技が多めです。SPが足りず撃てない場面が増えます。");
     if(list.length>6) tips.push("技が多すぎると戦闘中に選びにくくなります。4〜5個が目安です。");
+    /* RCから外れている技があるなら、確認の段まで持ち越さずここで言う */
+    if(typeof RC!=="undefined"&&RC.checkSkill){
+      try{
+        const 外=list.filter(s=>!RC.checkSkill(s,false).ok);
+        if(外.length) tips.push(`${外.map(s=>"「"+s.name+"」").join("")}はSP消費に見合っていません（RC外）。`+
+          `RC戦に出すなら、確認の段の「RCに収める」で直せます。`);
+      }catch(e){}
+    }
     /* 戦闘で並ぶ手札のまま見せる。いつから撃てるかまで書く。 */
     const hand=list.map(s=>{
       const t=this.firstTurn(s.cost);
@@ -9079,7 +9858,7 @@ const Editor = {
 
       <div class="h-rule">覚醒形態の技</div>
       <p class="note">選ばなければ通常形態と同じ技になります。</p>
-      ${this.skillPickerHtml(a.form.skills,"awake","e-akfilter")}`;
+      ${this.skillPickerHtml(a.form.skills,"awake","e-akfilter",true)}`;
   },
   /* 覚醒形態の姿。未設定なら通常の姿をそのまま見せる。 */
   awakenFace(){
@@ -9282,6 +10061,8 @@ const Editor = {
         `<button class="chk ${c.ok?"ok":"ng"}" data-jump="${c.step}">
           <span class="ci">${c.ok?"✓":"！"}</span><span>${esc(c.t)}</span>
           ${c.ok?"":`<em>直す</em>`}</button>`).join("")}</div>
+      <div class="h-rule">RC（レギュレーション）</div>
+      ${this.rcCharacterHtml()}
       <div id="edit-err" class="err"></div>
       ${ng?"":`<p class="note" style="margin-top:10px">下の「保存して戦う」で、このキャラのまま試し斬りが始まります。</p>`}
       <button class="btn btn-line" id="e-saveonly" style="margin-top:10px">保存だけして一覧に戻る</button>`;
@@ -9289,6 +10070,7 @@ const Editor = {
   bind_check(){
     $$("#edit-body .chk").forEach(b=>b.onclick=()=>this.goStep(+b.dataset.jump));
     $("#e-saveonly").onclick=()=>this.saveCharacter();
+    this.bindRcCheck();
     /* 完成の一枚は毎回きちんと「立ち上がる」 */
     this.bindShowcase();
   },
@@ -9395,6 +10177,7 @@ const Editor = {
       this.effects=[];
     }
     this.sfxInfo=null;
+    this._rcSig=null;
     this.bindChrome();
     this.renderSkill();
     UI.show("skill");
@@ -9427,6 +10210,7 @@ const Editor = {
       </div>
 
       <div id="k-forge" class="forgecard"></div>
+      <div id="k-rc" class="rcpanel"></div>
       <div class="fld"><label for="k-name">技名</label>
         <input type="text" id="k-name" maxlength="14" value="${esc(s.name)}" placeholder="例：雷撃"></div>
       <div class="fld"><label for="k-desc">説明</label>
@@ -9502,8 +10286,8 @@ const Editor = {
       el.addEventListener("input",()=>this.queueSim());
       el.addEventListener("change",()=>this.queueSim());
     });
-    $("#k-type").onchange=()=>this.simulate();
-    $("#k-formula").onchange=()=>this.simulate();
+    $("#k-type").onchange=()=>{ this.paintRC(); this.simulate(); };
+    $("#k-formula").onchange=()=>{ this.paintRC(); this.simulate(); };
     ["k-name","k-desc"].forEach(id=>{
       const el=$("#"+id);
       if(el) el.oninput=()=>this.paintForge(this.collectSkill());
@@ -9895,6 +10679,8 @@ const Editor = {
     return this._ref;
   },
   queueSim(){
+    /* 戦わせる試算は重いので遅らせるが、RCの判定は軽いので指の動きに合わせて出す */
+    try{ this.paintRC(); }catch(e){}
     clearTimeout(this._simT);
     this._simT=setTimeout(()=>this.simulate(),200);
   },
@@ -9990,6 +10776,7 @@ const Editor = {
           return `<span class="mchip ${st.tone==="good"?"good":"hot"}">${st.icon}${esc(st.name)}</span>`; }).join("")}
         ${s.sfxId?`<span class="mchip good">♪ 効果音</span>`:""}</div>
       ${keep}`;
+    try{ this.paintRC(s); }catch(e){}
   },
   /* 貼り付いた一枚の中に、いまの試算を一行で出す */
   paintForgeResult(rank,avg,turns){
@@ -10022,7 +10809,8 @@ const Editor = {
     Kit.toast(`「${s.name}」を保存しました。技一覧から選べます。`,{tone:"ok"});
     Kit.buzz([10,40,16]);
     if(this.returnTo==="edit"&&this.draft){
-      this.draft.skills=this.draft.skills.concat([id]);
+      /* 既にある技を直しただけなら足さない（同じ技が二重に並ぶのを防ぐ） */
+      if(this.draft.skills.indexOf(id)<0) this.draft.skills=this.draft.skills.concat([id]);
       this.returnTo="roster";
       this.touch();
       this.renderShell(); UI.show("edit");
@@ -10519,6 +11307,308 @@ const Media = {
     }).catch(()=>0);
   }
 };
+
+/* ===== 15d-rc.js ===== */
+/* =========================================================================
+   09d. RC — レギュレーションキャラクリを作成画面に持ち込む。
+
+        RC.checkSkill / checkCharacter は 01b-regulation.js が持つ物差し。
+        ここは「読んで、見せて、収める手伝いをする」だけで、判定はしない。
+        数値をこちらに書かないこと。収まるかどうかは必ず RC に聞く。
+   ========================================================================= */
+Object.assign(Editor,{
+
+  /* ---------- 共通の言い回し ---------- */
+  rcAvailable(){ return typeof RC!=="undefined"&&RC&&typeof RC.checkSkill==="function"; },
+  rcPct(r){ return Math.round((r.ratio||0)*100); },
+
+  /* 内訳のうち重いものから。マイナス（自傷・回数制限）は割り引きとして後ろに回す。 */
+  rcParts(parts){
+    const plus=(parts||[]).filter(p=>p.points>0).sort((a,b)=>b.points-a.points);
+    const minus=(parts||[]).filter(p=>p.points<0);
+    return plus.concat(minus);
+  },
+
+  /* =====================================================================
+     収めかたを探す。値は総当たりで RC に聞いて決める（式を写さない）。
+     戻り値は [{key,label,done,detail,next}]。next は直したあとの技そのもの。
+     ここでは何も書き換えない。適用する側が next を受け取って反映する。
+     ===================================================================== */
+  rcFixes(skill,awakened){
+    if(!this.rcAvailable()||!skill) return [];
+    const s=skill;
+    const ok=o=>RC.checkSkill(o,awakened).ok;
+    const clone=extra=>Object.assign({},s,extra);
+    const out=[];
+
+    /* 1) SPを上げる — いちばん意味を壊さない収めかた */
+    const spMax=(typeof BALANCE!=="undefined"&&BALANCE.sp&&BALANCE.sp.max)||0;
+    for(let c=(Number(s.cost)||0)+1;c<=spMax;c++){
+      if(ok(clone({cost:c}))){
+        /* SPを上げると撃てるようになるのが遅れる。そこまで言ってから選ばせる。 */
+        const t=(typeof this.firstTurn==="function")?this.firstTurn(c):1;
+        out.push({key:"cost",label:`SPを${c}にする`,done:`SPを${c}にしました`,
+          detail:`威力も効果もそのまま。${t>1?`${t}ターン目から`:"最初から"}撃てる技になります。`,
+          next:clone({cost:c})});
+        break;
+      }
+    }
+
+    /* 2) 威力を下げる — 攻撃技のとき */
+    const pow=Number(s.power)||0;
+    if(pow>0&&ok(clone({power:0}))){         // 威力を0にしても収まらないなら、下げても無駄
+      let lo=0,hi=pow;                       // ok になる最大の威力を二分探索
+      while(lo<hi){
+        const mid=Math.ceil((lo+hi)/2);
+        if(ok(clone({power:mid}))) lo=mid; else hi=mid-1;
+      }
+      if(lo<pow) out.push({key:"power",label:`威力を${lo}まで下げる`,done:`威力を${lo}まで下げました`,
+        detail:`SP${Number(s.cost)||0}の技として通る上限です。`,
+        next:clone({power:lo})});
+    }
+
+    /* 3) 持続を縮める — 効果が長いとき。長い効果すべてに上限をかける */
+    const durs=(s.effects||[]).map(e=>Number(e.duration)||0).filter(n=>n>1);
+    if(durs.length){
+      const cap=d=>clone({effects:s.effects.map(e=>
+        (Number(e.duration)>d)?Object.assign({},e,{duration:d}):e)});
+      const longest=Math.max.apply(null,durs);
+      for(let d=longest-1;d>=1;d--){
+        if(ok(cap(d))){
+          out.push({key:"duration",label:`効果の持続を${d}ターンまでにする`,
+            done:`効果の持続を${d}ターンまでにしました`,
+            detail:"長く効くほど重く見られます。短くすると通ります。",
+            cap:d,next:cap(d)});
+          break;
+        }
+      }
+    }
+    return out;
+  },
+
+  /* 規定内なのに余っているとき、どこまで盛れるかを返す（技づくりを楽しくするため）。
+     上限は RC に聞いて探す。ここでも数値を書かない。 */
+  rcRoom(skill,awakened){
+    if(!this.rcAvailable()||!skill) return null;
+    const s=skill, ok=p=>RC.checkSkill(Object.assign({},s,{power:p}),awakened).ok;
+    const pow=Math.max(0,Number(s.power)||0);       // 負の数を渡されても探索が止まるように
+    const 天井=100000;
+    if(!RC.checkSkill(s,awakened).ok||!ok(pow)) return null;
+    if(!(pow>0||s.type==="ATTACK"||s.type==="SPECIAL")) return null;
+    /* 上限を倍々で探してから、二分探索で詰める */
+    let lo=pow, hi=pow+1, n=0;
+    while(hi<天井&&ok(hi)&&n++<40){ lo=hi; hi=Math.min(天井,hi*2||1); }
+    if(hi>=天井) return null;                        // 上限が見えない技（威力が効かない形）
+    while(lo<hi-1){
+      const mid=Math.floor((lo+hi)/2);
+      if(ok(mid)) lo=mid; else hi=mid;
+    }
+    if(lo<=pow) return null;
+    return {key:"power",boost:true,label:`威力を${lo}まで上げる`,done:`威力を${lo}にしました`,
+      detail:"このSPで許される上限いっぱいの一撃になります。",
+      next:Object.assign({},s,{power:lo})};
+  },
+
+  /* =====================================================================
+     技エディタの「適合ぐあい」。入力のたびに描き直す。
+     ===================================================================== */
+  paintRC(s){
+    const box=$("#k-rc");
+    if(!box) return;
+    if(!this.rcAvailable()){ box.innerHTML=""; return; }
+    s=s||this.collectSkill();
+    const r=RC.checkSkill(s,false);
+    const 覚醒 =RC.checkSkill(s,true);
+    const pct=this.rcPct(r);
+    const fixes=r.ok?[]:this.rcFixes(s,false);
+    /* 余っているなら、余りを活かす一手も出す（削るだけの物差しにしない） */
+    const room=r.ok?this.rcRoom(s,false):null;
+    if(room) fixes.push(room);
+    this._rcFixes=fixes;
+
+    /* 中身が変わっていないなら描き直さない。
+       数値欄から指を離した瞬間にも change が飛んでくるので、ここで作り直すと
+       押そうとしたボタンが入れ替わり、最初の一回が効かなくなる。 */
+    const sig=JSON.stringify([r.ok,r.value,r.allowance,Number(s.cost)||0,r.parts,
+      覚醒.ok,fixes.map(f=>f.label)]);
+    if(sig===this._rcSig&&box.innerHTML) return;
+    this._rcSig=sig;
+
+    const parts=this.rcParts(r.parts);
+    const 山=parts.length?Math.max.apply(null,parts.map(p=>Math.abs(p.points))):1;
+    const lines=parts.slice(0,5).map(p=>{
+      const w=Math.max(.04,Math.min(1,Math.abs(p.points)/山));
+      return `<div class="rcline"><span class="rcn">${esc(p.label)}</span>
+        <span class="rcw"><i style="transform:scaleX(${w.toFixed(3)})"></i></span>
+        <span class="rcv">${p.points>0?"+":""}${p.points}</span></div>`;
+    }).join("");
+
+    let note;
+    if(r.ok){
+      const 余り=Math.max(0,Math.round((r.allowance-r.value)*10)/10);
+      note=pct>=90
+        ? `ぎりぎり規定内です。これ以上足すとRC外になります。`
+        : `あと ${余り} 点ぶん余っています。威力を上げるか、効果を足せます。`;
+    }else{
+      const 重い=parts.length?parts[0]:null;
+      note=`${r.over} 点ぶん重すぎます。`+
+        (重い?`いちばん重いのは「${esc(重い.label)}」（${重い.points}点）です。`:"")+
+        (fixes.length?"":"SPを最大にしても収まりません。効果を減らしてください。");
+    }
+    const awkNote=(!r.ok&&覚醒.ok)
+      ? `<div class="rc-awk">覚醒形態の技としてなら収まります（許容 ${覚醒.allowance}）。通常形態では使えません。</div>`:"";
+
+    box.className="rcpanel"+(r.ok?" ok":" over");
+    box.innerHTML=`
+      <div class="rc-head">
+        <span class="rc-badge">${r.ok?"RC適合":"RC外"}</span>
+        <span class="rc-sum">価値 <b>${r.value}</b> ／ SP${Number(s.cost)||0}の許容 <b>${r.allowance}</b></span>
+        <span class="rc-pct">${pct}%</span>
+      </div>
+      <div class="rcbar${r.ok?"":" over"}"><i style="transform:scaleX(${Math.min(1,(r.ratio||0)).toFixed(3)})"></i></div>
+      <div class="rc-parts">${lines||`<div class="rcline"><span class="rcn">まだ何も起きない技です</span></div>`}</div>
+      <div class="rcnote${r.ok?" ok":""}">${note}</div>
+      ${awkNote}
+      ${fixes.length?`<div class="rc-fix">${fixes.map((f,i)=>
+        `<button type="button" class="rcfix${f.boost?" up":""}" data-fix="${i}">
+          <b>${esc(f.label)}</b><span>${esc(f.detail)}</span></button>`
+        ).join("")}</div>`:""}`;
+
+    box.querySelectorAll(".rcfix").forEach(b=>b.onclick=()=>this.applyRcFix(+b.dataset.fix));
+  },
+  applyRcFix(i){
+    const f=(this._rcFixes||[])[i];
+    if(!f) return;
+    this.skill=Object.assign({},f.next);
+    /* 持続を縮めたときは、効果の行の値も合わせる（画面と中身をずらさない） */
+    if(f.key==="duration") this.effects.forEach(ef=>{
+      const cur=ef.duration!=null?ef.duration:((STATUS[ef.key]||{}).duration||1);
+      if(cur>f.cap) ef.duration=f.cap;
+    });
+    Kit.buzz(12);
+    this.renderSkill();
+    this.rcReveal();
+    Kit.toast(f.boost?`${f.done}。RCの規定いっぱいの一撃です。`
+                     :`${f.done||f.label}。これでRCの規定に収まります。`,{tone:"ok"});
+  },
+
+  /* 適合ぐあいの枠を、貼り付いた技の札に隠れない位置まで持ってくる */
+  rcReveal(){
+    const box=$("#k-rc"), fg=$("#k-forge");
+    if(!box) return;
+    try{
+      const 上=box.getBoundingClientRect().top+window.scrollY;
+      const 札=fg?fg.getBoundingClientRect().height:0;
+      window.scrollTo({top:Math.max(0,上-札-14),behavior:Kit.reduced()?"auto":"smooth"});
+    }catch(e){}
+  },
+
+  /* =====================================================================
+     保存済みの技を、意味を保ったまま規定内に収める。
+     一覧からも確認の段からも同じ入口を使う。
+     ===================================================================== */
+  rcFitSaved(id,onDone){
+    const s=SKILLS[id];
+    if(!s||!this.rcAvailable()) return;
+    const r=RC.checkSkill(s,false);
+    if(r.ok){ Kit.toast(`「${s.name}」はもうRCの規定に収まっています。`,{tone:"ok"}); return; }
+    const fixes=this.rcFixes(JSON.parse(JSON.stringify(s)),false);
+    const 使う=Object.values(CHARACTERS).filter(c=>(c.skills||[]).indexOf(id)>=0
+      ||(((c.awakening||{}).form||{}).skills||[]).indexOf(id)>=0);
+    if(!fixes.length){
+      Kit.toast("SPを最大にしても収まりません。効果を減らしてから、もう一度お試しください。",{tone:"bad",ms:5000});
+      this.openSkill(id);
+      return;
+    }
+    const html=`<div class="rcpanel over" style="margin-bottom:12px">
+        <div class="rc-head"><span class="rc-badge">RC外</span>
+          <span class="rc-sum">価値 <b>${r.value}</b> ／ SP${s.cost||0}の許容 <b>${r.allowance}</b></span>
+          <span class="rc-pct">${this.rcPct(r)}%</span></div>
+        <div class="rcbar over"><i style="transform:scaleX(1)"></i></div>
+        <div class="rcnote">${r.over} 点ぶん重すぎます。どれか一つを選ぶと、その場で規定内に収まります。</div>
+      </div>
+      <div class="rc-fix">${fixes.map((f,i)=>
+        `<button type="button" class="rcfix" data-fit="${i}"><b>${esc(f.label)}</b><span>${esc(f.detail)}</span></button>`
+      ).join("")}</div>
+      ${使う.length?`<p class="note" style="margin-top:10px">この技は
+        ${使う.map(c=>esc(c.name)).join("・")} が使っています。直すとそちらにも効きます。</p>`:""}`;
+    Kit.sheet({title:"RCに収める",sub:`「${s.name}」を規定内にします`,html,
+      onMount:(body,close)=>{
+        body.querySelectorAll("[data-fit]").forEach(b=>b.onclick=()=>{
+          const f=fixes[+b.dataset.fit];
+          close();
+          const prev=SKILLS[id];
+          SKILLS[id]=Object.assign({},f.next,{id});
+          const res=Store.save();
+          if(!res.ok){ SKILLS[id]=prev; this.reportSaveFail(res,null); return; }
+          this._ref=null;
+          Kit.buzz([10,40,16]);
+          Kit.toast(`${f.done}。「${s.name}」はRCの規定に収まりました。`,{tone:"ok",
+            action:{label:"取り消す",fn:()=>{
+              SKILLS[id]=prev; Store.save(); this._ref=null; onDone&&onDone();
+              Kit.toast(`「${s.name}」を元に戻しました。`);
+            }}});
+          onDone&&onDone();
+        });
+      }});
+  },
+
+  /* =====================================================================
+     確認の段に出す「RC適合 / RC外」。
+     ===================================================================== */
+  rcJump(where){
+    if(where==="能力") return 1;
+    if(where==="覚醒"||where==="覚醒の技") return 3;
+    return 2;
+  },
+  rcCharacterHtml(){
+    if(!this.rcAvailable()) return "";
+    let r;
+    /* 古い形式や壊れた下書きでも、確認の段そのものが死なないようにする */
+    try{ r=RC.checkCharacter(this.draft); }
+    catch(e){ return `<div class="status">このキャラクターはRCの判定ができませんでした。
+      技や覚醒の設定を見直すと出ます。</div>`; }
+    if(!r) return "";
+    const rows=(r.skills||[]).map(x=>{
+      const pct=this.rcPct(x);
+      return `<div class="rcrow${x.ok?"":" over"}">
+        <div class="rcline"><span class="rcn">${esc(x.name)}${x.awakened?"<em>覚醒</em>":""}</span>
+          <span class="rcv">SP${x.cost}・${pct}%</span></div>
+        <div class="rcbar${x.ok?"":" over"}"><i style="transform:scaleX(${Math.min(1,x.ratio||0).toFixed(3)})"></i></div>
+        ${x.ok?"":`<div class="rcnote">価値 ${x.value} ／ 許容 ${x.allowance}（${x.over}点ぶん超過）</div>
+          <div class="rc-acts">${SKILLS[x.id]&&SKILLS[x.id].custom
+            ?`<button type="button" class="btn btn-gold rcfit" data-sk="${esc(x.id)}">RCに収める</button>
+              <button type="button" class="btn btn-line rcedit" data-sk="${esc(x.id)}">この技を直す</button>`
+            :`<span class="note">最初からある技です。付け替えてください。</span>`}</div>`}
+      </div>`;
+    }).join("");
+    return `<div class="rcverdict ${r.ok?"ok":"ng"}" id="e-rc">
+      <div class="rcv-head"><span class="rc-badge">${r.ok?"RC適合":"RC外"}</span>
+        <span>${r.ok?"このキャラクターはRC戦に出られます。"
+                    :"このままではRC戦に出られません。直すところは下のとおりです。"}</span></div>
+      ${r.ok?"":`<div class="rcissues">${r.issues.map(i=>
+        `<button type="button" class="rcissue" data-jump="${this.rcJump(i.where)}">
+          <span class="ri-w">${esc(i.where)}</span><span class="ri-t">${esc(i.text)}</span><em>直す</em></button>`).join("")}</div>`}
+      ${rows?`<div class="rcrows">${rows}</div>`:""}
+      <p class="note">RCは「技の強さがSP消費に見合っているか」の物差しです。外れていても、
+        ふつうの対戦には出せます。</p>
+    </div>`;
+  },
+  bindRcCheck(){
+    const box=$("#e-rc");
+    if(!box) return;
+    box.querySelectorAll(".rcissue").forEach(b=>b.onclick=()=>this.goStep(+b.dataset.jump));
+    box.querySelectorAll(".rcfit").forEach(b=>b.onclick=()=>{
+      this.returnTo="edit";                      // 技エディタに逃げたときの戻り先
+      this.rcFitSaved(b.dataset.sk,()=>{ this.touch(); this.renderStep(); });
+    });
+    box.querySelectorAll(".rcedit").forEach(b=>b.onclick=()=>{
+      this.touch();
+      this.returnTo="edit";
+      this.openSkill(b.dataset.sk);
+    });
+  }
+});
 
 /* ===== 15d-showcase.js ===== */
 /* =========================================================================

@@ -36,11 +36,13 @@ Object.assign(UI, {
     this.prevSnap=this.engine.log[0].snap;
     this.unitBuilt=[false,false];
     this.chipSig=["",""];
+    this.stSig=["",""];
     this.lastSp=[null,null];
     this.actorSide=null;
     this.guardShown=[false,false];
     this.awkState=[null,null];
     this.bindBattle();
+    this.markRc();
     this.prewarmSfx();
     this.clearFx();
     this.renderFighters();
@@ -63,9 +65,28 @@ Object.assign(UI, {
     const sk=$("#awk-skip");
     if(sk) sk.onclick=ev=>{ ev.stopPropagation(); this.cutScene(); };
   },
+  /* レギュレーション戦（RC）であることを舞台の上でも分かるようにする。
+     判定そのものは 01b-regulation.js の持ち物。ここは印を出すだけ。 */
+  markRc(){
+    const m=$("#rc-mark");
+    if(!m) return;
+    m.hidden=!this.rcOnly;
+  },
+  /* 技ひとつがSP消費に見合っているか。RC戦のときだけ、状況シートに帯で出す */
+  rcLine(skill,awakened){
+    if(!this.rcOnly||typeof RC==="undefined"||!skill||!skill.id) return "";
+    let r;
+    try{ r=RC.checkSkill(skill,!!awakened); }catch(e){ return ""; }
+    if(!r) return "";
+    const w=Math.max(0,Math.min(1.4,r.ratio))/1.4;
+    return `<div class="rcline" style="margin-top:7px">
+      <span class="rcn">SP${skill.cost||0} の許容に対して</span>
+      <span class="rcbar${r.ok?"":" over"}" style="flex:1"><i style="inset:0;transform:scaleX(${w.toFixed(3)})"></i></span>
+      <span class="rcv">${r.ok?"適合":"超過"} ${Math.round(r.ratio*100)}%</span></div>`;
+  },
   clearFx(){
     $$("#arena .float,#arena .cue,#arena .gring,#arena .spark,#arena .statusburst,#arena .banner,"
-      +"#arena .im,#arena .sb,#arena .column,#arena .gbreak,#arena .proj,#arena .combo").forEach(el=>el.remove());
+      +"#arena .im,#arena .sb,#arena .column,#arena .gbreak,#arena .proj,#arena .combo,#arena .ffmark").forEach(el=>el.remove());
     ["sh1","sh2","sh3","sh4","settled"].forEach(c=>$("#arena").classList.remove(c));
     $("#s-battle").classList.remove("charging");
     $("#awk").classList.remove("on");
@@ -142,7 +163,13 @@ Object.assign(UI, {
     this.buzz(pattern||8);
   },
   buzz(p){
-    try{ if(navigator.vibrate&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches) navigator.vibrate(p); }catch(e){}
+    try{ if(navigator.vibrate&&!this.calm()) navigator.vibrate(p); }catch(e){}
+  },
+  /* 「動きを減らす」設定が効いているか。設定画面の motionReduced() が本体で、
+     ここはそれを短く呼ぶためだけのもの（読み込み順で欠けても落ちないようにしておく）。 */
+  calm(){
+    if(typeof this.motionReduced==="function") return this.motionReduced();
+    try{ return matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){ return false; }
   },
 
   /* ---------- 盤面 ---------- */
@@ -170,6 +197,8 @@ Object.assign(UI, {
         <div class="avwrap">
           <div class="st-aura" data-aura></div>
           <div class="figure" data-av></div>
+          <div class="st-skin" data-skinfx aria-hidden="true"></div>
+          <div class="st-marks" data-marks aria-hidden="true"></div>
         </div>
       </div>`;
     const plate=$("#plate"+view);
@@ -198,7 +227,7 @@ Object.assign(UI, {
   /* 姿が変わる瞬間の演出。減らす設定のときは静かに差し替える。 */
   morphAvatar(view){
     const el=this.unitPart(view,"av");
-    if(!el||this.reduceMotion&&this.reduceMotion()) return;
+    if(!el||this.calm()) return;
     el.classList.remove("morph");
     void el.offsetWidth;                                   // アニメを撃ち直すための再計算
     el.classList.add("morph");
@@ -225,10 +254,12 @@ Object.assign(UI, {
     const q=k=>this.unitPart(view,k);
     const awake=s.form==="AWAKENED";
     // 状態異常は「立ち姿そのもの」に出す。行動を止める系は動きを凍らせる
-    const st=FxKit.bodyState(s.effects);
+    const efs=this.effOf(side,s.effects);
+    const st=FxKit.bodyState(efs);
     host.className="unit"+(view===1?" foe":" me")+(s.hp<=0?" down":"")
       +(awake?" awakened":"")+(st.aura?" has-st":"")+(st.held?" held":"");
     if(st.aura) host.style.setProperty("--h",st.hue);
+    this.dressUnit(view,host,st);
     plate.className="plate "+(view===1?"foe":"me");
 
     // 覚醒すると立ち姿そのものが変わる。覚醒用の絵が無いキャラは通常の絵のままにする。
@@ -297,15 +328,53 @@ Object.assign(UI, {
     });
     this.lastSp[view]=s.sp;
 
-    const sig=s.effects.map(x=>x.name+x.duration).join("|");
+    const sig=efs.map(x=>x.name+x.duration+(x.icon||"")).join("|");
     if(this.chipSig[view]!==sig){
       const old=this.chipSig[view];
       this.chipSig[view]=sig;
-      q("chips").innerHTML=s.effects.map(x=>{
+      q("chips").innerHTML=efs.map(x=>{
         const d=x.duration>=BALANCE.permanentDuration?"∞":(x.duration>1?x.duration:"");
         const isNew=old.indexOf(x.name)<0;
         return `<span class="chip ${effTone(x)}${isNew?" new":""}"><span class="ci">${effIcon(x)}</span>${esc(x.name)}${d?" "+d:""}</span>`;
       }).join("");
+    }
+  },
+
+  /* engine.snapshot() の効果は名前・kind・持続しか持たない（エンジンは見た目を知らない）。
+     利用者が技エディタで選んだ記号と善悪（icon / tone）は本体側の効果に残っているので、
+     同じ名前のものを重ねて演出用に補う。見つからなければ kind から決まる既定に落ちる。 */
+  effOf(side,list){
+    const live=(this.engine&&this.engine.fighters[side]&&this.engine.fighters[side].effects)||[];
+    if(!live.length) return list||[];
+    return (list||[]).map(e=>{
+      const src=live.find(x=>x.name===e.name);
+      if(!src) return e;
+      return Object.assign({},e,{
+        icon:src.icon||e.icon||null, tone:src.tone||e.tone||null,
+        value:src.value, percent:src.percent, ratio:src.ratio
+      });
+    });
+  },
+
+  /* かかっている状態を「立ち姿のまとい」にする。
+     FxKit が kind / 記号 / 系統 から skin を決めるので、利用者が自分で足した
+     状態異常でも必ず何かをまとい、絵だけで「何か起きている」と分かる。
+     署名が変わったときだけ組み直す（毎ターン作り直すとアニメが撃ち直しになる）。 */
+  dressUnit(view,host,st){
+    if(!this.stSig) this.stSig=["",""];
+    const sig=(st.skin||"")+"/"+(st.holdSkin||"")+"/"+st.marks.map(m=>m.glyph+m.hue+m.motion+m.skin).join(",");
+    if(this.stSig[view]===sig) return;
+    this.stSig[view]=sig;
+    if(st.skin) host.setAttribute("data-skin",st.skin); else host.removeAttribute("data-skin");
+    if(st.holdSkin) host.setAttribute("data-hold",st.holdSkin); else host.removeAttribute("data-hold");
+    const box=this.unitPart(view,"marks");
+    if(box) box.innerHTML=st.marks.map((m,i)=>
+      `<i class="stm mo-${m.motion} sk-${m.skin}" style="--h:${m.hue};--i:${i}">${esc(m.glyph)}</i>`).join("");
+    const skinBox=this.unitPart(view,"skinfx");
+    if(skinBox){
+      const cls="st-skin"+(st.skin?" s-"+st.skin:"");
+      if(skinBox.className!==cls) skinBox.className=cls;
+      skinBox.style.setProperty("--h",st.hue);
     }
   },
 
@@ -520,22 +589,54 @@ Object.assign(UI, {
     if(this.mode==="local"&&this.blind) this.showVeil(side);
     else this.renderCommand(side);
   },
-  /* ローカル対戦：端末を渡すあいだの目隠し */
+  /* ローカル対戦：端末を渡すあいだの目隠し。
+     誰から誰へ渡すのか、受け取った人が何を持っているのか、
+     このターン何ができるのかを、伏せたまま渡せる形で出す。 */
   showVeil(side){
     const f=this.engine.fighters[side];
     const s=this.engine.snapshot()[side];
+    const o=this.engine.options(side);
+    const 前=this.li>0?this.localSides[this.li-1]:null;    // 直前に入力した人（＝いま持っている人）
     $("#veil-badge").textContent="P"+(side+1);
     $("#veil-badge").className="veil-badge"+(side===1?" p2":"");
     $("#veil-title").textContent=`プレイヤー${side+1} の番`;
+    // 誰から誰へ。最初の入力のときは渡さないので出さない
+    $("#veil-pass").innerHTML = 前==null
+      ? `<span class="vp-turn">ターン ${this.engine.turn}</span>`
+      : `<span class="vp-turn">ターン ${this.engine.turn}</span>
+         <span class="vp-from">P${前+1}</span><span class="vp-arrow"><i></i><i></i><i></i></span>
+         <span class="vp-to${side===1?" p2":""}">P${side+1}</span>`;
     $("#veil-av").innerHTML=this.avatar(f,"64",side===1?"foe":"me");
-    const chips=s.effects.slice(0,3).map(x=>
+    const efs=this.effOf(side,s.effects);
+    const chips=efs.slice(0,3).map(x=>
       `<span class="chip ${effTone(x)}"><span class="ci">${effIcon(x)}</span>${esc(x.name)}</span>`).join("");
+    const p=Math.max(0,Math.min(1,s.hp/s.maxHp));
+    const pips=Array.from({length:BALANCE.sp.max},(_,k)=>`<span class="pip${k<s.sp?" on":""}"></span>`).join("");
     $("#veil-meta").innerHTML=`<div class="vn">${esc(f.name)}</div>
-      <div class="vstat"><span class="chip">HP ${s.hp}/${s.maxHp}</span><span class="chip">SP ${s.sp}</span>
-      ${s.awaken==="AVAILABLE"?`<span class="chip gold">覚醒できる</span>`:""}${chips}</div>`;
-    $("#veil-sub").textContent="相手に画面を見られないように端末を渡してください。受け取ったら下のボタンを押すとコマンドが出ます。";
+      <div class="vbar"><i style="transform:scaleX(${p.toFixed(3)})"></i></div>
+      <div class="vstat"><span class="vhp">${s.hp}<small>/${s.maxHp}</small></span>
+        <span class="vsp">SP ${s.sp}</span><span class="vpips">${pips}</span></div>
+      ${chips?`<div class="vstat vchips">${chips}</div>`:""}`;
+    // このターン、この人に何ができるか。読んでから受け取れる
+    const cue=[];
+    if(o.canAwaken) cue.push(`<span class="vc gold">覚醒できる</span>`);
+    if(o.silenced) cue.push(`<span class="vc bad">沈黙：技が使えない</span>`);
+    if(Effects.has(f,"CONFUSE")) cue.push(`<span class="vc bad">混乱している</span>`);
+    const 撃てる=o.skills.filter(x=>x.usable).length;
+    cue.push(`<span class="vc">使える技 ${撃てる}／${o.skills.length}</span>`);
+    $("#veil-cue").innerHTML=cue.join("");
+    $("#veil-sub").textContent=前==null
+      ? "画面を見られないように構えてから、下のボタンを押してください。"
+      : `プレイヤー${前+1} は、画面を見られないように端末を渡してください。`;
+    const ok=$("#veil-ok");
+    ok.textContent="見る準備ができた";
+    // 直前の連打がそのまま突き抜けて手の内が見えてしまうのを防ぐ
+    ok.classList.add("arm");
+    clearTimeout(this._veilArm);
+    this._veilArm=setTimeout(()=>ok.classList.remove("arm"),420);
     $("#veil").classList.add("on");
-    $("#veil-ok").onclick=()=>{
+    this.buzz(10);
+    ok.onclick=()=>{
       this.tick();
       $("#veil").classList.remove("on");
       this.renderCommand(side);
@@ -548,6 +649,19 @@ Object.assign(UI, {
     $("#cmd-area").innerHTML=`<div class="waiting"><div class="thinking"><i></i><i></i><i></i></div>
       <div>${who}が考えています</div><div class="wsub">まもなく結果が出ます</div></div>`;
   },
+  /* 「この一撃で何が変わるか」を技データと相手の残りHPから言う。
+     倒せる／相手を覚醒させてしまう、の2つは押す前に必ず知らせたい。 */
+  outcomeTag(dmg,foe){
+    if(!(dmg>0)) return "";
+    if(dmg>=foe.hp) return `<span class="sx kill">とどめ</span>`;
+    const line=this.awakenLine(foe);
+    const st=foe.awaken&&foe.awaken.state;
+    if(line!=null&&(st==="LOCKED")){
+      const 境=Math.floor(line*foe.maxHp);
+      if(foe.hp>境&&foe.hp-dmg<=境) return `<span class="sx warn">相手が覚醒</span>`;
+    }
+    return "";
+  },
   /* 技ボタン1つぶんの中身。押す前にコスト・残り回数・使えない理由が読めるようにする */
   skillButton(x,i,side){
     const s=x.skill;
@@ -557,7 +671,9 @@ Object.assign(UI, {
     if(x.usable){
       const eff=x.variable?BattleEngine.effectiveSkill(s,x.maxSpend):s;
       const dmg=Math.round(this.engine.preview(me,foe,eff));
-      if(dmg>0) bits.push(`<span class="sx">目安 ${dmg}${s.hits>1?"×"+s.hits:""}</span>`);
+      const tag=this.outcomeTag(dmg,foe);          // preview は手数と命中率を込みで返す
+      if(tag) bits.push(tag);
+      if(dmg>0) bits.push(`<span class="sx">目安 ${dmg}${s.hits>1?`<i class="sh">${s.hits}連</i>`:""}</span>`);
       else if(s.healPercent) bits.push(`<span class="sx">回復 ${s.healPercent}%</span>`);
       else if((s.effects||[]).length) bits.push(`<span class="sx">${effIcon(s.effects[0])} ${esc(s.effects[0].name)}</span>`);
       if(s.priority) bits.push(`<span class="sx hot">先制</span>`);
@@ -571,11 +687,42 @@ Object.assign(UI, {
       <span class="sn">${esc(s.name)}</span>
       <span class="srow"><span class="sp${s.cost?"":" free"}">${cost}</span>${bits.slice(0,2).join("")}</span></button>`;
   },
+  /* 押す前に読みたい「相手の今」を一行にまとめる。
+     残りHPの割合／かかっている状態／覚醒ラインまでの距離。字は増やさない。 */
+  foeRead(side){
+    const foe=this.engine.foe(side);
+    const snap=this.engine.snapshot()[1-side];
+    const p=Math.max(0,Math.min(1,foe.hp/foe.maxHp));
+    const efs=this.effOf(1-side,snap.effects);
+    const marks=efs.slice(0,4).map(e=>{
+      const fx=FxKit.effectFx(e);
+      return `<i class="fm ${fx.tone}" style="--h:${fx.hue}" title="${esc(e.name)}">${esc(fx.glyph)}</i>`;
+    }).join("");
+    // 覚醒ラインとの関係。これが分かると「あと一撃入れるか、待つか」を選べる
+    const line=this.awakenLine(foe);
+    const st=foe.awaken&&foe.awaken.state;
+    let awk="";
+    if(st==="ACTIVE") awk=`<span class="fr-awk on">覚醒中 残${foe.awaken.turnsLeft}</span>`;
+    else if(st==="AVAILABLE") awk=`<span class="fr-awk on">いつでも覚醒</span>`;
+    else if(st==="LOCKED"&&line!=null){
+      const 残=foe.hp-Math.floor(line*foe.maxHp);
+      awk=残>0?`<span class="fr-awk">覚醒まで ${残}</span>`:`<span class="fr-awk on">覚醒圏内</span>`;
+    }else if(st==="SPENT") awk=`<span class="fr-awk done">覚醒済み</span>`;
+    return `<div class="foe-read">
+      <span class="fr-lb">相手</span>
+      <span class="fr-bar"><i style="--p:${p.toFixed(3)}"></i></span>
+      <b class="fr-n">${Math.round(p*100)}<small>%</small></b>
+      <span class="fr-st">${marks}</span>${awk}</div>`;
+  },
   renderCommand(side){
     const o=this.engine.options(side);
     const f=this.engine.fighters[side];
     $("#phase-label").textContent=this.mode==="local"?`P${side+1} の入力`:"コマンドを選ぶ";
     const pips=Array.from({length:BALANCE.sp.max},(_,k)=>`<span class="pip${k<f.sp?" on":""}"></span>`).join("");
+    // 通常攻撃も「いくら入るか・倒せるか」を言う。いちばん押される手なので黙らせない
+    const foe=this.engine.foe(side);
+    const bd=Math.round(this.engine.preview(f,foe,this.engine.SK.basic_attack||{type:"ATTACK",power:0,accuracy:95}));
+    const basic={lethal:bd>0&&bd>=foe.hp, note:bd>0?(bd>=foe.hp?"これで倒せる":"目安 "+bd+"・SP不要"):"SPを使わない"};
     const alerts=[];
     if(o.silenced) alerts.push("沈黙中：技が使えない");
     if(Effects.has(f,"CONFUSE")) alerts.push("混乱：自分を殴ることがある");
@@ -589,10 +736,11 @@ Object.assign(UI, {
           <span class="spbar">${pips}</span></span>
         <button class="tool" data-cmd="INFO" aria-label="能力値と覚醒条件を見る"><span class="ti">☰</span><span class="tl">状況</span></button>
       </div>
+      ${this.foeRead(side)}
       <div class="skl-grid">${o.skills.map((x,i)=>this.skillButton(x,i,side)).join("")}</div>
       <div class="cmd-grid">
-        <button class="cbtn attack" data-cmd="ATTACK"><span class="ci">⚔</span>
-          <span class="cl">攻撃<span class="cs">SPを使わない</span></span></button>
+        <button class="cbtn attack${basic.lethal?" lethal":""}" data-cmd="ATTACK"><span class="ci">⚔</span>
+          <span class="cl">攻撃<span class="cs">${basic.note}</span></span></button>
         <button class="cbtn defend" data-cmd="DEFEND"><span class="ci">⛊</span>
           <span class="cl">防御<span class="cs">被ダメ半減・SP+${BALANCE.sp.defendBonus}</span></span></button>
         ${o.canAwaken?`<button class="cbtn wide awaken" data-cmd="AWAKEN">
@@ -672,7 +820,7 @@ Object.assign(UI, {
   closeSheet(){
     $("#sheet").classList.remove("on"); $("#scrim").classList.remove("on");
   },
-  skillCardHtml(x,i){
+  skillCardHtml(x,i,awakened){
       const s=x.skill;
       const meta=[`<span class="mchip">${TYPE_LABEL[s.type]||"技"}</span>`];
       if(s.power>0) meta.push(`<span class="mchip">威力 ${s.power}${s.hits>1?"×"+s.hits:""}</span>`);
@@ -692,11 +840,12 @@ Object.assign(UI, {
         <span class="top"><span class="snm">${esc(s.name)}</span>
         <span class="cost${x.usable?"":" no"}">${costText}</span></span>
         <div class="sds">${esc(s.description||"")}</div>
-        <div class="meta">${meta.join("")}</div></button>`;
+        <div class="meta">${meta.join("")}</div>${this.rcLine(s,awakened)}</button>`;
   },
   openSkills(side){
     const o=this.engine.options(side);
-    const html=`<div class="skill-list">`+o.skills.map((x,i)=>this.skillCardHtml(x,i)).join("")+`</div>`;
+    const awk=this.engine.fighters[side].form==="AWAKENED";
+    const html=`<div class="skill-list">`+o.skills.map((x,i)=>this.skillCardHtml(x,i,awk)).join("")+`</div>`;
     this.openSheet("技をえらぶ",html);
     $("#sheet-body").querySelectorAll(".skl").forEach(b=>{
       b.onclick=()=>{
@@ -728,22 +877,75 @@ Object.assign(UI, {
     });
     $("#spend-back").onclick=()=>{ this.tick(); this.closeSheet(); };
   },
+  /* 能力を相手と並べて見せる。バフで動いた値は色と向きで言う */
+  statCompare(f,foe){
+    return ["atk","def","spd"].map(k=>{
+      const mine=Effects.stat(f,k), base=f.base[k];
+      const theirs=Effects.stat(foe,k);
+      const top=Math.max(mine,theirs,1);
+      const dir=mine>base?"up":mine<base?"down":"";
+      return `<div class="stcmp">
+        <span class="sk">${FxKit.STAT_JP[k]}</span>
+        <span class="sv ${dir}">${mine}${dir?`<i>${dir==="up"?"▲":"▼"}</i>`:""}</span>
+        <span class="sbars">
+          <i class="b me" style="transform:scaleX(${(mine/top).toFixed(3)})"></i>
+          <i class="b fo" style="transform:scaleX(${(theirs/top).toFixed(3)})"></i></span>
+        <span class="sv fo">${theirs}</span></div>`;
+    }).join("");
+  },
+  /* 覚醒までの道のり。HPが条件なら、いまどこにいるかを帯で見せる */
+  awakenBlock(f){
+    const a=f.char.awakening;
+    if(!a||!a.enabled) return `<p class="note">このキャラクターに覚醒はありません。</p>`;
+    const state={LOCKED:"条件未達成",AVAILABLE:"いつでも覚醒できる",
+      ACTIVE:`覚醒中（残り${f.awaken.turnsLeft}ターン）`,SPENT:"使用済み"}[f.awaken.state]||"";
+    const line=this.awakenLine(f);
+    const p=Math.max(0,Math.min(1,f.hp/f.maxHp));
+    const bar=(line!=null&&f.awaken.state!=="SPENT")
+      ? `<div class="awkbar"><i class="fill" style="transform:scaleX(${p.toFixed(3)})"></i>
+           <b class="ln${p<=line?" done":""}" style="left:${(line*100).toFixed(1)}%"></b></div>
+         <div class="awkbar-note">${p<=line?"覚醒ラインを割っています":`あと ${f.hp-Math.floor(line*f.maxHp)} 削られると覚醒できる`}</div>`
+      : "";
+    return `<div class="awk-note"><b>${esc(a.name||"覚醒")}</b>：${esc(state)}<br>
+      条件（${a.conditionMode==="ALL"?"すべて":"いずれか"}）：${esc((a.conditions||[]).map(c=>c.label).join(" ／ "))}<br>
+      代償：${esc((a.cost&&a.cost.label)||"なし")}</div>${bar}`;
+  },
+  /* かかっている効果を「名前・残り・何が起きるか」の3点で並べる。
+     説明は FxKit.words() が効果データから作るので、自作の異常でも言葉になる。 */
+  effectRows(side,list){
+    const efs=this.effOf(side,list);
+    if(!efs.length) return `<p class="note">かかっている効果はありません。</p>`;
+    return `<div class="efrows">`+efs.map(e=>{
+      const fx=FxKit.effectFx(e);
+      const 残=e.duration>=BALANCE.permanentDuration?"永続":"残り "+e.duration;
+      const w=FxKit.words(e);
+      return `<div class="efrow ${fx.tone}" style="--h:${fx.hue}">
+        <span class="ef-i">${esc(fx.glyph)}</span>
+        <span class="ef-b"><span class="ef-n">${esc(e.name)}</span>
+          ${w?`<span class="ef-w">${esc(w)}</span>`:""}</span>
+        <span class="ef-d">${残}</span></div>`;
+    }).join("")+`</div>`;
+  },
   openInfo(side){
-    const f=this.engine.fighters[side], a=f.char.awakening;
+    const f=this.engine.fighters[side];
+    const foe=this.engine.foe(side);
     const o=this.engine.options(side);
-    const st=["atk","def","spd"].map(k=>`<span class="mchip">${k.toUpperCase()} ${Effects.stat(f,k)}</span>`).join("");
-    let aw="覚醒なし";
-    if(a&&a.enabled){
-      const state={LOCKED:"条件未達成",AVAILABLE:"いつでも覚醒できる",ACTIVE:`覚醒中（残り${f.awaken.turnsLeft}ターン）`,SPENT:"使用済み"}[f.awaken.state]||"";
-      aw=`<b>${esc(a.name||"覚醒")}</b>：${state}<br>条件（${a.conditionMode==="ALL"?"すべて":"いずれか"}）：${esc((a.conditions||[]).map(c=>c.label).join(" ／ "))}<br>代償：${esc((a.cost&&a.cost.label)||"なし")}`;
-    }
-    const chips=f.effects.map(e=>`<span class="chip ${effTone(e)}"><span class="ci">${effIcon(e)}</span>${esc(e.name)}（${e.duration>=BALANCE.permanentDuration?"永続":"残"+e.duration}）</span>`).join("");
     this.openSheet(f.name+" の状況",
-      `<div class="meta" style="display:flex;gap:5px;flex-wrap:wrap">${st}<span class="mchip">HP ${f.hp}/${f.maxHp}</span><span class="mchip">SP ${f.sp}/${BALANCE.sp.max}</span></div>
-       <div class="awk-note" style="margin-top:12px">${aw}</div>
-       ${chips?`<div class="chips" style="margin-top:12px">${chips}</div>`:`<p class="note" style="margin-top:12px">かかっている効果はありません。</p>`}
+      `<div class="infhead">
+         <span class="mchip">HP ${f.hp}/${f.maxHp}</span>
+         <span class="mchip">SP ${f.sp}/${BALANCE.sp.max}</span>
+         ${this.rcOnly?`<span class="mchip hot">RC戦</span>`:""}
+       </div>
+       <div class="h-rule">能力（右は ${esc(foe.name)}）</div>
+       <div class="stcmps">${this.statCompare(f,foe)}</div>
+       <div class="h-rule">覚醒</div>
+       ${this.awakenBlock(f)}
+       <div class="h-rule">かかっている効果</div>
+       ${this.effectRows(side,this.engine.snapshot()[side].effects)}
+       <div class="h-rule">相手にかかっている効果</div>
+       ${this.effectRows(1-side,this.engine.snapshot()[1-side].effects)}
        <div class="h-rule">技のくわしい内容</div>
-       <div class="skill-list">${o.skills.map((x,i)=>this.skillCardHtml(x,i)).join("")}</div>`);
+       <div class="skill-list">${o.skills.map((x,i)=>this.skillCardHtml(x,i,f.form==="AWAKENED")).join("")}</div>`);
     $("#sheet-body").querySelectorAll(".skl").forEach(b=>{ b.disabled=true; });
   },
   logTap(){ if(!this.fastForward()){ this.tick(); this.openLog(); } },
@@ -944,7 +1146,7 @@ Object.assign(UI, {
     const m=/「(.+?)」/.exec(e.text);
     let def=null;
     if(m){
-      def=(e.snap[side].effects||[]).find(x=>x.name===m[1])||null;
+      def=this.effOf(side,e.snap[side].effects||[]).find(x=>x.name===m[1])||null;
       if(!def&&this.curSkill) def=(this.curSkill.effects||[]).find(x=>x.name===m[1])||null;
     }
     if(!def&&this.curSkill){
@@ -962,6 +1164,18 @@ Object.assign(UI, {
   /* 再生中に画面を触ったら残りを一気に流す */
   fastForward(){
     if(!this.playing) return false;
+    // 押したことが必ず分かるようにする（無反応に見えるのがいちばん悪い）
+    if(!this.skip){
+      this.buzz(6);
+      $("#phase-label").textContent="早送り";
+      const a=$("#arena");
+      if(a&&!this.calm()){
+        const d=document.createElement("div");
+        d.className="ffmark"; d.innerHTML="<i></i><i></i><i></i>";
+        a.appendChild(d);
+        setTimeout(()=>d.remove(),520);
+      }
+    }
     this.skip=true;
     this.hideAwaken();
     $("#shockwave").classList.remove("on");
@@ -998,10 +1212,16 @@ Object.assign(UI, {
   /* 覚醒：この作品の題名そのもの。
      ①舞台が息を呑む（溜め）→ ②闇が本人の位置から広がる → ③一閃 → ④新しい姿 → ⑤舞台に戻す。
      1回目はたっぷり、2回目からは①を省いて短く。いつでもスキップできる。 */
+  /* 見せ場も「演出の速さ」に従う。ただし短くしすぎると覚醒でなくなるので、
+     ふつうを1として、はやい＝0.95／瞬時＝0.57 くらいまでに留める。 */
+  awkPace(){
+    const k=(this.SPEEDS[this.speed]||{k:1}).k;
+    return Math.max(0.5,Math.min(1,k+0.45));
+  },
   awakenFlash(text,actor){
     const brief=this.awkSeen>0;
     this.awkSeen++;
-    const calm=this.reduceMotion&&this.reduceMotion();
+    const calm=this.calm();
     const name=text.replace("【AWAKENING】","");
     const m=name.match(/^(.+?)が(.+?)へ移行した/);
     $("#awk-who").textContent=m?m[1]:name;
@@ -1022,10 +1242,11 @@ Object.assign(UI, {
     this._awkTimers=[];
     const at=(ms,fn)=>{ this._awkTimers.push(setTimeout(fn,ms)); };
 
-    const charge=(brief||calm)?0:420;
+    const pace=this.awkPace();
+    const charge=(brief||calm)?0:Math.round(420*pace);
     if(charge) this.awakenCharge(view);
     at(charge,()=>this.awakenCurtain(brief,calm,view));
-    const dur=calm?700:(brief?1150:2700);
+    const dur=calm?700:Math.round((brief?1150:2700)*pace);
     // 幕が引ける少し前に立ち姿を差し替える。幕の残り香が切り替わりを隠してくれる
     at(charge+dur-200,()=>{ if($("#awk").classList.contains("on")) this.morphAvatar(view); });
     at(charge+dur,()=>{ if($("#awk").classList.contains("on")){ this.hideAwaken(); this.awakenLand(view); } });
@@ -1059,6 +1280,7 @@ Object.assign(UI, {
     $("#s-battle").classList.remove("charging");
     const host=$("#view"+view);
     if(host) host.classList.remove("charge");
+    const pace=this.awkPace();
     // 闇の広がる起点を、覚醒した本人の立ち位置に合わせる
     const wrap=host&&host.querySelector(".avwrap");
     if(wrap){
@@ -1066,7 +1288,7 @@ Object.assign(UI, {
       o.style.setProperty("--ox",Math.round(r.left+r.width/2)+"px");
       o.style.setProperty("--oy",Math.round(r.top+r.height/2)+"px");
     }else{ o.style.setProperty("--ox","50%"); o.style.setProperty("--oy","44%"); }
-    const dur=calm?700:(brief?1150:2700);
+    const dur=calm?700:Math.round((brief?1150:2700)*pace);
     o.style.setProperty("--t",dur+"ms");
     o.classList.remove("on","brief");
     void o.offsetWidth;
@@ -1115,8 +1337,8 @@ Object.assign(UI, {
     $("#decide-sub").textContent=sub;
     Music.sfx(local?"win":(mine?"win":"lose"));
     if(quick){ return 140; }
-    const calm=this.reduceMotion&&this.reduceMotion();
-    const dur=calm?600:1500;
+    const calm=this.calm();
+    const dur=calm?600:Math.round(1500*this.awkPace());
     o.className="decide on"+(local?" draw":(mine?" win":" lose"));
     o.style.setProperty("--t",dur+"ms");
     o.setAttribute("aria-hidden","false");

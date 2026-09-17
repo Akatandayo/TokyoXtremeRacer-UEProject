@@ -1,0 +1,52 @@
+/* =========================================================================
+   23b. 戦闘中の情報シート（状況）— 「いま、何がどうなっているか」を一望する。
+   帯はすべて transform:scaleX で伸ばす。幅のアニメーションはしない。
+   ========================================================================= */
+
+.infhead{display:flex;flex-wrap:wrap;gap:5px}
+
+/* ---------- 能力の比べ方。左が自分、右が相手 ---------- */
+.stcmps{display:flex;flex-direction:column;gap:9px}
+.stcmp{display:flex;align-items:center;gap:9px;font-size:12px}
+.stcmp .sk{flex:0 0 46px;color:var(--dim);letter-spacing:.06em}
+.stcmp .sv{flex:0 0 52px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;color:#E9E1F5}
+.stcmp .sv i{font-style:normal;font-size:9px;margin-left:2px}
+.stcmp .sv.up{color:#9DF0E4}
+.stcmp .sv.down{color:#FFA9B6}
+.stcmp .sv.fo{flex:0 0 52px;text-align:left;font-weight:400;color:var(--dim)}
+.stcmp .sbars{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px}
+.stcmp .sbars .b{height:5px;border-radius:99px;transform-origin:left center;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.stcmp .sbars .b.me{background:linear-gradient(90deg,#4FD6C8,#9DF0E4)}
+.stcmp .sbars .b.fo{background:linear-gradient(90deg,#F2566A,#FF9BA8);opacity:.75}
+
+/* ---------- 覚醒までの道のり ---------- */
+.awkbar{position:relative;height:8px;border-radius:99px;margin-top:10px;overflow:hidden;
+  background:rgba(255,255,255,.09)}
+.awkbar .fill{display:block;height:100%;border-radius:99px;transform-origin:left center;
+  background:linear-gradient(90deg,#4FD6C8,#9DF0E4);
+  transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.awkbar .ln{position:absolute;top:-2px;width:2px;height:12px;border-radius:2px;
+  background:var(--gold,#F0C550);box-shadow:0 0 8px rgba(240,197,80,.9)}
+.awkbar .ln.done{background:#FFF2C8;box-shadow:0 0 12px rgba(255,226,160,1)}
+.awkbar-note{margin-top:6px;font-size:11.5px;color:var(--dim);letter-spacing:.02em}
+
+/* ---------- かかっている効果 ---------- */
+.efrows{display:flex;flex-direction:column;gap:7px}
+.efrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:13px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line);--h:288}
+.efrow .ef-i{flex:0 0 22px;text-align:center;font-size:17px;line-height:1;
+  color:hsl(var(--h),92%,82%);text-shadow:0 0 10px hsla(var(--h),100%,60%,.7)}
+.efrow .ef-b{flex:1 1 auto;min-width:0}
+.efrow .ef-n{display:block;font-size:13px;font-weight:700;color:#E9E1F5}
+.efrow .ef-w{display:block;margin-top:2px;font-size:11.5px;line-height:1.5;color:var(--dim)}
+.efrow .ef-d{flex:0 0 auto;font-size:10.5px;letter-spacing:.06em;color:var(--dim);
+  padding:2px 8px;border-radius:99px;border:1px solid var(--line2);white-space:nowrap}
+.efrow.good{border-color:rgba(79,214,200,.3)}
+.efrow.bad{border-color:rgba(242,86,106,.3)}
+
+@media (max-width:359px){
+  .stcmp .sk{flex-basis:38px}
+  .stcmp .sv,.stcmp .sv.fo{flex-basis:44px}
+  .efrow .ef-d{display:none}
+}

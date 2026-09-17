@@ -511,7 +511,8 @@ const Editor = {
   },
 
   /* ================= 3. 技 ================= */
-  skillCard(s,checked,group){
+  /* 技の札。覚醒側は許容量が違うので、どちらの枠で見せているかを渡す。 */
+  skillCard(s,checked,group,awakened){
     const eff=(s.effects||[]).map(e=>`${e.icon||effIcon(e)}${esc(e.name||"")}`).join(" ");
     const meta=[];
     if(s.power>0) meta.push("威力"+s.power);
@@ -522,6 +523,14 @@ const Editor = {
     if(s.drain) meta.push("吸収"+Math.round(s.drain*100)+"%");
     if(s.costMax) meta.push("SP"+s.cost+"〜"+s.costMax);
     if(s.uses) meta.push("残"+s.uses+"回");
+    /* RCから外れている技はここで分かるようにする（選んでから困らないため） */
+    let rcChip="";
+    if(typeof RC!=="undefined"&&RC.checkSkill){
+      try{
+        const r=RC.checkSkill(s,!!awakened);
+        if(!r.ok) rcChip=`<span class="mchip bad" title="SP${s.cost||0}にしては ${r.over} 点ぶん強すぎます">RC外</span>`;
+      }catch(e){}
+    }
     return `<label class="skcard t-${s.type}${checked?" on":""}">
       <input type="checkbox" data-group="${group}" value="${s.id}" ${checked?"checked":""}>
       <span class="skc-body">
@@ -530,15 +539,16 @@ const Editor = {
         <span class="skc-d">${esc(s.description||"")}</span>
         <span class="skc-meta">${[TYPE_LABEL[s.type]||"技"].concat(meta).map(m=>`<span class="mchip">${esc(m)}</span>`).join("")}
           ${eff?`<span class="mchip hot">${eff}</span>`:""}
-          ${s.custom?`<span class="mchip">自作</span>`:""}</span>
+          ${s.custom?`<span class="mchip">自作</span>`:""}${rcChip}</span>
       </span></label>`;
   },
-  skillPickerHtml(selected,group,filterId){
+  skillPickerHtml(selected,group,filterId,awakened){
     const list=Object.values(SKILLS).filter(s=>s.id!=="basic_attack");
     const types=[["all","すべて"],["ATTACK","攻撃"],["SPECIAL","特殊"],["DEFENSE","防御"],["SUPPORT","補助"],["custom","自作"]];
     return `<div class="filterrow" id="${filterId}">${types.map((t,i)=>
         `<button class="fchip${i===0?" on":""}" data-f="${t[0]}">${t[1]}</button>`).join("")}</div>
-      <div class="skgrid" data-group="${group}">${list.map(s=>this.skillCard(s,selected.includes(s.id),group)).join("")}</div>`;
+      <div class="skgrid" data-group="${group}">${list.map(s=>
+        this.skillCard(s,selected.includes(s.id),group,awakened)).join("")}</div>`;
   },
   bindSkillPicker(group,filterId,onChange){
     const grid=$(`#edit-body .skgrid[data-group="${group}"]`);
@@ -597,6 +607,14 @@ const Editor = {
     if(!kinds.has("DEFENSE")&&!kinds.has("SUPPORT")) tips.push("攻め手だけの構成です。守りや補助を1つ入れると粘れます。");
     if(heavy>=3) tips.push("重い技が多めです。SPが足りず撃てない場面が増えます。");
     if(list.length>6) tips.push("技が多すぎると戦闘中に選びにくくなります。4〜5個が目安です。");
+    /* RCから外れている技があるなら、確認の段まで持ち越さずここで言う */
+    if(typeof RC!=="undefined"&&RC.checkSkill){
+      try{
+        const 外=list.filter(s=>!RC.checkSkill(s,false).ok);
+        if(外.length) tips.push(`${外.map(s=>"「"+s.name+"」").join("")}はSP消費に見合っていません（RC外）。`+
+          `RC戦に出すなら、確認の段の「RCに収める」で直せます。`);
+      }catch(e){}
+    }
     /* 戦闘で並ぶ手札のまま見せる。いつから撃てるかまで書く。 */
     const hand=list.map(s=>{
       const t=this.firstTurn(s.cost);
@@ -692,7 +710,7 @@ const Editor = {
 
       <div class="h-rule">覚醒形態の技</div>
       <p class="note">選ばなければ通常形態と同じ技になります。</p>
-      ${this.skillPickerHtml(a.form.skills,"awake","e-akfilter")}`;
+      ${this.skillPickerHtml(a.form.skills,"awake","e-akfilter",true)}`;
   },
   /* 覚醒形態の姿。未設定なら通常の姿をそのまま見せる。 */
   awakenFace(){
@@ -895,6 +913,8 @@ const Editor = {
         `<button class="chk ${c.ok?"ok":"ng"}" data-jump="${c.step}">
           <span class="ci">${c.ok?"✓":"！"}</span><span>${esc(c.t)}</span>
           ${c.ok?"":`<em>直す</em>`}</button>`).join("")}</div>
+      <div class="h-rule">RC（レギュレーション）</div>
+      ${this.rcCharacterHtml()}
       <div id="edit-err" class="err"></div>
       ${ng?"":`<p class="note" style="margin-top:10px">下の「保存して戦う」で、このキャラのまま試し斬りが始まります。</p>`}
       <button class="btn btn-line" id="e-saveonly" style="margin-top:10px">保存だけして一覧に戻る</button>`;
@@ -902,6 +922,7 @@ const Editor = {
   bind_check(){
     $$("#edit-body .chk").forEach(b=>b.onclick=()=>this.goStep(+b.dataset.jump));
     $("#e-saveonly").onclick=()=>this.saveCharacter();
+    this.bindRcCheck();
     /* 完成の一枚は毎回きちんと「立ち上がる」 */
     this.bindShowcase();
   },
@@ -1008,6 +1029,7 @@ const Editor = {
       this.effects=[];
     }
     this.sfxInfo=null;
+    this._rcSig=null;
     this.bindChrome();
     this.renderSkill();
     UI.show("skill");
@@ -1040,6 +1062,7 @@ const Editor = {
       </div>
 
       <div id="k-forge" class="forgecard"></div>
+      <div id="k-rc" class="rcpanel"></div>
       <div class="fld"><label for="k-name">技名</label>
         <input type="text" id="k-name" maxlength="14" value="${esc(s.name)}" placeholder="例：雷撃"></div>
       <div class="fld"><label for="k-desc">説明</label>
@@ -1115,8 +1138,8 @@ const Editor = {
       el.addEventListener("input",()=>this.queueSim());
       el.addEventListener("change",()=>this.queueSim());
     });
-    $("#k-type").onchange=()=>this.simulate();
-    $("#k-formula").onchange=()=>this.simulate();
+    $("#k-type").onchange=()=>{ this.paintRC(); this.simulate(); };
+    $("#k-formula").onchange=()=>{ this.paintRC(); this.simulate(); };
     ["k-name","k-desc"].forEach(id=>{
       const el=$("#"+id);
       if(el) el.oninput=()=>this.paintForge(this.collectSkill());
@@ -1508,6 +1531,8 @@ const Editor = {
     return this._ref;
   },
   queueSim(){
+    /* 戦わせる試算は重いので遅らせるが、RCの判定は軽いので指の動きに合わせて出す */
+    try{ this.paintRC(); }catch(e){}
     clearTimeout(this._simT);
     this._simT=setTimeout(()=>this.simulate(),200);
   },
@@ -1603,6 +1628,7 @@ const Editor = {
           return `<span class="mchip ${st.tone==="good"?"good":"hot"}">${st.icon}${esc(st.name)}</span>`; }).join("")}
         ${s.sfxId?`<span class="mchip good">♪ 効果音</span>`:""}</div>
       ${keep}`;
+    try{ this.paintRC(s); }catch(e){}
   },
   /* 貼り付いた一枚の中に、いまの試算を一行で出す */
   paintForgeResult(rank,avg,turns){
@@ -1635,7 +1661,8 @@ const Editor = {
     Kit.toast(`「${s.name}」を保存しました。技一覧から選べます。`,{tone:"ok"});
     Kit.buzz([10,40,16]);
     if(this.returnTo==="edit"&&this.draft){
-      this.draft.skills=this.draft.skills.concat([id]);
+      /* 既にある技を直しただけなら足さない（同じ技が二重に並ぶのを防ぐ） */
+      if(this.draft.skills.indexOf(id)<0) this.draft.skills=this.draft.skills.concat([id]);
       this.returnTo="roster";
       this.touch();
       this.renderShell(); UI.show("edit");

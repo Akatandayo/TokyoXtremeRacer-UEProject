@@ -2,10 +2,13 @@
    戦闘画面の .chip は #s-battle 配下に閉じてあるので、編成や一覧で使う分を独立して持つ。 */
 .chip.jade{color:#9DF0E4;border-color:rgba(79,214,200,.42);background:rgba(79,214,200,.12)}
 .chip.bad{color:#FFC2CB;border-color:rgba(242,86,106,.45);background:rgba(242,86,106,.12)}
+/* 技の札の中でも同じ印を使う（一覧・作成・編成で同じ見た目に揃える） */
+.mchip.bad{color:#FFC2CB;border-color:rgba(242,86,106,.45);background:rgba(242,86,106,.14)}
+.mchip.jade{color:#9DF0E4;border-color:rgba(79,214,200,.42);background:rgba(79,214,200,.12)}
 
 /* 技ごとの適合ぐあい。許容量に対する比を帯で見せる */
 .rcbar{position:relative;height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
-.rcbar>i{position:absolute;inset:0 auto 0 0;border-radius:99px;transform-origin:left center;
+.rcbar>i{position:absolute;inset:0 0 0 0;width:100%;border-radius:99px;transform-origin:left center;
   background:linear-gradient(90deg,var(--c-jade-400,#4FD6C8),var(--c-violet-400,#9B7BE8));
   transition:transform .4s cubic-bezier(.2,.8,.2,1)}
 .rcbar.over>i{background:linear-gradient(90deg,#F2566A,#FF9BA8)}
@@ -13,3 +16,60 @@
 .rcline .rcn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ivory)}
 .rcline .rcv{flex:0 0 auto;font-variant-numeric:tabular-nums}
 .rcnote{font-size:12px;color:#FFC2CB;line-height:1.5}
+
+/* ===== 技エディタの「適合ぐあい」 =====
+   威力やSPを動かすたびに、価値と許容量の関係をその場で返す一枚。 */
+.rcpanel{border:1px solid var(--line2);border-radius:16px;padding:12px;
+  background:linear-gradient(180deg,rgba(79,214,200,.08),rgba(255,255,255,.03));
+  display:flex;flex-direction:column;gap:9px}
+.rcpanel:empty{display:none}
+.rcpanel.over{background:linear-gradient(180deg,rgba(242,86,106,.11),rgba(255,255,255,.03));
+  border-color:rgba(242,86,106,.42)}
+.rc-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rc-badge{flex:0 0 auto;font-size:11.5px;font-weight:700;letter-spacing:.06em;padding:5px 10px;border-radius:99px;
+  color:#9DF0E4;border:1px solid rgba(79,214,200,.42);background:rgba(79,214,200,.12)}
+.rcpanel.over .rc-badge,.rcverdict.ng .rc-badge{color:#FFC2CB;border-color:rgba(242,86,106,.45);
+  background:rgba(242,86,106,.14)}
+.rc-sum{flex:1;min-width:0;font-size:11.5px;color:var(--dim)}
+.rc-sum b{color:var(--ivory);font-variant-numeric:tabular-nums}
+.rc-pct{flex:0 0 auto;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:#9DF0E4}
+.rcpanel.over .rc-pct{color:#FFC2CB}
+.rc-parts{display:flex;flex-direction:column;gap:5px}
+.rcline .rcw{flex:0 0 68px;height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.rcline .rcw>i{display:block;height:100%;border-radius:99px;transform-origin:left center;
+  background:linear-gradient(90deg,var(--c-violet-400,#9B7BE8),var(--c-jade-400,#4FD6C8))}
+.rcnote.ok{color:var(--dim)}
+.rc-awk{font-size:11.5px;color:#FFE08A;line-height:1.5}
+.rc-fix{display:flex;flex-direction:column;gap:7px}
+.rcfix{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;
+  min-height:var(--tap,44px);padding:10px 12px;border-radius:13px;cursor:pointer;
+  border:1px solid rgba(240,197,80,.42);background:rgba(240,197,80,.10);color:var(--ivory);
+  font:inherit;transition:transform .12s ease,background .12s ease}
+.rcfix:active{transform:scale(.98);background:rgba(240,197,80,.18)}
+.rcfix b{font-size:13.5px;color:#FFE08A}
+/* 余りを活かすほうの一手は、直す一手と色を分ける */
+.rcfix.up{border-color:rgba(79,214,200,.42);background:rgba(79,214,200,.10)}
+.rcfix.up:active{background:rgba(79,214,200,.18)}
+.rcfix.up b{color:#9DF0E4}
+.rcfix span{font-size:11.5px;color:var(--dim)}
+
+/* ===== 確認の段の RC適合 / RC外 ===== */
+.rcverdict{border:1px solid var(--line2);border-radius:16px;padding:12px;
+  background:rgba(79,214,200,.07);display:flex;flex-direction:column;gap:10px}
+.rcverdict.ng{background:rgba(242,86,106,.09);border-color:rgba(242,86,106,.38)}
+.rcv-head{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ivory);line-height:1.5}
+.rcv-head span:last-child{flex:1;min-width:0}
+.rcissues{display:flex;flex-direction:column;gap:7px}
+.rcissue{display:flex;align-items:center;gap:9px;text-align:left;width:100%;min-height:var(--tap,44px);
+  padding:10px 12px;border-radius:13px;cursor:pointer;font:inherit;color:var(--ivory);
+  border:1px solid rgba(242,86,106,.34);background:rgba(242,86,106,.10)}
+.rcissue:active{transform:scale(.99)}
+.rcissue .ri-w{flex:0 0 auto;font-size:11px;color:#FFC2CB;border:1px solid rgba(242,86,106,.4);
+  border-radius:99px;padding:3px 8px}
+.rcissue .ri-t{flex:1;min-width:0;font-size:12.5px;line-height:1.45}
+.rcissue em{flex:0 0 auto;font-style:normal;font-size:11.5px;color:#FFE08A}
+.rcrows{display:flex;flex-direction:column;gap:9px}
+.rcrow{display:flex;flex-direction:column;gap:5px}
+.rcrow .rcn em{font-style:normal;font-size:10.5px;color:#FFE08A;margin-left:5px}
+.rc-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rc-acts .btn{width:auto;padding:9px 13px;font-size:12.5px;min-height:var(--tap,44px)}

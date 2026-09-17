@@ -55,7 +55,7 @@
 .effrow.t-bad .eh .ei{background:rgba(242,86,106,.2);color:#FFC2CC}
 .effrow.t-good .eh .ei{background:rgba(79,214,200,.2);color:#9DF0E4}
 .effrow .eh b{flex:1;min-width:0;font-size:14.5px;font-family:var(--serif);letter-spacing:.04em}
-.effrow .effswap{width:auto;padding:8px 11px;font-size:11.5px;min-height:40px;color:#CDC3DC}
+.effrow .effswap{width:auto;padding:8px 11px;font-size:11.5px;min-height:44px;color:#CDC3DC}
 .effrow .ed{line-height:1.6}
 .eseg{display:flex;gap:6px;margin-top:9px}
 .eseg button{flex:1;min-height:44px;border-radius:12px;border:1px solid var(--line);font-size:12.5px;
