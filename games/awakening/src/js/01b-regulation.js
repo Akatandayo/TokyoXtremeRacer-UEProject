@@ -77,6 +77,16 @@ const RC = {
     spGainPerPoint:17              // SP1回復ぶん（1手つかうので、許容量のSP単価より安く見る）
   },
 
+  /* ---- 技そのものの上限 ---- */
+  limits:{
+    // 実際の上限は BALANCE.maxPriority。ここは BALANCE が無い場所のための控え。
+    maxPriority:3
+  },
+  maxPriority(){
+    return (typeof BALANCE!=="undefined"&&BALANCE.maxPriority!=null)
+      ? BALANCE.maxPriority : this.limits.maxPriority;
+  },
+
   /* ---- キャラクター側の規定 ---- */
   chara:{
     statBudget:480,     // 通常形態に配れる合計（BALANCE.build.budget と揃える）
@@ -191,6 +201,33 @@ const RC = {
     return Math.max(0, v*side);
   },
 
+  /* 可変SP技（costMax）は、注ぎ込む量で威力も持続も変わる。
+     基本SPだけで測ると「SP1ごとの威力」をいくら盛っても点数に出ない、という穴になる。
+     計算はエンジンと同じ effectiveSkill を使い、二重に実装しない。 */
+  atSpend(s,spend){
+    let e;
+    if(typeof BattleEngine!=="undefined"&&BattleEngine.effectiveSkill)
+      e=BattleEngine.effectiveSkill(s,spend);
+    else{
+      // エンジンが無い場所（検査道具など）でも同じ結果になるようにする
+      const base=Math.max(0,Number(s.cost)||0), extra=Math.max(0,spend-base);
+      e=Object.assign({},s);
+      if(extra&&s.powerPerSp) e.power=(s.power||0)+extra*s.powerPerSp;
+      if(extra&&s.durationPerSp&&s.effects)
+        e.effects=s.effects.map(x=>Object.assign({},x,{duration:(x.duration||1)+extra*s.durationPerSp}));
+    }
+    return Object.assign({},e,{cost:spend});
+  },
+  /* 選べる注ぎ込み方をすべて並べる */
+  spendRange(s){
+    const base=Math.max(0,Number(s.cost)||0);
+    const 上限=(typeof BALANCE!=="undefined"&&BALANCE.sp&&BALANCE.sp.max)||8;
+    const max=Math.max(base,Math.min(Number(s.costMax)||base,上限));
+    const out=[];
+    for(let v=base;v<=max;v++) out.push(v);
+    return out.length?out:[base];
+  },
+
   /* 許容量。awakened=true なら覚醒形態として甘くする */
   allowanceFor(skill,awakened){
     const cost=Math.max(0,Number(skill&&skill.cost)||0);
@@ -201,14 +238,30 @@ const RC = {
     return Math.round(a*10)/10;
   },
 
-  /* 技ひとつの判定 */
+  /* 技ひとつの判定。可変SP技は、どの注ぎ方でも収まっていなければ適合としない。 */
   checkSkill(skill,awakened){
-    const v=this.valueOf(skill);
-    const a=this.allowanceFor(skill,awakened);
-    const 比=a?v.total/a:0;
-    const ok=v.total<=a*(1+this.allow.tolerance);
-    return {ok, value:v.total, allowance:a, ratio:Math.round(比*100)/100,
-            over:Math.max(0,Math.round((v.total-a)*10)/10), parts:v.parts};
+    const s=skill||{};
+    let worst=null;
+    this.spendRange(s).forEach(spend=>{
+      const 実=this.atSpend(s,spend);
+      const v=this.valueOf(実);
+      const a=this.allowanceFor(実,awakened);
+      const 比=a?v.total/a:0;
+      const r={ok:v.total<=a*(1+this.allow.tolerance), value:v.total, allowance:a,
+               ratio:Math.round(比*100)/100, spend,
+               over:Math.max(0,Math.round((v.total-a)*10)/10), parts:v.parts};
+      if(!worst||比>worst.ratio) worst=r;
+    });
+    // 先制の上限は、点数ではなく規定そのもので縛る（点数で許すと結局は積める）
+    const prio=Math.max(0,Number(s.priority)||0);
+    const 上限=this.maxPriority();
+    if(prio>上限){
+      worst.ok=false;
+      worst.reason=`先制は${上限}までです（この技は${prio}）。`;
+    }
+    if(this.spendRange(s).length>1&&worst.spend!=null&&worst.spend!==(Number(s.cost)||0))
+      worst.worstSpend=worst.spend;    // どの注ぎ方で外れたかを呼び出し側に伝える
+    return worst;
   },
 
   /* 能力値が予算に収まっているか */
@@ -233,8 +286,10 @@ const RC = {
         const s=SK[id]; if(!s) return;
         const r=this.checkSkill(s,awakened);
         rows.push(Object.assign({id,name:s.name,cost:s.cost||0,awakened},r));
-        if(!r.ok) issues.push({where:ラベル,
-          text:`「${s.name}」が ${r.over} 点ぶん強すぎます（価値 ${r.value} / SP${s.cost||0}の許容 ${r.allowance}）。`});
+        if(!r.ok) issues.push({where:ラベル, text: r.reason
+          ? `「${s.name}」: ${r.reason}`
+          : `「${s.name}」が ${r.over} 点ぶん強すぎます（価値 ${r.value} / SP${r.spend!=null?r.spend:(s.cost||0)}の許容 ${r.allowance}）。`
+            +(r.worstSpend!=null?`SP${r.worstSpend}まで注ぎ込んだときが特に重いです。`:"")});
       });
     };
     みる(char.skills,false,"技");

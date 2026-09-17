@@ -1079,7 +1079,7 @@ const Editor = {
       </div>
       <div class="grid4">
         ${[["k-power","威力",s.power,0,300],["k-acc","命中",s.accuracy,25,100],
-           ["k-cost","SP",s.cost,0,BALANCE.sp.max],["k-prio","優先度",s.priority,0,5]].map(f=>
+           ["k-cost","SP",s.cost,0,BALANCE.sp.max],["k-prio","優先度",s.priority,0,BALANCE.maxPriority]].map(f=>
           `<div class="fld"><label for="${f[0]}">${f[1]}</label>
             <input type="number" id="${f[0]}" class="ksim" inputmode="numeric" pattern="[0-9]*"
               min="${f[3]}" max="${f[4]}" value="${f[2]}"></div>`).join("")}
@@ -1480,7 +1480,7 @@ const Editor = {
     const s={id:this.skillEditId||this.skill.id,name:v("k-name"),description:v("k-desc"),
       type:$("#k-type").value,power:n("k-power"),
       accuracy:Math.max(BALANCE.accuracyMin,Math.min(BALANCE.accuracyMax,n("k-acc")||95)),
-      cost,priority:Math.max(0,n("k-prio")),hits:Math.max(1,n("k-hits")),formula:$("#k-formula").value,
+      cost,priority:Math.max(0,Math.min(BALANCE.maxPriority,n("k-prio"))),hits:Math.max(1,n("k-hits")),formula:$("#k-formula").value,
       guardBreak:b("k-gb"),buffPierce:b("k-bp"),cleanse:b("k-cleanse"),
       effects:this.buildEffects(),custom:true};
     if(this.skill&&this.skill.sfxId) s.sfxId=this.skill.sfxId;

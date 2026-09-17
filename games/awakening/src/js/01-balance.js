@@ -17,6 +17,7 @@ const BALANCE = {
     minHp:400, minStat:30,
     awakenBonus:150        // 覚醒形態はATK+DEF+SPDの合計にこれだけ上乗せできる
   },
+  maxPriority: 3,          // 先制の上限。これ以上を許すと「優先度ゲー」になる
   ruleset: "competitive",  // 将来 "casual" を追加できるよう保持
   permanentDuration: 99,   // これ以上の持続ターンは「永続」として扱う
 

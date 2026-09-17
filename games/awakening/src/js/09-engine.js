@@ -119,7 +119,10 @@ class BattleEngine{
 
     // 行動順：技のpriority → SPD → ランダム
     acts.forEach(x=>{
-      x.prio = x.a.type==="AWAKEN" ? 9 : (x.a.type==="SKILL" ? ((this.SK[x.a.skillId]||{}).priority||0) : 0);
+      // 先制は上限で頭打ちにする。取り込んだデータや通信相手の技でも「優先度ゲー」にしない。
+      const 上限=(BALANCE.maxPriority!=null)?BALANCE.maxPriority:3;
+      const p=(this.SK[x.a.skillId]||{}).priority||0;
+      x.prio = x.a.type==="AWAKEN" ? 9 : (x.a.type==="SKILL" ? Math.max(0,Math.min(上限,p)) : 0);
       x.spd = Effects.stat(x.f,"spd");
       x.tie = this.rng();
     });
