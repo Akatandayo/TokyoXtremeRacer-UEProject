@@ -6,7 +6,7 @@
     {
       "id": "ch1-1",
       "name": "森の入口",
-      "recommendedPower": 1,
+      "recommendedLevel": 1,
       "enemies": [
         { "enemyId": "en_slime_green", "level": 1, "position": 0 },
         { "enemyId": "en_slime_green", "level": 1, "position": 1 },
@@ -18,7 +18,7 @@
     {
       "id": "ch1-2",
       "name": "朽ちた獣道",
-      "recommendedPower": 3,
+      "recommendedLevel": 3,
       "enemies": [
         { "enemyId": "en_slime_green", "level": 3, "position": 0 },
         { "enemyId": "en_wolf_gale", "level": 3, "position": 1 },
@@ -31,7 +31,7 @@
     {
       "id": "ch1-3",
       "name": "胞子の窪地",
-      "recommendedPower": 5,
+      "recommendedLevel": 5,
       "enemies": [
         { "enemyId": "en_mold_toxic", "level": 5, "position": 0 },
         { "enemyId": "en_mold_toxic", "level": 5, "position": 1 },
@@ -44,7 +44,7 @@
     {
       "id": "ch1-4",
       "name": "風喰らいの尾根",
-      "recommendedPower": 7,
+      "recommendedLevel": 7,
       "enemies": [
         { "enemyId": "en_wolf_gale", "level": 7, "position": 0 },
         { "enemyId": "en_wolf_gale", "level": 7, "position": 1 },
@@ -58,7 +58,7 @@
     {
       "id": "ch1-5",
       "name": "巨石兵の巣",
-      "recommendedPower": 9,
+      "recommendedLevel": 9,
       "boss": true,
       "enemies": [
         { "enemyId": "boss_gigant_stone", "level": 9, "position": 0 },

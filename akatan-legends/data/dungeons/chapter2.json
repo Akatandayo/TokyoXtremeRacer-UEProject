@@ -6,7 +6,7 @@
     {
       "id": "ch2-1",
       "name": "廃されたサーバ棟",
-      "recommendedPower": 11,
+      "recommendedLevel": 11,
       "enemies": [
         { "enemyId": "en_drone_scan", "level": 11, "position": 0 },
         { "enemyId": "en_drone_scan", "level": 11, "position": 1 },
@@ -19,7 +19,7 @@
     {
       "id": "ch2-2",
       "name": "亡霊の資料室",
-      "recommendedPower": 13,
+      "recommendedLevel": 13,
       "enemies": [
         { "enemyId": "en_specter_pale", "level": 13, "position": 0 },
         { "enemyId": "en_specter_pale", "level": 13, "position": 1 },
@@ -32,7 +32,7 @@
     {
       "id": "ch2-3",
       "name": "虚王の玉座前",
-      "recommendedPower": 15,
+      "recommendedLevel": 15,
       "enemies": [
         { "enemyId": "boss_vald_hollow", "level": 15, "position": 0 },
         { "enemyId": "en_knight_husk", "level": 14, "position": 1 },
@@ -44,7 +44,7 @@
     {
       "id": "ch2-4",
       "name": "零番演算層",
-      "recommendedPower": 17,
+      "recommendedLevel": 17,
       "enemies": [
         { "enemyId": "en_drone_scan", "level": 17, "position": 0 },
         { "enemyId": "en_drone_scan", "level": 17, "position": 1 },
@@ -58,7 +58,7 @@
     {
       "id": "ch2-5",
       "name": "ヌル・コア",
-      "recommendedPower": 20,
+      "recommendedLevel": 20,
       "boss": true,
       "enemies": [
         { "enemyId": "boss_null_daemon", "level": 20, "position": 0 },

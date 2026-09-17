@@ -380,20 +380,20 @@ export const MOCK_CHAPTERS: ChapterDef[] = [
     id: 'ch1', name: '第一章 ネオン東京・序章',
     description: '雨の降る歓楽街。異常の発生源を辿る。',
     stages: [
-      { id: 'ch1-1', name: '1-1 濡れた路地', recommendedPower: 900, enemies: [{ enemyId: 'en_noise', level: 3 }, { enemyId: 'en_noise', level: 3 }], rewards: { exp: 120, gold: 300 }, description: 'ノイズが湧いている。掃除から始めよう。' },
-      { id: 'ch1-2', name: '1-2 赤提灯の通り', recommendedPower: 1200, enemies: [{ enemyId: 'en_noise', level: 4 }, { enemyId: 'en_oni', level: 5 }], rewards: { exp: 180, gold: 420 }, description: '火の匂いがする。' },
-      { id: 'ch1-3', name: '1-3 高架下', recommendedPower: 1600, enemies: [{ enemyId: 'en_ghost', level: 6 }, { enemyId: 'en_drone', level: 6 }, { enemyId: 'en_noise', level: 5 }], rewards: { exp: 240, gold: 560 }, description: '誰かが呼んでいる。' },
-      { id: 'ch1-4', name: '1-4 首都高・電磁嵐', recommendedPower: 2400, boss: true, enemies: [{ enemyId: 'en_kirin', level: 10 }, { enemyId: 'en_drone', level: 8 }], rewards: { exp: 520, gold: 1400 }, description: 'BOSS: 電子麒麟・雷伯' },
+      { id: 'ch1-1', name: '1-1 濡れた路地', recommendedLevel: 900, enemies: [{ enemyId: 'en_noise', level: 3 }, { enemyId: 'en_noise', level: 3 }], rewards: { exp: 120, gold: 300 }, description: 'ノイズが湧いている。掃除から始めよう。' },
+      { id: 'ch1-2', name: '1-2 赤提灯の通り', recommendedLevel: 1200, enemies: [{ enemyId: 'en_noise', level: 4 }, { enemyId: 'en_oni', level: 5 }], rewards: { exp: 180, gold: 420 }, description: '火の匂いがする。' },
+      { id: 'ch1-3', name: '1-3 高架下', recommendedLevel: 1600, enemies: [{ enemyId: 'en_ghost', level: 6 }, { enemyId: 'en_drone', level: 6 }, { enemyId: 'en_noise', level: 5 }], rewards: { exp: 240, gold: 560 }, description: '誰かが呼んでいる。' },
+      { id: 'ch1-4', name: '1-4 首都高・電磁嵐', recommendedLevel: 2400, boss: true, enemies: [{ enemyId: 'en_kirin', level: 10 }, { enemyId: 'en_drone', level: 8 }], rewards: { exp: 520, gold: 1400 }, description: 'BOSS: 電子麒麟・雷伯' },
     ],
   },
   {
     id: 'ch2', name: '第二章 電脳霊域',
     description: '崩れた神社のサーバルームへ。虚無が漏れている。',
     stages: [
-      { id: 'ch2-1', name: '2-1 沈んだ参道', recommendedPower: 2800, enemies: [{ enemyId: 'en_ghost', level: 11 }, { enemyId: 'en_ghost', level: 11 }, { enemyId: 'en_golem', level: 12 }], rewards: { exp: 600, gold: 1600 } },
-      { id: 'ch2-2', name: '2-2 瓦礫の社', recommendedPower: 3200, enemies: [{ enemyId: 'en_golem', level: 13 }, { enemyId: 'en_oni', level: 13 }, { enemyId: 'en_drone', level: 12 }], rewards: { exp: 720, gold: 1900 } },
-      { id: 'ch2-3', name: '2-3 断絶回廊', recommendedPower: 3800, enemies: [{ enemyId: 'en_drone', level: 15 }, { enemyId: 'en_noise', level: 15 }, { enemyId: 'en_ghost', level: 15 }, { enemyId: 'en_oni', level: 14 }], rewards: { exp: 880, gold: 2300 } },
-      { id: 'ch2-4', name: '2-4 虚無の祭壇', recommendedPower: 5000, boss: true, enemies: [{ enemyId: 'en_void_priestess', level: 20 }, { enemyId: 'en_ghost', level: 17 }, { enemyId: 'en_ghost', level: 17 }], rewards: { exp: 1600, gold: 5200 }, description: 'BOSS: 虚無の巫女' },
+      { id: 'ch2-1', name: '2-1 沈んだ参道', recommendedLevel: 2800, enemies: [{ enemyId: 'en_ghost', level: 11 }, { enemyId: 'en_ghost', level: 11 }, { enemyId: 'en_golem', level: 12 }], rewards: { exp: 600, gold: 1600 } },
+      { id: 'ch2-2', name: '2-2 瓦礫の社', recommendedLevel: 3200, enemies: [{ enemyId: 'en_golem', level: 13 }, { enemyId: 'en_oni', level: 13 }, { enemyId: 'en_drone', level: 12 }], rewards: { exp: 720, gold: 1900 } },
+      { id: 'ch2-3', name: '2-3 断絶回廊', recommendedLevel: 3800, enemies: [{ enemyId: 'en_drone', level: 15 }, { enemyId: 'en_noise', level: 15 }, { enemyId: 'en_ghost', level: 15 }, { enemyId: 'en_oni', level: 14 }], rewards: { exp: 880, gold: 2300 } },
+      { id: 'ch2-4', name: '2-4 虚無の祭壇', recommendedLevel: 5000, boss: true, enemies: [{ enemyId: 'en_void_priestess', level: 20 }, { enemyId: 'en_ghost', level: 17 }, { enemyId: 'en_ghost', level: 17 }], rewards: { exp: 1600, gold: 5200 }, description: 'BOSS: 虚無の巫女' },
     ],
   },
 ];

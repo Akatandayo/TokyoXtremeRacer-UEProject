@@ -5,7 +5,7 @@
  * 変更する場合は両担当の同意が必要。勝手に変えないこと。
  */
 import type {
-  AffinityTable, AiProfile, Awakening, BattleLog, CharacterArt, Element,
+  AffinityTable, AiProfile, Awakening, BattleLog, CharacterArt, ComboDef, Element,
   ProgressionConfig, Rarity, Role, Side, Skill, Stats,
 } from '@akatan/shared';
 
@@ -43,6 +43,17 @@ export interface BattleContext {
   /** 再現可能な乱数シード。同じシード+同じ入力 => 同じログ */
   seed: number;
   stageId?: string;
+  /**
+   * コンボ定義。味方陣営の編成から成立するコンボを判定して発動させる。
+   * 省略時はコンボ無しとして動作する(既存の呼び出しを壊さない)。
+   */
+  combos?: Map<string, ComboDef>;
+  /**
+   * BattleLog.createdAt に入れる値。
+   * エンジン内で Date.now() を呼ぶとログ全体のハッシュ比較ができなくなるため、
+   * 時刻の注入は呼び出し側(API層)の責務とする。省略時は空文字。
+   */
+  now?: string;
 }
 
 /**

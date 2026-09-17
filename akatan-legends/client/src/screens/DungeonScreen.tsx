@@ -101,7 +101,7 @@ export function DungeonScreen(): JSX.Element {
         <div className="grid-auto" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(238px, 1fr))' }}>
           {(chapter?.stages ?? []).map((s) => {
             const cleared = store.clearedStages.includes(s.id);
-            const rec = s.recommendedPower ?? 0;
+            const rec = s.recommendedLevel ?? 0;
             const ratio = rec > 0 ? partyPower / rec : 1;
             const cls = ratio >= 1 ? 'power-ok' : ratio >= 0.75 ? 'power-warn' : 'power-bad';
             const label = ratio >= 1 ? '十分' : ratio >= 0.75 ? 'やや不足' : '戦力不足';

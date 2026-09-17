@@ -174,8 +174,13 @@ export interface AiRule {
 export interface AiProfile {
   id: string;
   name: string;
-  /** プレイヤーが選べる戦術プリセット名 */
   description?: string;
+  /**
+   * プレイヤーがキャラに設定できる戦術プリセットかどうか。
+   * 敵・ボス専用AIは false。省略時は false 扱い(明示的に true を付けたものだけ選択肢に出す)。
+   * ID接頭辞での判別はデータ側の命名規約に依存して壊れるため、フラグで持つ。
+   */
+  playerSelectable?: boolean;
   rules: AiRule[];
 }
 
@@ -343,8 +348,18 @@ export interface EnemyPlacement {
 export interface StageDef {
   id: string;
   name: string;
-  /** 推奨戦力 */
-  recommendedPower?: number;
+  /**
+   * 推奨レベル。パーティの平均レベルと比較して表示する。
+   * (旧 recommendedPower は「戦力スコア」と誤解され、Lv1でも最終ボスが「十分」と
+   *  表示される不具合を生んだため、単位を明示した名前に変更した)
+   */
+  recommendedLevel?: number;
+  /**
+   * このステージを開放するために必要なクリア済みステージID。
+   * 未クリアの場合、サーバは STAGE_LOCKED を返して挑戦を拒否する。
+   * 省略時は最初から開放。
+   */
+  unlockAfter?: string;
   enemies: EnemyPlacement[];
   rewards: StageRewards;
   boss?: boolean;
@@ -376,6 +391,78 @@ export interface Party {
   name: string;
   /** 長さ PARTY_SIZE。空き枠は null */
   members: (string | null)[];
+}
+
+/* ============================================================
+ * キャラクターコンボ (設計書§13〜§15)
+ * ------------------------------------------------------------
+ * 本作の看板システム。「誰と組ませるか」を性能に反映させるための仕組み。
+ * data/combos/*.json で定義し、コードを書き換えずにコンボを追加できる。
+ * ========================================================== */
+
+export const COMBO_KINDS = ['PAIR', 'TRIO', 'PARTY', 'TAG'] as const;
+export type ComboKind = (typeof COMBO_KINDS)[number];
+
+export type ComboTriggerType =
+  /** 指定キャラが指定スキル(またはタグを持つスキル)を使用した直後 */
+  | 'ON_SKILL_USE'
+  /** 戦闘開始時に1度だけ(常時パッシブ的な効果に使う) */
+  | 'ON_BATTLE_START'
+  /** 参加キャラのHPが閾値以下になった時 */
+  | 'ON_HP_BELOW'
+  /** 味方が撃破された時 */
+  | 'ON_ALLY_DEFEATED';
+
+export interface ComboTrigger {
+  type: ComboTriggerType;
+  /** ON_SKILL_USE: 発動の起点になるキャラのdefId。省略時は members のいずれか */
+  actor?: string;
+  /** ON_SKILL_USE: このスキルIDで発動 */
+  skill?: string;
+  /** ON_SKILL_USE: このタグを持つスキルで発動(skill と併用可、どちらか一致で成立) */
+  skillTag?: string;
+  /** ON_HP_BELOW: 閾値(%) */
+  hpBelow?: number;
+  /** 再発動までの待機(発動キャラの行動回数基準)。省略時0 */
+  cooldown?: number;
+  /** 1戦闘での最大発動回数。省略時は無制限 */
+  maxPerBattle?: number;
+}
+
+export interface ComboEffect {
+  /**
+   * この効果を実行するキャラのdefId。省略時は「起点キャラ以外の参加キャラ」。
+   * 例: 独がglitchを使ったら紅葉が追撃する場合、performer は momiji。
+   */
+  performer?: string;
+  /** 追撃として発動するスキルID(performer のステータスで計算される) */
+  skill?: string;
+  /** スキルを介さない直接効果(バフ付与など) */
+  effect?: SkillEffect;
+}
+
+export interface ComboDef {
+  id: string;
+  name: string;
+  kind: ComboKind;
+  description: string;
+  /** PAIR=2体 / TRIO=3体 の参加キャラdefId。TAG/PARTY では省略可 */
+  members?: string[];
+  /** TAG: このタグを持つキャラが count 体以上編成されていれば成立 */
+  requireTag?: { tag: string; count: number };
+  /** PARTY: パーティ全員がこの属性なら成立 */
+  requireAllElement?: Element;
+  trigger: ComboTrigger;
+  effects: ComboEffect[];
+  /** 演出キー */
+  fx?: string;
+}
+
+/** 編成画面で「今この編成で発動するコンボ」を返すための表示用型 */
+export interface ActiveCombo {
+  def: ComboDef;
+  /** 成立に寄与しているキャラのdefId */
+  memberDefIds: string[];
 }
 
 /* ============================================================
@@ -455,6 +542,14 @@ export interface BattleEvent {
   element?: Element;
   fx?: string;
   text?: string;
+  /** COMBO イベント: 発動したコンボID */
+  comboId?: string;
+  /**
+   * 複数対象へ同じスキルの同じ効果が連続適用される場合、
+   * 2件目以降に true が入る。UIはこれを見てログ行を1行にまとめてよい
+   * (「味方全体にシールドが張られた」等)。スナップショットは各件に付く。
+   */
+  grouped?: boolean;
   /** イベント適用直後のユニット状態(再生用) */
   snapshot?: BattleUnitSnapshot[];
 }
