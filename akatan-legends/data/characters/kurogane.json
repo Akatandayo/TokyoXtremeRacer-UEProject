@@ -1,0 +1,58 @@
+{
+  "id": "kurogane",
+  "name": "黒鉄 巌",
+  "title": "KUROGANE IWAO",
+  "rarity": "N",
+  "element": "EARTH",
+  "roles": ["TANK"],
+  "baseStats": {
+    "hp": 1100,
+    "attack": 55,
+    "defense": 120,
+    "speed": 62,
+    "critical": 3,
+    "criticalDamage": 140,
+    "resistance": 30,
+    "healing": 100
+  },
+  "growth": {
+    "hp": 95,
+    "attack": 3.2,
+    "defense": 11,
+    "speed": 0.5,
+    "resistance": 0.8
+  },
+  "normalAttack": "na_kurogane_bash",
+  "skills": ["sk_kurogane_provoke", "sk_kurogane_bulwark"],
+  "ultimate": "ult_kurogane_immovable",
+  "awakening": {
+    "id": "immovable_oath",
+    "name": "不動の誓い",
+    "condition": { "hpBelow": 40 },
+    "statBonus": { "defense": 60, "hp": 20, "resistance": 20 },
+    "grant": [
+      { "status": "TAUNT", "duration": 3 },
+      { "status": "DEF_UP", "duration": 3, "potency": 30 }
+    ],
+    "description": "膝をついた瞬間に、逆に前へ出る。守ると言った以上は最後まで守る、という一点だけで成り立っている覚醒。",
+    "fx": "awaken_earth"
+  },
+  "defaultAi": "ai_kurogane_guard",
+  "description": "無口で融通の利かない、元・現場作業員という設定の男。攻撃性能はゲーム中最低クラスだが、挑発と防御バフを両立できるのは彼だけで、壁役の仕事に限ればSSRやURを上回る。星の数を気にする人間ほど、彼を外して全滅する。",
+  "tags": ["Taunt", "Wall", "LowRarityCore"],
+  "trpg": {
+    "source": "身内CoC(架空卓)",
+    "player": "PL-C(仮)",
+    "investigator": "黒鉄 巌(架空の探索者)",
+    "affiliation": "架空の土木作業チーム",
+    "visibility": "PRIVATE",
+    "note": "本データは身内TRPGをモチーフにした架空の仮設定です。実在の人物・団体とは一切関係ありません。"
+  },
+  "art": {
+    "primary": "#4A4A44",
+    "secondary": "#22211E",
+    "accent": "#C8A24A",
+    "sigil": "巌",
+    "pattern": "grid"
+  }
+}

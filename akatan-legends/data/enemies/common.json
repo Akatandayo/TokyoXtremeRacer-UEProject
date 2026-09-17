@@ -1,0 +1,407 @@
+[
+  {
+    "id": "en_slime_green",
+    "name": "みどりスライム",
+    "element": "WATER",
+    "roles": [
+      "TANK"
+    ],
+    "baseStats": {
+      "hp": 340,
+      "attack": 48,
+      "defense": 46,
+      "speed": 62,
+      "critical": 2,
+      "criticalDamage": 130,
+      "resistance": 10,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 38,
+      "attack": 3.0,
+      "defense": 3.2,
+      "speed": 0.4
+    },
+    "normalAttack": "na_slime_tackle",
+    "skills": [
+      "sk_en_sticky_tackle"
+    ],
+    "defaultAi": "ai_en_slime",
+    "description": "森の入口に必ず居る、最初の相手。硬くはないが粘り、こちらの足を止めようとしてくる。",
+    "tags": [
+      "Beginner"
+    ],
+    "art": {
+      "primary": "#2F4F3A",
+      "secondary": "#121C16",
+      "accent": "#7FBF8F",
+      "sigil": "粘",
+      "pattern": "wave"
+    }
+  },
+  {
+    "id": "en_bat_shadow",
+    "name": "影コウモリ",
+    "element": "DARK",
+    "roles": [
+      "ATTACKER"
+    ],
+    "baseStats": {
+      "hp": 250,
+      "attack": 58,
+      "defense": 32,
+      "speed": 104,
+      "critical": 8,
+      "criticalDamage": 140,
+      "resistance": 5,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 26,
+      "attack": 3.8,
+      "defense": 2.2,
+      "speed": 1.0
+    },
+    "normalAttack": "na_bat_bite",
+    "skills": [
+      "sk_en_drain_bite"
+    ],
+    "defaultAi": "ai_en_bat",
+    "description": "弱った者から順に狙う。放置すると吸血で勝手に立て直すので、最初に落としたい。",
+    "tags": [
+      "Beginner"
+    ],
+    "art": {
+      "primary": "#332A3F",
+      "secondary": "#100C15",
+      "accent": "#8B6FA8",
+      "sigil": "蝠",
+      "pattern": "void"
+    }
+  },
+  {
+    "id": "en_wisp_ember",
+    "name": "火の玉",
+    "element": "FIRE",
+    "roles": [
+      "ATTACKER"
+    ],
+    "baseStats": {
+      "hp": 230,
+      "attack": 62,
+      "defense": 28,
+      "speed": 96,
+      "critical": 6,
+      "criticalDamage": 140,
+      "resistance": 8,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 24,
+      "attack": 4.0,
+      "defense": 2.0,
+      "speed": 0.9
+    },
+    "normalAttack": "na_wisp_spark",
+    "skills": [
+      "sk_en_ember_burst"
+    ],
+    "defaultAi": "ai_en_wisp",
+    "description": "耐久は紙だが火力だけは一人前。水属性を一人入れておくと、戦闘時間が目に見えて縮む。",
+    "tags": [
+      "Beginner",
+      "Glass"
+    ],
+    "art": {
+      "primary": "#6E2A18",
+      "secondary": "#1E0A06",
+      "accent": "#FF8C42",
+      "sigil": "焔",
+      "pattern": "burst"
+    }
+  },
+  {
+    "id": "en_wolf_gale",
+    "name": "疾風狼",
+    "element": "WIND",
+    "roles": [
+      "ATTACKER"
+    ],
+    "baseStats": {
+      "hp": 300,
+      "attack": 66,
+      "defense": 36,
+      "speed": 112,
+      "critical": 10,
+      "criticalDamage": 145,
+      "resistance": 6,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 30,
+      "attack": 4.2,
+      "defense": 2.4,
+      "speed": 1.1
+    },
+    "normalAttack": "na_wolf_claw",
+    "skills": [
+      "sk_en_gale_rush"
+    ],
+    "defaultAi": "ai_en_wolf",
+    "description": "行動ゲージを自分で押し上げて連続行動する。速度デバフを当てられるかどうかで難易度が変わる。",
+    "tags": [
+      "Fast"
+    ],
+    "art": {
+      "primary": "#3A4A3C",
+      "secondary": "#141A15",
+      "accent": "#A8E6A0",
+      "sigil": "牙",
+      "pattern": "wave"
+    }
+  },
+  {
+    "id": "en_golem_stone",
+    "name": "石のゴーレム",
+    "element": "EARTH",
+    "roles": [
+      "TANK"
+    ],
+    "baseStats": {
+      "hp": 520,
+      "attack": 58,
+      "defense": 78,
+      "speed": 52,
+      "critical": 2,
+      "criticalDamage": 130,
+      "resistance": 20,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 44,
+      "attack": 3.4,
+      "defense": 5.0,
+      "speed": 0.3
+    },
+    "normalAttack": "na_golem_smash",
+    "skills": [
+      "sk_en_rock_throw",
+      "sk_en_stone_guard"
+    ],
+    "defaultAi": "ai_en_golem",
+    "description": "殴り合うと長引く。防御バフを重ねてくるので、DEF_DOWN か継続ダメージで崩すのが早い。",
+    "tags": [
+      "Wall"
+    ],
+    "art": {
+      "primary": "#4A463C",
+      "secondary": "#1C1A16",
+      "accent": "#9C8A5E",
+      "sigil": "岩",
+      "pattern": "grid"
+    }
+  },
+  {
+    "id": "en_drone_scan",
+    "name": "監視ドローン",
+    "element": "VOID",
+    "roles": [
+      "CONTROL"
+    ],
+    "baseStats": {
+      "hp": 280,
+      "attack": 52,
+      "defense": 40,
+      "speed": 108,
+      "critical": 5,
+      "criticalDamage": 135,
+      "resistance": 15,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 28,
+      "attack": 3.4,
+      "defense": 2.6,
+      "speed": 1.0
+    },
+    "normalAttack": "na_drone_beam",
+    "skills": [
+      "sk_en_scan_jam"
+    ],
+    "defaultAi": "ai_en_drone",
+    "description": "こちらのスキルを封じにくる妨害役。沈黙を受けると編成が丸ごと止まるため、優先して落とす対象。",
+    "tags": [
+      "Jammer",
+      "Network"
+    ],
+    "art": {
+      "primary": "#232838",
+      "secondary": "#0B0E15",
+      "accent": "#5FD2FF",
+      "sigil": "眼",
+      "pattern": "circuit"
+    }
+  },
+  {
+    "id": "en_specter_pale",
+    "name": "蒼白の亡霊",
+    "element": "DARK",
+    "roles": [
+      "CONTROL"
+    ],
+    "baseStats": {
+      "hp": 320,
+      "attack": 60,
+      "defense": 38,
+      "speed": 98,
+      "critical": 6,
+      "criticalDamage": 140,
+      "resistance": 25,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 32,
+      "attack": 3.9,
+      "defense": 2.5,
+      "speed": 0.9
+    },
+    "normalAttack": "na_specter_touch",
+    "skills": [
+      "sk_en_chill_wail"
+    ],
+    "defaultAi": "ai_en_specter",
+    "description": "全体攻撃力デバフを撒いてくる。光属性で殴ると一気に溶けるので、北斗の出番。",
+    "tags": [
+      "Debuffer"
+    ],
+    "art": {
+      "primary": "#3B4756",
+      "secondary": "#151A20",
+      "accent": "#A9C6DB",
+      "sigil": "霊",
+      "pattern": "void"
+    }
+  },
+  {
+    "id": "en_knight_husk",
+    "name": "虚ろの騎士",
+    "element": "LIGHT",
+    "roles": [
+      "TANK",
+      "ATTACKER"
+    ],
+    "baseStats": {
+      "hp": 520,
+      "attack": 74,
+      "defense": 62,
+      "speed": 84,
+      "critical": 8,
+      "criticalDamage": 145,
+      "resistance": 18,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 46,
+      "attack": 4.6,
+      "defense": 4.0,
+      "speed": 0.7
+    },
+    "normalAttack": "na_knight_thrust",
+    "skills": [
+      "sk_en_hollow_thrust"
+    ],
+    "defaultAi": "ai_en_knight",
+    "description": "中身のない鎧。防御と火力の両立という面倒な性能で、こちらの壁役の防御を削りにくる。",
+    "tags": [
+      "Bruiser"
+    ],
+    "art": {
+      "primary": "#5A5648",
+      "secondary": "#1E1C18",
+      "accent": "#E0D3A0",
+      "sigil": "虚",
+      "pattern": "grid"
+    }
+  },
+  {
+    "id": "en_mold_toxic",
+    "name": "毒胞子",
+    "element": "EARTH",
+    "roles": [
+      "SPECIALIST"
+    ],
+    "baseStats": {
+      "hp": 360,
+      "attack": 44,
+      "defense": 44,
+      "speed": 70,
+      "critical": 2,
+      "criticalDamage": 130,
+      "resistance": 30,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 34,
+      "attack": 2.8,
+      "defense": 3.0,
+      "speed": 0.5
+    },
+    "normalAttack": "na_mold_tap",
+    "skills": [
+      "sk_en_spore_cloud"
+    ],
+    "defaultAi": "ai_en_mold",
+    "description": "直接火力はほぼ無いが、毒を全体に重ねてくる。雫のような解除役の有無で難易度が別物になる。",
+    "tags": [
+      "Poison"
+    ],
+    "art": {
+      "primary": "#3E4A22",
+      "secondary": "#161B0D",
+      "accent": "#B6D65A",
+      "sigil": "胞",
+      "pattern": "petal"
+    }
+  },
+  {
+    "id": "en_acolyte_lost",
+    "name": "迷いの侍祭",
+    "element": "LIGHT",
+    "roles": [
+      "HEALER"
+    ],
+    "baseStats": {
+      "hp": 340,
+      "attack": 46,
+      "defense": 42,
+      "speed": 92,
+      "critical": 3,
+      "criticalDamage": 130,
+      "resistance": 20,
+      "healing": 120
+    },
+    "growth": {
+      "hp": 32,
+      "attack": 2.9,
+      "defense": 2.9,
+      "speed": 0.8,
+      "healing": 1.0
+    },
+    "normalAttack": "na_acolyte_rod",
+    "skills": [
+      "sk_en_lost_prayer"
+    ],
+    "defaultAi": "ai_en_acolyte",
+    "description": "敵側の回復役。先に落とさないと戦闘が終わらない、という基本を教えてくる存在。",
+    "tags": [
+      "Healer"
+    ],
+    "art": {
+      "primary": "#5C5340",
+      "secondary": "#1F1B14",
+      "accent": "#DCC98A",
+      "sigil": "祈",
+      "pattern": "burst"
+    }
+  }
+]

@@ -95,14 +95,20 @@ export interface SkillEffect {
   type: SkillEffectType;
   /** DAMAGE/HEAL: 攻撃力(または対象最大HP)に対する倍率。1.0 = 等倍 */
   power?: number;
-  /** ヒット数。省略時は1 */
+  /** ヒット数。省略時は1。CLEANSE では「解除する状態異常の数」を意味する */
   hits?: number;
   /** 参照ステータス。省略時は attack */
   scaling?: StatKey;
   /** STATUS 用 */
   status?: StatusType;
   duration?: number;
-  /** 状態異常の強度(%またはダメージ係数) */
+  /**
+   * 状態異常の強度。**単位は status の種別ごとに異なる**ので注意:
+   *  - POISON/BURN/BLEED/REGEN : 対象の「最大HPに対する%」(装備インフレで腐らないため)
+   *  - SHIELD                  : 付与時点の「最大HPに対する%」(内部で残吸収量の絶対値へ変換される)
+   *  - ATK_UP/ATK_DOWN/DEF_UP/DEF_DOWN/SPD_UP/SLOW : ステータス補正(%)
+   *  - FREEZE/STUN/SILENCE/TAUNT : 未使用
+   */
   potency?: number;
   /** 発動確率(%)。省略時は100 */
   chance?: number;
@@ -198,9 +204,13 @@ export interface AwakeningCondition {
   skillUsed?: { skill: string; count: number };
   /** 味方が N 体撃破された */
   allyDefeated?: number;
-  /** 敵を N 体撃破 */
+  /** 敵を N 体撃破(自分のキル数ではなく、相手陣営の累計撃破数) */
   enemyDefeated?: number;
-  /** N ターン経過 */
+  /**
+   * N ターン経過。
+   * 1ターン(ラウンド) = 「ラウンド開始時の生存ユニット数ぶんの行動が消化された」時点。
+   * 1行動=1ターンではない。AiCondition の TURN_ATLEAST も同じ定義。
+   */
   turnAtLeast?: number;
   /** 特定の味方が編成にいる */
   withAlly?: string;
@@ -210,7 +220,7 @@ export interface Awakening {
   id: string;
   name: string;
   condition: AwakeningCondition;
-  /** 覚醒時のステータス補正(%) */
+  /** 覚醒時のステータス補正。**加算値ではなく%(倍率)**。20 = +20% */
   statBonus?: Partial<Record<StatKey, number>>;
   /** スキル置換 { 元ID: 新ID } */
   skillReplace?: Record<string, string>;
@@ -377,6 +387,7 @@ export type Side = 'ALLY' | 'ENEMY';
 export interface ActiveStatus {
   type: StatusType;
   duration: number;
+  /** SkillEffect.potency と同じ単位。SHIELD の場合のみ「残り吸収量(絶対値)」 */
   potency: number;
   /** 付与元のユニットID */
   sourceId?: string;

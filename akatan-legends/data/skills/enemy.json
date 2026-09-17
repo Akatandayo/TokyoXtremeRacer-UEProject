@@ -1,0 +1,258 @@
+[
+  {
+    "id": "sk_en_sticky_tackle",
+    "name": "粘着体当たり",
+    "kind": "ACTIVE",
+    "description": "ぶつかったあと、粘液が足に残って離れない。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "effects": [
+      { "type": "DAMAGE", "power": 1.2 },
+      { "type": "STATUS", "status": "SLOW", "duration": 2, "potency": 20, "chance": 50 }
+    ],
+    "fx": "slime_splash"
+  },
+  {
+    "id": "sk_en_drain_bite",
+    "name": "吸血",
+    "kind": "ACTIVE",
+    "description": "噛んだぶんだけ自分の傷が塞がる。合理的で、気味が悪い。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "LOWEST_HP" },
+    "effects": [
+      { "type": "DAMAGE", "power": 1.3 },
+      { "type": "HEAL", "power": 0.6, "target": { "side": "SELF", "pattern": "SELF" } }
+    ],
+    "fx": "dark_drain"
+  },
+  {
+    "id": "sk_en_ember_burst",
+    "name": "火炎弾",
+    "kind": "ACTIVE",
+    "description": "自分の芯を削って撃つ。撃つたびに少し小さくなる。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "effects": [
+      { "type": "DAMAGE", "power": 1.4 },
+      { "type": "STATUS", "status": "BURN", "duration": 2, "potency": 25, "chance": 60 }
+    ],
+    "fx": "flame_burst"
+  },
+  {
+    "id": "sk_en_rock_throw",
+    "name": "岩石投げ",
+    "kind": "ACTIVE",
+    "description": "腕を分解して投げる。当たる場所は考えていない。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "RANDOM" },
+    "effects": [ { "type": "DAMAGE", "power": 0.95, "hits": 2 } ],
+    "fx": "rock_smash"
+  },
+  {
+    "id": "sk_en_stone_guard",
+    "name": "硬化",
+    "kind": "ACTIVE",
+    "description": "全身の隙間を石で埋める。動きは鈍るが、気にしていない。",
+    "cooldown": 4,
+    "target": { "side": "SELF", "pattern": "SELF" },
+    "effects": [ { "type": "STATUS", "status": "DEF_UP", "duration": 3, "potency": 40 } ],
+    "fx": "earth_guard"
+  },
+  {
+    "id": "sk_en_gale_rush",
+    "name": "疾走牙",
+    "kind": "ACTIVE",
+    "description": "一度加速すると、次の一手までが異様に早い。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "effects": [
+      { "type": "DAMAGE", "power": 1.5 },
+      { "type": "GAUGE", "amount": 20, "target": { "side": "SELF", "pattern": "SELF" } }
+    ],
+    "fx": "wind_slash"
+  },
+  {
+    "id": "sk_en_scan_jam",
+    "name": "走査妨害",
+    "kind": "ACTIVE",
+    "description": "こちらの通信帯域を潰しにくる。独が最も嫌う種類の敵。",
+    "cooldown": 4,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "STATUS", "status": "SILENCE", "duration": 2, "chance": 45 },
+      { "type": "GAUGE", "amount": -20 }
+    ],
+    "fx": "glitch"
+  },
+  {
+    "id": "sk_en_chill_wail",
+    "name": "怨嘆の叫び",
+    "kind": "ACTIVE",
+    "description": "声の内容は聞き取れない。ただ、聞いた者の腕が重くなる。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 0.85 },
+      { "type": "STATUS", "status": "ATK_DOWN", "duration": 3, "potency": 20, "chance": 70 }
+    ],
+    "fx": "dark_wail"
+  },
+  {
+    "id": "sk_en_hollow_thrust",
+    "name": "虚突",
+    "kind": "ACTIVE",
+    "description": "中身のない鎧が、生前の型だけを正確になぞる。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "FRONT" },
+    "effects": [
+      { "type": "DAMAGE", "power": 1.7 },
+      { "type": "STATUS", "status": "DEF_DOWN", "duration": 2, "potency": 20, "chance": 65 }
+    ],
+    "fx": "slash"
+  },
+  {
+    "id": "sk_en_spore_cloud",
+    "name": "毒胞子散布",
+    "kind": "ACTIVE",
+    "description": "戦うのではなく、場所ごと住みにくくしてくる。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [ { "type": "STATUS", "status": "POISON", "duration": 3, "potency": 35, "chance": 80 } ],
+    "fx": "poison_cloud"
+  },
+  {
+    "id": "sk_en_lost_prayer",
+    "name": "迷いの祈り",
+    "kind": "ACTIVE",
+    "description": "誰に向けた祈りかは、本人も忘れている。効果だけが残っている。",
+    "cooldown": 3,
+    "target": { "side": "ALLY", "pattern": "LOWEST_HP" },
+    "effects": [
+      { "type": "HEAL", "power": 2.2 },
+      { "type": "STATUS", "status": "REGEN", "duration": 2, "potency": 6 }
+    ],
+    "fx": "heal_wave"
+  },
+
+  {
+    "id": "sk_boss_gigant_quake",
+    "name": "大地割り",
+    "kind": "ACTIVE",
+    "description": "拳ではなく地面を殴る。足場を失った側が勝手に転ぶ。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 1.5 },
+      { "type": "STATUS", "status": "STUN", "duration": 1, "chance": 35 }
+    ],
+    "fx": "earth_quake"
+  },
+  {
+    "id": "sk_boss_gigant_harden",
+    "name": "巌鎧",
+    "kind": "ACTIVE",
+    "description": "巣の岩を身にまとう。削り切る前に固め直されると、戦いが終わらなくなる。",
+    "cooldown": 4,
+    "target": { "side": "SELF", "pattern": "SELF" },
+    "effects": [
+      { "type": "STATUS", "status": "DEF_UP", "duration": 4, "potency": 50 },
+      { "type": "STATUS", "status": "SHIELD", "duration": 3, "potency": 25 }
+    ],
+    "fx": "earth_guard"
+  },
+  {
+    "id": "ult_boss_gigant_ruin",
+    "name": "星砕の一撃",
+    "kind": "ULTIMATE",
+    "description": "巨石兵が本気で腕を振る、たった一度の動作。地層が一枚めくれる。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.3 },
+      { "type": "STATUS", "status": "DEF_DOWN", "duration": 3, "potency": 30, "chance": 80 }
+    ],
+    "fx": "ult_earth_ruin"
+  },
+
+  {
+    "id": "sk_boss_vald_void_slash",
+    "name": "虚無斬",
+    "kind": "ACTIVE",
+    "description": "刃が通った後に、切り口だけが遅れて現れる。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "HIGHEST_ATK" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.0 },
+      { "type": "STATUS", "status": "BLEED", "duration": 3, "potency": 35, "chance": 75 }
+    ],
+    "fx": "dark_slash"
+  },
+  {
+    "id": "sk_boss_vald_dominion",
+    "name": "威圧",
+    "kind": "ACTIVE",
+    "description": "玉座から一歩も降りずに、五人分の踏み込みを止める。",
+    "cooldown": 4,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "STATUS", "status": "ATK_DOWN", "duration": 3, "potency": 25, "chance": 80 },
+      { "type": "GAUGE", "amount": -25 }
+    ],
+    "fx": "dark_wave"
+  },
+  {
+    "id": "ult_boss_vald_end",
+    "name": "終焉の宣告",
+    "kind": "ULTIMATE",
+    "description": "虚王が名を呼ぶ。呼ばれた側は、呼ばれたという事実だけで削られる。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.5 },
+      { "type": "STATUS", "status": "ATK_DOWN", "duration": 3, "potency": 30, "chance": 85 }
+    ],
+    "fx": "ult_abyss"
+  },
+
+  {
+    "id": "sk_boss_null_fragment",
+    "name": "断片化",
+    "kind": "ACTIVE",
+    "description": "こちらの編成を細切れに参照してくる。誰が狙われるかは実行時まで決まらない。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "RANDOM" },
+    "effects": [ { "type": "DAMAGE", "power": 1.1, "hits": 3 } ],
+    "fx": "glitch"
+  },
+  {
+    "id": "sk_boss_null_firewall",
+    "name": "自己修復ファイアウォール",
+    "kind": "ACTIVE",
+    "description": "壊した端から書き戻す。状態異常で削る戦術は、ここで一度否定される。",
+    "cooldown": 5,
+    "target": { "side": "SELF", "pattern": "SELF" },
+    "effects": [
+      { "type": "HEAL", "power": 2.0 },
+      { "type": "CLEANSE" },
+      { "type": "STATUS", "status": "SHIELD", "duration": 3, "potency": 30 }
+    ],
+    "fx": "void_shield"
+  },
+  {
+    "id": "ult_boss_null_zero",
+    "name": "ゼロ・ディバイド",
+    "kind": "ULTIMATE",
+    "description": "定義されない演算を戦場に通す。答えが返ってこない代わりに、全員が削られる。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.8 },
+      { "type": "STATUS", "status": "SILENCE", "duration": 3, "chance": 80 },
+      { "type": "GAUGE", "amount": -50 }
+    ],
+    "fx": "ult_void"
+  }
+]

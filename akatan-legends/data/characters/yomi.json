@@ -1,0 +1,55 @@
+{
+  "id": "yomi",
+  "name": "黄泉",
+  "title": "YOMI",
+  "rarity": "SR",
+  "element": "DARK",
+  "roles": ["CONTROL", "SPECIALIST"],
+  "baseStats": {
+    "hp": 720,
+    "attack": 92,
+    "defense": 60,
+    "speed": 104,
+    "critical": 10,
+    "criticalDamage": 150,
+    "resistance": 25,
+    "healing": 100
+  },
+  "growth": {
+    "hp": 58,
+    "attack": 6.2,
+    "defense": 4.4,
+    "speed": 1.0,
+    "resistance": 0.5
+  },
+  "normalAttack": "na_yomi_grudge",
+  "skills": ["sk_yomi_curse_mark", "sk_yomi_plague_veil"],
+  "ultimate": "ult_yomi_river_of_death",
+  "awakening": {
+    "id": "abyssal_bloom",
+    "name": "黄泉開花",
+    "condition": { "hpBelow": 50, "enemyDefeated": 1 },
+    "statBonus": { "attack": 35, "resistance": 25, "hp": 10 },
+    "grant": [{ "status": "ATK_UP", "duration": 3, "potency": 20 }],
+    "description": "自分の血を一度見てから、彼女の刻印は「効き方」を変える。咲かせているのが誰の呪いなのかは、本人にも判然としない。",
+    "fx": "awaken_dark"
+  },
+  "defaultAi": "ai_yomi_affliction",
+  "description": "静かに笑いながら相手の内側だけを壊していく術者。瞬間火力は低いが、毒と出血を重ねたときの総ダメージは長期戦で全キャラ中最大になる。HPが高いだけのボスほど彼女に弱く、逆に短期決戦の雑魚戦では出番がない。",
+  "tags": ["DoT", "Poison", "AntiBoss"],
+  "trpg": {
+    "source": "身内CoC(架空卓)",
+    "player": "PL-G(仮)",
+    "investigator": "黄泉(架空の探索者)",
+    "affiliation": "架空の民間伝承研究会",
+    "visibility": "PRIVATE",
+    "note": "本データは身内TRPGをモチーフにした架空の仮設定です。実在の人物・団体とは一切関係ありません。"
+  },
+  "art": {
+    "primary": "#4B2A5E",
+    "secondary": "#1A0F22",
+    "accent": "#D96BE0",
+    "sigil": "泉",
+    "pattern": "void"
+  }
+}

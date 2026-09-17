@@ -1,0 +1,64 @@
+{
+  "id": "hitori",
+  "name": "電子 独",
+  "title": "DENSHI HITORI / ひとり",
+  "rarity": "SSR",
+  "element": "VOID",
+  "roles": ["SPECIALIST", "ATTACKER"],
+  "baseStats": {
+    "hp": 640,
+    "attack": 124,
+    "defense": 48,
+    "speed": 142,
+    "critical": 22,
+    "criticalDamage": 165,
+    "resistance": 10,
+    "healing": 100
+  },
+  "growth": {
+    "hp": 44,
+    "attack": 8.8,
+    "defense": 2.8,
+    "speed": 1.9,
+    "critical": 0.25,
+    "criticalDamage": 0.5
+  },
+  "normalAttack": "na_hitori_ping",
+  "skills": ["sk_hitori_packet_storm", "sk_hitori_null_hack"],
+  "ultimate": "ult_hitori_void_collapse",
+  "awakening": {
+    "id": "glitch_overload",
+    "name": "グリッチ・オーバーロード",
+    "condition": {
+      "hpBelow": 20,
+      "skillUsed": { "skill": "sk_hitori_packet_storm", "count": 3 }
+    },
+    "statBonus": { "attack": 45, "speed": 35, "critical": 20 },
+    "skillReplace": {
+      "sk_hitori_packet_storm": "sk_hitori_packet_storm_ex",
+      "ult_hitori_void_collapse": "ult_hitori_system_purge"
+    },
+    "grant": [{ "status": "SPD_UP", "duration": 3, "potency": 30 }],
+    "description": "限界まで削られた独が、自分の処理上限を自分で外す。安全装置を切った本人は、そのことを誰にも言わない。",
+    "fx": "awaken_glitch"
+  },
+  "combos": ["network_link"],
+  "defaultAi": "ai_hitori_glitch",
+  "description": "回線の向こう側にしか居場所がないと言い張る、無口な少年。誰よりも速く動き、誰よりも先に落ちる。紅葉が中継役に付いたときだけ、彼の速度は編成全体の速度になる。",
+  "tags": ["Network", "Glitch", "Fragile", "Burst"],
+  "trpg": {
+    "source": "身内CoC(架空卓)",
+    "player": "PL-A(仮)",
+    "investigator": "電子 独(架空の探索者)",
+    "affiliation": "架空の通信技術系サークル",
+    "visibility": "PRIVATE",
+    "note": "本データは身内TRPGをモチーフにした架空の仮設定です。実在の人物・団体とは一切関係ありません。"
+  },
+  "art": {
+    "primary": "#2B1B4D",
+    "secondary": "#0E0A18",
+    "accent": "#4DF0FF",
+    "sigil": "独",
+    "pattern": "circuit"
+  }
+}

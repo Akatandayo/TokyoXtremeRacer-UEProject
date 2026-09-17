@@ -1,0 +1,55 @@
+{
+  "id": "enji",
+  "name": "炎司 ガレス",
+  "title": "ENJI GARETH",
+  "rarity": "SSR",
+  "element": "FIRE",
+  "roles": ["ATTACKER"],
+  "baseStats": {
+    "hp": 840,
+    "attack": 128,
+    "defense": 70,
+    "speed": 102,
+    "critical": 18,
+    "criticalDamage": 170,
+    "resistance": 15,
+    "healing": 100
+  },
+  "growth": {
+    "hp": 66,
+    "attack": 9.0,
+    "defense": 5.0,
+    "speed": 0.9,
+    "criticalDamage": 0.7
+  },
+  "normalAttack": "na_enji_slash",
+  "skills": ["sk_enji_blazing_edge", "sk_enji_crimson_wave"],
+  "ultimate": "ult_enji_conflagration",
+  "awakening": {
+    "id": "pyre_knight",
+    "name": "薪の騎士",
+    "condition": { "hpBelow": 50 },
+    "statBonus": { "attack": 50, "criticalDamage": 40, "speed": 15 },
+    "skillReplace": { "sk_enji_blazing_edge": "sk_enji_blazing_edge_ex" },
+    "description": "半分焼けたところから、ようやく本人が乗ってくる。燃やす薪がなくなれば自分を焼く、という前提で戦う男。",
+    "fx": "awaken_flame"
+  },
+  "defaultAi": "ai_enji_burst",
+  "description": "誰が見ても分かる王道の火力枠。単体火力・全体火力・継続炎上をひととおり持ち、どんな編成に入れても最低限の仕事はする。特化性能では低レアの専門職に負ける場面があるが、「何を入れればいいか分からない」ときの正解であり続ける基準値のキャラ。",
+  "tags": ["Burst", "Burn", "Generalist"],
+  "trpg": {
+    "source": "身内CoC(架空卓)",
+    "player": "PL-I(仮)",
+    "investigator": "炎司 ガレス(架空の探索者)",
+    "affiliation": "架空の傭兵団",
+    "visibility": "PRIVATE",
+    "note": "本データは身内TRPGをモチーフにした架空の仮設定です。実在の人物・団体とは一切関係ありません。"
+  },
+  "art": {
+    "primary": "#C4381F",
+    "secondary": "#3A1008",
+    "accent": "#FFD166",
+    "sigil": "炎",
+    "pattern": "burst"
+  }
+}

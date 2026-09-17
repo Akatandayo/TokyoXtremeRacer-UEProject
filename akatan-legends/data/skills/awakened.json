@@ -1,0 +1,77 @@
+[
+  {
+    "id": "sk_hitori_packet_storm_ex",
+    "name": "パケットストーム::OVERFLOW",
+    "kind": "ACTIVE",
+    "description": "上限を外した状態のパケットストーム。処理しきれない要求が、敵の口も手順も塞ぐ。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 1.8 },
+      { "type": "STATUS", "status": "SILENCE", "duration": 3, "chance": 75 },
+      { "type": "GAUGE", "amount": -25 }
+    ],
+    "fx": "glitch_overload",
+    "tags": ["Glitch", "Network", "Awakened"]
+  },
+  {
+    "id": "ult_hitori_system_purge",
+    "name": "システム・パージ",
+    "kind": "ULTIMATE",
+    "description": "自分ごと消してから、自分だけ書き戻す。覚醒した独にしか通らない手順。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 3.0 },
+      { "type": "STATUS", "status": "SILENCE", "duration": 3, "chance": 90 },
+      { "type": "STATUS", "status": "STUN", "duration": 1, "chance": 50 },
+      { "type": "GAUGE", "amount": -60 }
+    ],
+    "fx": "ult_glitch_purge",
+    "tags": ["Glitch", "Network", "Awakened"]
+  },
+  {
+    "id": "sk_momiji_relay_ex",
+    "name": "紅蓮リレー::直結",
+    "kind": "ACTIVE",
+    "description": "中継をやめて直結する。効率はいいが、焼き切れるのは常に彼女のほうだ。",
+    "cooldown": 4,
+    "target": { "side": "ALLY", "pattern": "ALL" },
+    "effects": [
+      { "type": "STATUS", "status": "ATK_UP", "duration": 4, "potency": 32 },
+      { "type": "ULT_GAUGE", "amount": 30 }
+    ],
+    "fx": "ember_aura_ex",
+    "tags": ["Network", "Buff", "Awakened"]
+  },
+  {
+    "id": "sk_enji_blazing_edge_ex",
+    "name": "烈火刃・獄",
+    "kind": "ACTIVE",
+    "description": "自分の背中まで焦がす踏み込み。退路を焼くのは、いつも意図的である。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.7 },
+      { "type": "STATUS", "status": "BURN", "duration": 4, "potency": 50, "chance": 85 }
+    ],
+    "fx": "flame_slash_ex",
+    "tags": ["Awakened"]
+  },
+  {
+    "id": "sk_amagi_grace_ex",
+    "name": "恩寵の光・満",
+    "kind": "ACTIVE",
+    "description": "もう誰も落とさないと決めたときの光。範囲も、量も、加減がない。",
+    "cooldown": 3,
+    "target": { "side": "ALLY", "pattern": "ALL" },
+    "effects": [
+      { "type": "HEAL", "power": 3.2 },
+      { "type": "CLEANSE" },
+      { "type": "STATUS", "status": "REGEN", "duration": 3, "potency": 10 }
+    ],
+    "fx": "heal_wave_ex",
+    "tags": ["Cleanse", "Awakened"]
+  }
+]

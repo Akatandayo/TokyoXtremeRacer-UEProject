@@ -1,0 +1,106 @@
+/** アプリ本体: ヘッダ + 画面切り替え(自前ルーティング) */
+import React from 'react';
+import { useStore, type Screen } from './state/store';
+import { Loading, ErrorView } from './components/common';
+import { formatNumber } from './utils/labels';
+import HomeScreen from './screens/HomeScreen';
+import CharactersScreen from './screens/CharactersScreen';
+import CharacterDetailScreen from './screens/CharacterDetailScreen';
+import PartyScreen from './screens/PartyScreen';
+import DungeonScreen from './screens/DungeonScreen';
+import CollectionScreen from './screens/CollectionScreen';
+import SettingsScreen from './screens/SettingsScreen';
+import BattleScreen from './battle/BattleScreen';
+
+const NAV: { screen: Screen; label: string }[] = [
+  { screen: 'HOME', label: 'HOME' },
+  { screen: 'CHARACTERS', label: 'キャラ' },
+  { screen: 'PARTY', label: '編成' },
+  { screen: 'DUNGEON', label: 'ダンジョン' },
+  { screen: 'COLLECTION', label: '図鑑' },
+  { screen: 'SETTINGS', label: '設定' },
+];
+
+function ScreenBody(): JSX.Element {
+  const store = useStore();
+
+  // 戦闘中はデータ取得状態に関わらず再生を優先する
+  if (store.route.screen === 'BATTLE') return <BattleScreen />;
+
+  if (store.loading) return <Loading label="データを取得しています…" />;
+  if (store.error) {
+    return (
+      <ErrorView
+        error={store.error}
+        onRetry={() => void store.reload()}
+        hint="サーバ未起動の場合は、設定画面のモックモード(または URL に ?mock=1)でデモを確認できます。"
+      />
+    );
+  }
+
+  switch (store.route.screen) {
+    case 'CHARACTERS': return <CharactersScreen />;
+    case 'CHARACTER_DETAIL': return <CharacterDetailScreen />;
+    case 'PARTY': return <PartyScreen />;
+    case 'DUNGEON': return <DungeonScreen />;
+    case 'COLLECTION': return <CollectionScreen />;
+    case 'SETTINGS': return <SettingsScreen />;
+    default: return <HomeScreen />;
+  }
+}
+
+export function App(): JSX.Element {
+  const store = useStore();
+  const active = store.route.screen === 'CHARACTER_DETAIL' ? 'CHARACTERS' : store.route.screen;
+
+  return (
+    <div className="app-shell">
+      {store.mock && (
+        <div className="mock-banner">
+          DEMO MODE — クライアント内蔵のモックデータで動作中(サーバ未使用)
+        </div>
+      )}
+      <header className="app-header">
+        <button className="brand" onClick={() => store.navigate('HOME')} aria-label="ホームへ">
+          <span className="brand-mark">赤</span>
+          <span className="brand-text">
+            あかたんLegends
+            <small>AKATAN LEGENDS</small>
+          </span>
+        </button>
+        <nav className="nav">
+          {NAV.map((n) => (
+            <button
+              key={n.screen}
+              className={`nav-btn ${active === n.screen ? 'is-active' : ''}`}
+              onClick={() => store.navigate(n.screen)}
+            >
+              {n.label}
+            </button>
+          ))}
+          {store.battle && (
+            <button
+              className={`nav-btn ${store.route.screen === 'BATTLE' ? 'is-active' : ''}`}
+              style={{ color: 'var(--magenta)' }}
+              onClick={() => store.navigate('BATTLE')}
+            >
+              戦闘中
+            </button>
+          )}
+        </nav>
+        <div className="header-stats">
+          <span className="header-chip">{store.player?.name ?? '—'}</span>
+          <span className="header-chip">G <b>{formatNumber(store.player?.gold ?? 0)}</b></span>
+          <span className="header-chip">
+            進行 <b>{store.clearedStages.length}</b>
+          </span>
+        </div>
+      </header>
+      <main className="app-main">
+        <ScreenBody />
+      </main>
+    </div>
+  );
+}
+
+export default App;

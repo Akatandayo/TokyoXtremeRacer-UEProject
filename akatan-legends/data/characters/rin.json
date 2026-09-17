@@ -1,0 +1,55 @@
+{
+  "id": "rin",
+  "name": "凛",
+  "title": "RIN",
+  "rarity": "R",
+  "element": "WIND",
+  "roles": ["CONTROL"],
+  "baseStats": {
+    "hp": 640,
+    "attack": 78,
+    "defense": 52,
+    "speed": 128,
+    "critical": 12,
+    "criticalDamage": 145,
+    "resistance": 18,
+    "healing": 100
+  },
+  "growth": {
+    "hp": 50,
+    "attack": 5.0,
+    "defense": 3.8,
+    "speed": 1.6,
+    "critical": 0.15
+  },
+  "normalAttack": "na_rin_gale",
+  "skills": ["sk_rin_thunderstep", "sk_rin_binding_gale"],
+  "ultimate": "ult_rin_storm_prison",
+  "awakening": {
+    "id": "gale_unbound",
+    "name": "解き放つ疾風",
+    "condition": { "turnAtLeast": 4 },
+    "statBonus": { "speed": 40, "critical": 15, "attack": 20 },
+    "grant": [{ "status": "SPD_UP", "duration": 4, "potency": 25 }],
+    "description": "序盤はわざと抑えている。四手目で結んでいた風をほどくと、盤面の手番が丸ごと書き換わる。",
+    "fx": "awaken_wind"
+  },
+  "defaultAi": "ai_rin_control",
+  "description": "口数が少なく、必要なときだけ前に出る剣士。火力は平凡だが素の速度が最上位クラスで、敵の最大火力役をほぼ確実に先制で止められる。足止め役としての信頼度は高レアの妨害キャラを上回り、ボスの必殺技を一度遅らせるだけで勝敗が変わる場面が多い。",
+  "tags": ["Control", "Stun", "FirstStrike"],
+  "trpg": {
+    "source": "身内CoC(架空卓)",
+    "player": "PL-E(仮)",
+    "investigator": "凛(架空の探索者)",
+    "affiliation": "架空の古流剣術道場",
+    "visibility": "PRIVATE",
+    "note": "本データは身内TRPGをモチーフにした架空の仮設定です。実在の人物・団体とは一切関係ありません。"
+  },
+  "art": {
+    "primary": "#3E7A5E",
+    "secondary": "#16281F",
+    "accent": "#B6FF9E",
+    "sigil": "凛",
+    "pattern": "wave"
+  }
+}

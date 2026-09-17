@@ -51,7 +51,7 @@ async function waitForServer(proc, timeoutMs = 45000) {
 
 const server = spawn('npx', ['tsx', 'server/src/index.ts'], {
   cwd: ROOT,
-  env: { ...process.env, PORT, AKATAN_DB: path.join(ROOT, 'server', 'smoke.db') },
+  env: { ...process.env, PORT, AKATAN_DB_PATH: ':memory:' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 const serverLog = [];

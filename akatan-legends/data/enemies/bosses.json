@@ -1,0 +1,141 @@
+[
+  {
+    "id": "boss_gigant_stone",
+    "name": "巨石兵ゴリアス",
+    "element": "EARTH",
+    "roles": [
+      "TANK"
+    ],
+    "baseStats": {
+      "hp": 2050,
+      "attack": 98,
+      "defense": 96,
+      "speed": 74,
+      "critical": 5,
+      "criticalDamage": 150,
+      "resistance": 40,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 162,
+      "attack": 6.2,
+      "defense": 6.4,
+      "speed": 0.6,
+      "resistance": 0.5
+    },
+    "normalAttack": "na_boss_crush",
+    "skills": [
+      "sk_boss_gigant_quake",
+      "sk_boss_gigant_harden"
+    ],
+    "ultimate": "ult_boss_gigant_ruin",
+    "defaultAi": "ai_boss_gigant",
+    "boss": true,
+    "description": "第1章の終着点。硬さと全体攻撃で持久戦を強いてくる。防御バフを張り直される前に押し切るか、DEF_DOWN と継続ダメージで固さを無効化するかの二択を迫る、最初の編成研究ボス。",
+    "tags": [
+      "Boss",
+      "Chapter1",
+      "Wall"
+    ],
+    "art": {
+      "primary": "#3A342A",
+      "secondary": "#100E0A",
+      "accent": "#D9853B",
+      "sigil": "巨",
+      "pattern": "grid"
+    }
+  },
+  {
+    "id": "boss_vald_hollow",
+    "name": "虚王ヴァルド",
+    "element": "DARK",
+    "roles": [
+      "ATTACKER"
+    ],
+    "baseStats": {
+      "hp": 1800,
+      "attack": 118,
+      "defense": 76,
+      "speed": 104,
+      "critical": 15,
+      "criticalDamage": 165,
+      "resistance": 40,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 140,
+      "attack": 7.8,
+      "defense": 5.2,
+      "speed": 1.0,
+      "resistance": 0.5
+    },
+    "normalAttack": "na_boss_rend",
+    "skills": [
+      "sk_boss_vald_void_slash",
+      "sk_boss_vald_dominion"
+    ],
+    "ultimate": "ult_boss_vald_end",
+    "defaultAi": "ai_boss_vald",
+    "boss": true,
+    "description": "第2章中盤に立ちはだかる闇属性の高速アタッカー。こちらの最大火力役を狙い撃ちし、全体の攻撃力と行動ゲージを削ってくる。光属性の特効と足止めが正面から刺さる、対策の答えが明確なボス。",
+    "tags": [
+      "Boss",
+      "Chapter2",
+      "Burst"
+    ],
+    "art": {
+      "primary": "#2A1B33",
+      "secondary": "#0C0710",
+      "accent": "#C059E8",
+      "sigil": "王",
+      "pattern": "void"
+    }
+  },
+  {
+    "id": "boss_null_daemon",
+    "name": "ヌル・デーモン",
+    "element": "VOID",
+    "roles": [
+      "SPECIALIST"
+    ],
+    "baseStats": {
+      "hp": 2100,
+      "attack": 126,
+      "defense": 84,
+      "speed": 118,
+      "critical": 18,
+      "criticalDamage": 170,
+      "resistance": 50,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 160,
+      "attack": 8.4,
+      "defense": 5.6,
+      "speed": 1.2,
+      "resistance": 0.6
+    },
+    "normalAttack": "na_boss_null",
+    "skills": [
+      "sk_boss_null_fragment",
+      "sk_boss_null_firewall"
+    ],
+    "ultimate": "ult_boss_null_zero",
+    "defaultAi": "ai_boss_null",
+    "boss": true,
+    "description": "第2章最終ボス。自己回復と状態異常解除を持ち、継続ダメージ一辺倒の編成を明確に否定してくる。沈黙とゲージ削りで味方の手順を潰してくるため、回復役を二枚積むか、ファイアウォールの再詠唱前に押し切る速度が要求される。独の物語の行き着く先でもある。",
+    "tags": [
+      "Boss",
+      "Chapter2",
+      "Final",
+      "Network"
+    ],
+    "art": {
+      "primary": "#1A1730",
+      "secondary": "#070610",
+      "accent": "#00E5FF",
+      "sigil": "零",
+      "pattern": "circuit"
+    }
+  }
+]

@@ -1,0 +1,57 @@
+{
+  "id": "amagi",
+  "name": "天城 彼方",
+  "title": "AMAGI KANATA",
+  "rarity": "UR",
+  "element": "LIGHT",
+  "roles": ["HEALER", "SUPPORT"],
+  "baseStats": {
+    "hp": 900,
+    "attack": 88,
+    "defense": 80,
+    "speed": 112,
+    "critical": 8,
+    "criticalDamage": 145,
+    "resistance": 35,
+    "healing": 160
+  },
+  "growth": {
+    "hp": 72,
+    "attack": 5.6,
+    "defense": 6.0,
+    "speed": 1.2,
+    "healing": 1.5,
+    "resistance": 0.6
+  },
+  "normalAttack": "na_amagi_lumen",
+  "skills": ["sk_amagi_grace", "sk_amagi_aegis"],
+  "ultimate": "ult_amagi_dawn",
+  "awakening": {
+    "id": "dawnbreaker",
+    "name": "黎明を告げる者",
+    "condition": { "hpBelow": 60, "allyDefeated": 2 },
+    "statBonus": { "healing": 50, "attack": 25, "resistance": 20, "speed": 10 },
+    "skillReplace": { "sk_amagi_grace": "sk_amagi_grace_ex" },
+    "grant": [{ "status": "REGEN", "duration": 4, "potency": 10 }],
+    "description": "二人失い、自分も血を流してから、彼女はようやく「加減しない」と口に出す。夜明けは祈りではなく宣言である。",
+    "fx": "awaken_dawn"
+  },
+  "defaultAi": "ai_amagi_grace",
+  "description": "全体回復・全体解除・全体バフ・シールドをすべて一人で成立させる、編成の中心に据える前提の存在。何でもできるぶん一つ一つの尖りは専門職に劣り、状態異常の解除速度では雫に、シールドの厚みでは漣に及ばない。彼女を軸にすると編成が安定しすぎて、研究の余地が減るのが唯一の弱点。",
+  "tags": ["Healer", "Buff", "Anchor"],
+  "trpg": {
+    "source": "身内CoC(架空卓)",
+    "player": "PL-J(仮)",
+    "investigator": "天城 彼方(架空の探索者)",
+    "affiliation": "架空の観星教団",
+    "visibility": "PRIVATE",
+    "note": "本データは身内TRPGをモチーフにした架空の仮設定です。実在の人物・団体とは一切関係ありません。"
+  },
+  "art": {
+    "primary": "#EDE6D6",
+    "secondary": "#6B5E8C",
+    "accent": "#FFE9A8",
+    "sigil": "暁",
+    "pattern": "burst"
+  }
+}

@@ -1,0 +1,160 @@
+[
+  {
+    "id": "ult_hitori_void_collapse",
+    "name": "ヴォイド・コラプス",
+    "kind": "ULTIMATE",
+    "description": "戦場そのものを一度メモリから落とす。再読込されたとき、敵の手順表は空になっている。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.4 },
+      { "type": "STATUS", "status": "SILENCE", "duration": 2, "chance": 70 },
+      { "type": "GAUGE", "amount": -40 }
+    ],
+    "fx": "ult_void",
+    "tags": ["Glitch", "Network"]
+  },
+  {
+    "id": "ult_momiji_autumn_blaze",
+    "name": "千紅万紫",
+    "kind": "ULTIMATE",
+    "description": "季節を一枚ずつ燃やして味方に配る。「あとは任せた」が口癖の、最大火力の合図。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.0 },
+      { "type": "STATUS", "status": "BURN", "duration": 3, "potency": 40, "chance": 80 },
+      { "type": "STATUS", "status": "ATK_UP", "duration": 3, "potency": 25, "target": { "side": "ALLY", "pattern": "ALL" } }
+    ],
+    "fx": "ult_flame_veil",
+    "tags": ["Network"]
+  },
+  {
+    "id": "ult_kurogane_immovable",
+    "name": "不動明王陣",
+    "kind": "ULTIMATE",
+    "description": "一歩も引かないと決めた男の周りに、岩が勝手に集まってくる。倒れるのは最後でいい。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ALLY", "pattern": "ALL" },
+    "effects": [
+      { "type": "STATUS", "status": "SHIELD", "duration": 4, "potency": 40 },
+      { "type": "STATUS", "status": "DEF_UP", "duration": 4, "potency": 35 },
+      { "type": "STATUS", "status": "TAUNT", "duration": 3, "target": { "side": "SELF", "pattern": "SELF" } }
+    ],
+    "fx": "ult_earth_fortress",
+    "tags": ["Taunt"]
+  },
+  {
+    "id": "ult_shizuku_spring",
+    "name": "甦生の泉",
+    "kind": "ULTIMATE",
+    "description": "足元から湧いた泉が、戦場の汚れを一度だけ全部なかったことにする。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ALLY", "pattern": "ALL" },
+    "effects": [
+      { "type": "HEAL", "power": 3.4 },
+      { "type": "CLEANSE" },
+      { "type": "STATUS", "status": "REGEN", "duration": 3, "potency": 10 }
+    ],
+    "fx": "ult_heal_spring",
+    "tags": ["Cleanse"]
+  },
+  {
+    "id": "ult_rin_storm_prison",
+    "name": "烈風牢",
+    "kind": "ULTIMATE",
+    "description": "逃げ道を風で塞いでから斬る。閉じ込めるのではなく、動けなくしてから開ける。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.1 },
+      { "type": "STATUS", "status": "STUN", "duration": 1, "chance": 80 },
+      { "type": "STATUS", "status": "SLOW", "duration": 3, "potency": 35, "chance": 90 }
+    ],
+    "fx": "ult_storm",
+    "tags": ["Control"]
+  },
+  {
+    "id": "ult_hokuto_seven_stars",
+    "name": "北斗七星撃",
+    "kind": "ULTIMATE",
+    "description": "七つの光点を順に結び、最後の一点で仕留める。闇に対しては、これ以上の答えを持たない。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "effects": [
+      { "type": "DAMAGE", "power": 0.42, "hits": 7 },
+      { "type": "STATUS", "status": "DEF_DOWN", "duration": 3, "potency": 25, "chance": 80 }
+    ],
+    "fx": "ult_starfall",
+    "tags": ["AntiDark"]
+  },
+  {
+    "id": "ult_yomi_river_of_death",
+    "name": "黄泉比良坂",
+    "kind": "ULTIMATE",
+    "description": "坂を上らせる。振り返らせない。ここから先は、時間が敵になる。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 1.6 },
+      { "type": "STATUS", "status": "POISON", "duration": 4, "potency": 60 },
+      { "type": "STATUS", "status": "BLEED", "duration": 3, "potency": 45 }
+    ],
+    "fx": "ult_abyss",
+    "tags": ["DoT"]
+  },
+  {
+    "id": "ult_sazanami_high_tide",
+    "name": "満潮宣告",
+    "kind": "ULTIMATE",
+    "description": "「そろそろ上げます」。宣告どおりに潮が満ち、味方の傷も手番も一気に押し上げる。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ALLY", "pattern": "ALL" },
+    "effects": [
+      { "type": "HEAL", "power": 2.0 },
+      { "type": "STATUS", "status": "SHIELD", "duration": 4, "potency": 30 },
+      { "type": "GAUGE", "amount": 45 }
+    ],
+    "fx": "ult_tide"
+  },
+  {
+    "id": "ult_enji_conflagration",
+    "name": "終焉の大火",
+    "kind": "ULTIMATE",
+    "description": "一度だけ、加減をやめる。焼け跡の中心に立っているのが勝者だ。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.6 },
+      { "type": "STATUS", "status": "BURN", "duration": 4, "potency": 50, "chance": 90 }
+    ],
+    "fx": "ult_flame_burst"
+  },
+  {
+    "id": "ult_amagi_dawn",
+    "name": "黎明の再誕",
+    "kind": "ULTIMATE",
+    "description": "夜が明けるだけの、単純な奇跡。倒れかけた全員に、もう一度朝を配る。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ALLY", "pattern": "ALL" },
+    "effects": [
+      { "type": "HEAL", "power": 4.0 },
+      { "type": "CLEANSE" },
+      { "type": "STATUS", "status": "ATK_UP", "duration": 4, "potency": 30 },
+      { "type": "STATUS", "status": "SHIELD", "duration": 3, "potency": 30 },
+      { "type": "ULT_GAUGE", "amount": 20 }
+    ],
+    "fx": "ult_dawn",
+    "tags": ["Cleanse"]
+  }
+]

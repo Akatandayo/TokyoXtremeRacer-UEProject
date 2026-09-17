@@ -1,0 +1,60 @@
+{
+  "id": "momiji",
+  "name": "紅葉",
+  "title": "MOMIJI / もみじ",
+  "rarity": "SR",
+  "element": "FIRE",
+  "roles": ["SUPPORT", "ATTACKER"],
+  "baseStats": {
+    "hp": 760,
+    "attack": 96,
+    "defense": 62,
+    "speed": 108,
+    "critical": 12,
+    "criticalDamage": 150,
+    "resistance": 20,
+    "healing": 110
+  },
+  "growth": {
+    "hp": 60,
+    "attack": 6.4,
+    "defense": 4.6,
+    "speed": 1.1,
+    "resistance": 0.4
+  },
+  "normalAttack": "na_momiji_ember",
+  "skills": ["sk_momiji_relay", "sk_momiji_scatter"],
+  "ultimate": "ult_momiji_autumn_blaze",
+  "awakening": {
+    "id": "crimson_link",
+    "name": "紅蓮リンク",
+    "condition": {
+      "withAlly": "hitori",
+      "turnAtLeast": 3
+    },
+    "statBonus": { "attack": 30, "speed": 20, "healing": 20 },
+    "skillReplace": { "sk_momiji_relay": "sk_momiji_relay_ex" },
+    "grant": [{ "status": "ATK_UP", "duration": 3, "potency": 20 }],
+    "description": "独との回線が安定した瞬間、彼女は中継をやめて直結を選ぶ。焼き切れる覚悟のぶんだけ、味方の火力が跳ね上がる。",
+    "fx": "awaken_ember"
+  },
+  "combos": ["network_link"],
+  "defaultAi": "ai_momiji_support",
+  "description": "面倒見のいい世話焼きで、放っておくと自分の分の熱まで他人に配ってしまう。単体でも十分戦えるが、本領は独との通信中継にある。彼女が居るかどうかで、編成の総火力が別物になる。",
+  "tags": ["Network", "Buff", "Combo"],
+  "trpg": {
+    "source": "身内CoC(架空卓)",
+    "player": "PL-B(仮)",
+    "investigator": "紅葉(架空の探索者)",
+    "affiliation": "架空の通信技術系サークル",
+    "visibility": "PRIVATE",
+    "note": "本データは身内TRPGをモチーフにした架空の仮設定です。実在の人物・団体とは一切関係ありません。"
+  },
+  "art": {
+    "primary": "#9E2B1F",
+    "secondary": "#3B1410",
+    "accent": "#FFB347",
+    "sigil": "紅",
+    "pattern": "petal"
+  }
+}

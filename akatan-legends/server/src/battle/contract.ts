@@ -12,6 +12,10 @@ import type {
 /** エンジンに渡す戦闘参加者。所持キャラ/敵の差をここで吸収する。 */
 export interface CombatantInput {
   id: string;
+  /**
+   * 参考値。**陣営は runBattle(allies, enemies, ...) の配列位置が常に優先**される。
+   * (同じ CombatantInput を敵味方入れ替えて使う模擬戦/PvP のため)
+   */
   side: Side;
   slot: number;
   name: string;

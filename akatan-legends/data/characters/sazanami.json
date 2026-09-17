@@ -1,0 +1,56 @@
+{
+  "id": "sazanami",
+  "name": "漣 いろは",
+  "title": "SAZANAMI IROHA",
+  "rarity": "SR",
+  "element": "WATER",
+  "roles": ["SUPPORT"],
+  "baseStats": {
+    "hp": 820,
+    "attack": 70,
+    "defense": 78,
+    "speed": 96,
+    "critical": 6,
+    "criticalDamage": 140,
+    "resistance": 28,
+    "healing": 120
+  },
+  "growth": {
+    "hp": 66,
+    "attack": 4.4,
+    "defense": 5.8,
+    "speed": 0.8,
+    "healing": 0.8,
+    "resistance": 0.5
+  },
+  "normalAttack": "na_sazanami_ripple",
+  "skills": ["sk_sazanami_still_water", "sk_sazanami_undertow"],
+  "ultimate": "ult_sazanami_high_tide",
+  "awakening": {
+    "id": "spring_tide",
+    "name": "大潮",
+    "condition": { "allyDefeated": 1, "turnAtLeast": 3 },
+    "statBonus": { "healing": 35, "defense": 25, "speed": 15 },
+    "grant": [{ "status": "SHIELD", "duration": 3, "potency": 25 }],
+    "description": "凪を保つのをやめて、潮位そのものを上げにいく。守りきれなかった一人ぶんを、残り全員に上乗せする。",
+    "fx": "awaken_water"
+  },
+  "defaultAi": "ai_sazanami_shield",
+  "description": "戦場の呼吸を整えるのが仕事だと言い切る、落ち着いた支援役。回復量では専門職に劣るが、シールドと行動ゲージ操作を同時に持つ唯一のキャラで、味方アタッカーの手番を一回増やせる。耐久編成でも速攻編成でも腐らない万能枠。",
+  "tags": ["Shield", "GaugeControl", "Enabler"],
+  "trpg": {
+    "source": "身内CoC(架空卓)",
+    "player": "PL-H(仮)",
+    "investigator": "漣 いろは(架空の探索者)",
+    "affiliation": "架空の海洋観測班",
+    "visibility": "PRIVATE",
+    "note": "本データは身内TRPGをモチーフにした架空の仮設定です。実在の人物・団体とは一切関係ありません。"
+  },
+  "art": {
+    "primary": "#1F5F73",
+    "secondary": "#0C2530",
+    "accent": "#7FE8D2",
+    "sigil": "漣",
+    "pattern": "wave"
+  }
+}

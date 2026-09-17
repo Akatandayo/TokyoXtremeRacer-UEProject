@@ -1,0 +1,55 @@
+{
+  "id": "shizuku",
+  "name": "雫",
+  "title": "SHIZUKU",
+  "rarity": "N",
+  "element": "WATER",
+  "roles": ["HEALER"],
+  "baseStats": {
+    "hp": 620,
+    "attack": 58,
+    "defense": 58,
+    "speed": 88,
+    "critical": 5,
+    "criticalDamage": 140,
+    "resistance": 20,
+    "healing": 135
+  },
+  "growth": {
+    "hp": 48,
+    "attack": 3.5,
+    "defense": 4.2,
+    "speed": 1.0,
+    "healing": 1.2
+  },
+  "normalAttack": "na_shizuku_droplet",
+  "skills": ["sk_shizuku_purify", "sk_shizuku_tide_heal"],
+  "ultimate": "ult_shizuku_spring",
+  "awakening": {
+    "id": "tearless_vow",
+    "name": "涙を流さぬ誓い",
+    "condition": { "allyDefeated": 1 },
+    "statBonus": { "healing": 45, "speed": 15, "resistance": 15 },
+    "grant": [{ "status": "REGEN", "duration": 3, "potency": 8 }],
+    "description": "目の前で一人失ってから、彼女は泣くのをやめる。手が止まらなくなるのは、そのあとだ。",
+    "fx": "awaken_water"
+  },
+  "defaultAi": "ai_shizuku_medic",
+  "description": "回復量そのものは控えめな、駆け出しの治療役。ただし味方全体の状態異常を毎ターン近く洗い流せるのは彼女だけで、毒・出血・凍結を軸にしてくる相手に対してはURの回復役より確実に機能する。状態異常特化編成に対するメタそのもの。",
+  "tags": ["Cleanse", "Anti-Status", "LowRarityCore"],
+  "trpg": {
+    "source": "身内CoC(架空卓)",
+    "player": "PL-D(仮)",
+    "investigator": "雫(架空の探索者)",
+    "affiliation": "架空の医療見習い",
+    "visibility": "PRIVATE",
+    "note": "本データは身内TRPGをモチーフにした架空の仮設定です。実在の人物・団体とは一切関係ありません。"
+  },
+  "art": {
+    "primary": "#2E6E8E",
+    "secondary": "#16323F",
+    "accent": "#BFEFFF",
+    "sigil": "雫",
+    "pattern": "wave"
+  }
+}

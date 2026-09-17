@@ -1,0 +1,54 @@
+{
+  "id": "hokuto",
+  "name": "北斗",
+  "title": "HOKUTO",
+  "rarity": "R",
+  "element": "LIGHT",
+  "roles": ["ATTACKER"],
+  "baseStats": {
+    "hp": 700,
+    "attack": 105,
+    "defense": 58,
+    "speed": 100,
+    "critical": 15,
+    "criticalDamage": 155,
+    "resistance": 12,
+    "healing": 100
+  },
+  "growth": {
+    "hp": 55,
+    "attack": 7.4,
+    "defense": 4.0,
+    "speed": 0.9,
+    "criticalDamage": 0.6
+  },
+  "normalAttack": "na_hokuto_arrow",
+  "skills": ["sk_hokuto_piercing_ray", "sk_hokuto_banish"],
+  "ultimate": "ult_hokuto_seven_stars",
+  "awakening": {
+    "id": "starfire_resolve",
+    "name": "星火の決意",
+    "condition": { "enemyDefeated": 2 },
+    "statBonus": { "attack": 40, "criticalDamage": 30, "speed": 10 },
+    "description": "二つ落として、ようやく手が震えなくなる。三つ目からが彼の本番だと、本人だけが知っている。",
+    "fx": "awaken_light"
+  },
+  "defaultAi": "ai_hokuto_striker",
+  "description": "闇を祓うためだけに弓と陣を覚えた、真面目すぎる若者。汎用性はSSRアタッカーに一歩譲るが、DARK属性を相手にしたときの単体火力は編成中最高で、闇のボスに対してはRのまま最終編成に残り続ける。属性が噛み合わない戦場では、素直に控えに回すのが正解。",
+  "tags": ["AntiDark", "Nuker", "LowRarityCore"],
+  "trpg": {
+    "source": "身内CoC(架空卓)",
+    "player": "PL-F(仮)",
+    "investigator": "北斗(架空の探索者)",
+    "affiliation": "架空の祓い屋見習い",
+    "visibility": "PRIVATE",
+    "note": "本データは身内TRPGをモチーフにした架空の仮設定です。実在の人物・団体とは一切関係ありません。"
+  },
+  "art": {
+    "primary": "#D8C77A",
+    "secondary": "#4A3F1E",
+    "accent": "#FFF6C9",
+    "sigil": "斗",
+    "pattern": "burst"
+  }
+}
