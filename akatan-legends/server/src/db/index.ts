@@ -1,0 +1,160 @@
+/**
+ * SQLite 接続とマイグレーション
+ * ------------------------------------------------------------
+ * 設計書 §36: 将来 SQLite 以外へ差し替えられるよう、SQL は repository.ts に集約する。
+ * ここは「接続を作る」「スキーマを最新にする」だけを担当する。
+ *
+ * マイグレーションは PRAGMA user_version で管理する。
+ * テーブル追加・カラム追加が必要になったら MIGRATIONS の末尾に関数を push するだけでよい。
+ * (既存ユーザの data.db も起動時に自動で最新まで進む)
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import Database from 'better-sqlite3';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export type Db = Database.Database;
+
+/** server/data.db (gitignore 済み)。AKATAN_DB_PATH で上書き可。`:memory:` もOK */
+export function resolveDbPath(): string {
+  const fromEnv = process.env.AKATAN_DB_PATH;
+  if (fromEnv) return fromEnv === ':memory:' ? fromEnv : path.resolve(fromEnv);
+  // server/src/db/index.ts -> server/data.db
+  return path.resolve(__dirname, '../../data.db');
+}
+
+/* ============================================================
+ * マイグレーション
+ * ========================================================== */
+
+/**
+ * 各マイグレーションは「user_version が index と同じとき」に実行され、
+ * 終了後に user_version = index + 1 になる。
+ * 一度リリースしたマイグレーションは書き換えず、必ず末尾に追加すること。
+ */
+const MIGRATIONS: ((db: Db) => void)[] = [
+  // v0 -> v1: 初期スキーマ
+  (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS players (
+        id          TEXT PRIMARY KEY,
+        name        TEXT NOT NULL,
+        gold        INTEGER NOT NULL DEFAULT 0,
+        stamina     INTEGER NOT NULL DEFAULT 0,
+        created_at  TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS owned_characters (
+        uid            TEXT PRIMARY KEY,
+        player_id      TEXT NOT NULL,
+        def_id         TEXT NOT NULL,
+        level          INTEGER NOT NULL DEFAULT 1,
+        exp            INTEGER NOT NULL DEFAULT 0,
+        rebirth        INTEGER NOT NULL DEFAULT 0,
+        rebirth_points TEXT,
+        limit_break    INTEGER NOT NULL DEFAULT 0,
+        equipment      TEXT,
+        ai_profile     TEXT,
+        obtained_at    TEXT NOT NULL,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_owned_characters_player
+        ON owned_characters(player_id);
+
+      CREATE TABLE IF NOT EXISTS parties (
+        id         TEXT PRIMARY KEY,
+        player_id  TEXT NOT NULL,
+        name       TEXT NOT NULL,
+        members    TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_parties_player ON parties(player_id);
+
+      CREATE TABLE IF NOT EXISTS cleared_stages (
+        player_id  TEXT NOT NULL,
+        stage_id   TEXT NOT NULL,
+        cleared_at TEXT NOT NULL,
+        PRIMARY KEY (player_id, stage_id),
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS battle_logs (
+        id         TEXT PRIMARY KEY,
+        player_id  TEXT NOT NULL,
+        stage_id   TEXT,
+        seed       INTEGER NOT NULL,
+        victory    INTEGER NOT NULL,
+        log_json   TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_battle_logs_player_created
+        ON battle_logs(player_id, created_at DESC);
+    `);
+  },
+  // v1 -> v2 以降はここに追記する (例: 装備テーブル、ガチャ履歴 など)
+];
+
+export const SCHEMA_VERSION = MIGRATIONS.length;
+
+function migrate(db: Db): { from: number; to: number } {
+  const row = db.pragma('user_version', { simple: true }) as number;
+  const from = typeof row === 'number' ? row : 0;
+  let current = from;
+  const runAll = db.transaction(() => {
+    for (let i = current; i < MIGRATIONS.length; i += 1) {
+      MIGRATIONS[i](db);
+      // PRAGMA はプレースホルダを使えないので直接埋め込む(i は内部定数なので安全)
+      db.pragma(`user_version = ${i + 1}`);
+      current = i + 1;
+    }
+  });
+  runAll();
+  return { from, to: current };
+}
+
+/* ============================================================
+ * 接続
+ * ========================================================== */
+
+let instance: Db | null = null;
+
+export interface DbInitResult {
+  db: Db;
+  path: string;
+  migratedFrom: number;
+  migratedTo: number;
+}
+
+/** 起動時に一度呼ぶ。冪等(何度呼んでも同じ結果)。 */
+export function initDb(dbPath = resolveDbPath()): DbInitResult {
+  if (instance) {
+    return { db: instance, path: dbPath, migratedFrom: SCHEMA_VERSION, migratedTo: SCHEMA_VERSION };
+  }
+  if (dbPath !== ':memory:') {
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  }
+  const db = new Database(dbPath);
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+  const { from, to } = migrate(db);
+  instance = db;
+  return { db, path: dbPath, migratedFrom: from, migratedTo: to };
+}
+
+/** 接続済み DB を取得(未初期化なら初期化する) */
+export function getDb(): Db {
+  if (!instance) initDb();
+  return instance!;
+}
+
+/** テスト用: 接続を閉じてシングルトンを破棄する */
+export function closeDb(): void {
+  if (instance) {
+    instance.close();
+    instance = null;
+  }
+}

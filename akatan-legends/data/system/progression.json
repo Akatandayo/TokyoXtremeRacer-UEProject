@@ -1,0 +1,14 @@
+{
+  "levelCap": 60,
+  "expCurve": { "base": 30, "exponent": 1.5 },
+  "battle": {
+    "gaugeRate": 0.1,
+    "gaugeMax": 100,
+    "ultGainOnAction": 22,
+    "ultGainOnHit": 8,
+    "ultMax": 100,
+    "defenseConstant": 300,
+    "maxTicks": 240,
+    "damageVariance": 0.08
+  }
+}

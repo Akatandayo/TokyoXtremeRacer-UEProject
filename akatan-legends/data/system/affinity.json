@@ -1,0 +1,9 @@
+{
+  "FIRE":  { "FIRE": 1.0,  "WATER": 0.8,  "EARTH": 1.0,  "WIND": 1.25, "LIGHT": 1.0,  "DARK": 1.0,  "VOID": 1.0 },
+  "WIND":  { "FIRE": 0.8,  "WATER": 1.0,  "EARTH": 1.25, "WIND": 1.0,  "LIGHT": 1.0,  "DARK": 1.0,  "VOID": 1.0 },
+  "EARTH": { "FIRE": 1.0,  "WATER": 1.25, "EARTH": 1.0,  "WIND": 0.8,  "LIGHT": 1.0,  "DARK": 1.0,  "VOID": 1.0 },
+  "WATER": { "FIRE": 1.25, "WATER": 1.0,  "EARTH": 0.8,  "WIND": 1.0,  "LIGHT": 1.0,  "DARK": 1.0,  "VOID": 1.0 },
+  "LIGHT": { "FIRE": 1.0,  "WATER": 1.0,  "EARTH": 1.0,  "WIND": 1.0,  "LIGHT": 0.8,  "DARK": 1.25, "VOID": 1.1 },
+  "DARK":  { "FIRE": 1.0,  "WATER": 1.0,  "EARTH": 1.0,  "WIND": 1.0,  "LIGHT": 1.25, "DARK": 0.8,  "VOID": 1.1 },
+  "VOID":  { "FIRE": 1.0,  "WATER": 1.0,  "EARTH": 1.0,  "WIND": 1.0,  "LIGHT": 1.0,  "DARK": 1.0,  "VOID": 1.0 }
+}
