@@ -27,7 +27,7 @@
  */
 import type {
   ActiveStatus, AffinityTable, Awakening, BattleEvent, BattleEventType, BattleLog,
-  BattleResult, BattleUnit, BattleUnitSnapshot, BattleUnitStat, Element,
+  BattleResult, BattleUnit, BattleUnitSnapshot, BattleUnitStat, ComboDef, ComboEffect, Element,
   ProgressionConfig, Side, Skill, SkillEffect, StatKey, StatusType,
 } from '@akatan/shared';
 import type { BattleContext, CombatantInput, RunBattle } from './contract.js';
@@ -38,6 +38,7 @@ import {
   effectiveStat, incapacitatingReason, isIncapacitated, STATUS_LABEL,
 } from './status.js';
 import { decideAction, hpRatio, selectTargets, profileTendency, type AiUnit } from './ai.js';
+import { qualifyCombos, type ComboRuntime } from './combo.js';
 
 type BattleConfig = ProgressionConfig['battle'];
 
@@ -89,6 +90,11 @@ class BattleRunner {
   private finished = false;
   private victory = false;
   private endReason = '';
+  /**
+   * 成立済みコンボの実行時状態。ctx.combos 省略時は空配列
+   * (以後のコンボ判定は全て length===0 で早期returnし、既存の挙動に一切影響しない)。
+   */
+  private readonly comboRuntimes: ComboRuntime[];
 
   constructor(
     allies: CombatantInput[],
@@ -101,6 +107,8 @@ class BattleRunner {
     // 味方 -> 敵 の順で並べる。この並びがそのまま snapshot の並びになり、フロントの描画順にもなる。
     for (const c of [...allies].sort((a, b) => a.slot - b.slot)) this.units.push(this.toUnit(c, 'ALLY'));
     for (const c of [...enemies].sort((a, b) => a.slot - b.slot)) this.units.push(this.toUnit(c, 'ENEMY'));
+    // コンボの成立判定は味方の編成(defId)だけを見て、戦闘開始時に1回だけ行う。
+    this.comboRuntimes = ctx.combos ? qualifyCombos(allies, ctx.combos) : [];
   }
 
   /* ========================================================
@@ -177,7 +185,7 @@ class BattleRunner {
   /** snapshot を必ず付けるイベント種別 (HP/ゲージ/状態が動くもの) */
   private static readonly SNAPSHOT_EVENTS: readonly BattleEventType[] = [
     'BATTLE_START', 'DAMAGE', 'HEAL', 'STATUS_APPLY', 'STATUS_EXPIRE', 'STATUS_TICK',
-    'GAUGE_CHANGE', 'DEFEAT', 'AWAKEN', 'BATTLE_END',
+    'GAUGE_CHANGE', 'DEFEAT', 'AWAKEN', 'COMBO', 'BATTLE_END',
   ];
 
   private emit(type: BattleEventType, e: Omit<BattleEvent, 'seq' | 'tick' | 'type'>): BattleEvent {
@@ -232,6 +240,7 @@ class BattleRunner {
     this.emit('BATTLE_START', {
       text: `戦闘開始！ ${this.aliveOf('ALLY').length} 対 ${this.aliveOf('ENEMY').length}`,
     });
+    this.fireBattleStartCombos();
     this.roundQuota = Math.max(1, this.units.filter((u) => u.alive).length);
     this.emit('TURN_START', { value: this.turn, text: `── ${this.turn} ターン目 ──` });
 
@@ -279,7 +288,9 @@ class BattleRunner {
       id: this.logId(),
       seed: this.ctx.seed,
       stageId: this.ctx.stageId,
-      createdAt: new Date().toISOString(),
+      // 実時刻をエンジン内で取得しない(P1-1): 呼び出し側が注入した ctx.now を入れるだけにする。
+      // これで「同シード同入力ならログ全体が完全一致する」が createdAt を含めても成り立つ。
+      createdAt: this.ctx.now ?? '',
       units: initialUnits,
       events: this.events,
       result: this.buildResult(),
@@ -402,6 +413,10 @@ class BattleRunner {
     // --- 5. 効果適用 ---
     this.applySkillEffects(actor, skill, decision.targets);
 
+    // --- 5.5 コンボ判定 (ON_SKILL_USE) ---
+    // 「使った直後」なので、効果適用(ダメージ等)が全部終わった後に判定する。
+    this.checkComboOnSkillUse(actor, skill);
+
     // --- 6〜9 ---
     this.endOfAction(actor, true);
   }
@@ -425,6 +440,16 @@ class BattleRunner {
       if (cd > 0) actor.cooldowns.set(id, cd - 1);
     }
 
+    // コンボのクールダウン減少。「発動キャラの行動回数基準」= このコンボを発動できる
+    // どちらかのキャラ(eligibleActorDefIds)が行動するたびに1減る。
+    if (this.comboRuntimes.length > 0) {
+      for (const runtime of this.comboRuntimes) {
+        if (runtime.cooldownRemaining > 0 && runtime.eligibleActorDefIds.has(actor.defId)) {
+          runtime.cooldownRemaining -= 1;
+        }
+      }
+    }
+
     // 必殺ゲージ (行動した場合のみ)
     if (acted && actor.alive) this.gainUlt(actor, this.cfg.ultGainOnAction);
 
@@ -445,26 +470,37 @@ class BattleRunner {
       const before = unit.hp;
       unit.hp = Math.max(0, unit.hp - d.value);
       const applied = before - unit.hp;
+      // 生存中は hp>0 かつ d.value>=1 保証なので applied は事実上常に>0 だが、
+      // 将来の計算変更に対する安全弁として P0-2 のガードは入れておく。
+      if (applied <= 0) continue;
       unit.stat.damageTaken += applied;
       this.emit('STATUS_TICK', {
         targetId: unit.id,
         status: d.type,
-        value: d.value,
-        text: `${unit.name} は ${STATUS_LABEL[d.type]} で ${d.value} ダメージ！`,
+        value: applied,
+        text: `${unit.name} は ${STATUS_LABEL[d.type]} で ${applied} ダメージ！`,
       });
       if (unit.hp <= 0) this.defeat(unit, undefined);
+      else this.checkComboHpBelow(unit);
     }
     for (const h of t.heal) {
       if (!unit.alive) break;
       const before = unit.hp;
       unit.hp = Math.min(unit.maxHp, unit.hp + h.value);
       const applied = unit.hp - before;
+      // P0-2 の根本原因: computeStatusTick の h.value 自体は Math.max(1, ...) で
+      // 最低1回復を保証しているが、対象が既に満タンHPだと Math.min(maxHp, ...) で
+      // 実際の増分(applied)が0に落ちる。「再生で0回復」はここで発生する。
+      // potency の計算そのものにバグは無く、クランプによる「見かけの0」なので、
+      // イベントを出さない(=状態が変わっていないので出さなくて良い)ことで解決する。
+      if (applied <= 0) continue;
       this.emit('STATUS_TICK', {
         targetId: unit.id,
         status: h.type,
         value: applied,
         text: `${unit.name} は ${STATUS_LABEL[h.type]} で ${applied} 回復！`,
       });
+      this.checkComboHpBelow(unit);
     }
   }
 
@@ -499,18 +535,23 @@ class BattleRunner {
         : baseTargets.filter((t) => t.alive);
       if (targets.length === 0) continue;
 
-      for (const target of targets) {
-        if (!target.alive) continue;
+      // P0-3: 同一効果が複数対象へ連続適用される場合、2件目以降の対象は grouped:true にする。
+      // (フロントが「味方全体に〜」のように1行へまとめられるようにするため)
+      // 判断基準は「targets 配列での順番」であり、1ユニット内の複数ヒット(effectDamage の
+      // hits ループ等)はここでは関与しない = 多段攻撃の各ヒットは個別に表示され続ける。
+      targets.forEach((target, idx) => {
+        if (!target.alive) return;
+        const grouped = idx > 0;
         switch (effect.type) {
-          case 'DAMAGE': this.effectDamage(actor, target, skill, effect); break;
-          case 'HEAL': this.effectHeal(actor, target, skill, effect); break;
-          case 'STATUS': this.effectStatus(actor, target, skill, effect); break;
-          case 'CLEANSE': this.effectCleanse(target, effect); break;
-          case 'GAUGE': this.effectGauge(target, effect); break;
-          case 'ULT_GAUGE': this.effectUltGauge(target, effect); break;
+          case 'DAMAGE': this.effectDamage(actor, target, skill, effect, grouped); break;
+          case 'HEAL': this.effectHeal(actor, target, skill, effect, grouped); break;
+          case 'STATUS': this.effectStatus(actor, target, skill, effect, grouped); break;
+          case 'CLEANSE': this.effectCleanse(target, effect, grouped); break;
+          case 'GAUGE': this.effectGauge(target, effect, grouped); break;
+          case 'ULT_GAUGE': this.effectUltGauge(target, effect, grouped); break;
           default: break;
         }
-      }
+      });
     }
   }
 
@@ -521,7 +562,9 @@ class BattleRunner {
     return effectiveStat(unit, key);
   }
 
-  private effectDamage(actor: EngineUnit, target: EngineUnit, skill: Skill, effect: SkillEffect): void {
+  private effectDamage(
+    actor: EngineUnit, target: EngineUnit, skill: Skill, effect: SkillEffect, grouped = false,
+  ): void {
     const hits = Math.max(1, Math.round(effect.hits ?? 1));
     const power = effect.power ?? 1;
     const element: Element = effect.element ?? actor.element;
@@ -549,6 +592,8 @@ class BattleRunner {
       actor.stat.damageDealt += res.value;
       target.stat.damageTaken += through;
 
+      // 注: computeDamage は最低1ダメージを保証するため res.value は事実上0にならない。
+      // 盾が全部吸っても「当てた」事実自体は演出上意味があるので、DAMAGE は抑止しない (P0-2 対象外)。
       this.emit('DAMAGE', {
         sourceId: actor.id,
         targetId: target.id,
@@ -560,16 +605,21 @@ class BattleRunner {
         element,
         fx: skill.fx,
         text: damageText(actor.name, skill.name, target.name, res.value, res.critical, res.affinity, absorbed),
+        // grouped は「複数対象の何体目か」の話なので、1体への多段ヒットの2発目以降には付けない。
+        ...(grouped && i === 0 ? { grouped: true } : {}),
       });
 
       // 被弾で必殺ゲージが溜まる (耐えるほど反撃の芽が出る設計)
       this.gainUlt(target, this.cfg.ultGainOnHit);
 
       if (target.hp <= 0) { this.defeat(target, actor); break; }
+      this.checkComboHpBelow(target);
     }
   }
 
-  private effectHeal(actor: EngineUnit, target: EngineUnit, skill: Skill, effect: SkillEffect): void {
+  private effectHeal(
+    actor: EngineUnit, target: EngineUnit, skill: Skill, effect: SkillEffect, grouped = false,
+  ): void {
     // scaling: 'hp' のときは「対象の最大HP割合」回復、それ以外は術者のステータス基準。
     const scalingStat = effect.scaling === 'hp' ? target.maxHp : this.scalingValue(actor, effect.scaling);
     const res = computeHeal({
@@ -582,6 +632,11 @@ class BattleRunner {
     const before = target.hp;
     target.hp = Math.min(target.maxHp, target.hp + res.value);
     const applied = target.hp - before;
+    // P0-2: computeHeal 自体は最低1回復を保証するが、対象が既に満タンなら
+    // Math.min(maxHp, ...) で実際の増分(applied)が0に落ちる。これが「再生で0回復」の実態
+    // (potency の計算自体は正しく、常に applied<=nominal になる clamp が原因)。
+    // 状態が変わっていないのでイベントも出さない。
+    if (applied <= 0) return;
     actor.stat.healing += applied;
     this.emit('HEAL', {
       sourceId: actor.id,
@@ -592,10 +647,14 @@ class BattleRunner {
       element: actor.element,
       fx: skill.fx,
       text: `${actor.name} の ${skill.name}！ ${target.name} の HPが ${applied} 回復！`,
+      ...(grouped ? { grouped: true } : {}),
     });
+    this.checkComboHpBelow(target);
   }
 
-  private effectStatus(actor: EngineUnit, target: EngineUnit, skill: Skill, effect: SkillEffect): void {
+  private effectStatus(
+    actor: EngineUnit, target: EngineUnit, skill: Skill, effect: SkillEffect, grouped = false,
+  ): void {
     if (!effect.status) return;
     const outcome = applyStatus(target, {
       type: effect.status,
@@ -615,6 +674,7 @@ class BattleRunner {
         skillName: skill.name,
         status: effect.status,
         text: `${target.name} は ${STATUS_LABEL[effect.status]} を弾いた！`,
+        ...(grouped ? { grouped: true } : {}),
       });
       return;
     }
@@ -630,43 +690,213 @@ class BattleRunner {
       value: outcome.status.potency,
       fx: skill.fx,
       text: statusApplyText(target.name, effect.status),
+      ...(grouped ? { grouped: true } : {}),
     });
   }
 
-  private effectCleanse(target: EngineUnit, effect: SkillEffect): void {
+  private effectCleanse(target: EngineUnit, effect: SkillEffect, grouped = false): void {
     const removed = cleanseDebuffs(target, effect.hits);
-    for (const s of removed) {
+    removed.forEach((s, i) => {
       this.emit('STATUS_EXPIRE', {
         targetId: target.id,
         status: s.type,
         text: `${target.name} の ${STATUS_LABEL[s.type]} が解除された！`,
+        // 1体が複数状態を同時解除する内側のループは対象外。あくまで「何体目か」だけを見る。
+        ...(grouped && i === 0 ? { grouped: true } : {}),
       });
-    }
-  }
-
-  private effectGauge(target: EngineUnit, effect: SkillEffect): void {
-    // amount は gaugeMax に対する % (100 なら1行動ぶん丸ごと)
-    const delta = (this.cfg.gaugeMax * (effect.amount ?? 0)) / 100;
-    if (delta === 0) return;
-    target.gauge = Math.max(0, target.gauge + delta);
-    const pct = effect.amount ?? 0;
-    this.emit('GAUGE_CHANGE', {
-      targetId: target.id,
-      value: Math.round(delta * 100) / 100,
-      text: `${target.name} の 行動ゲージが ${pct > 0 ? '+' : ''}${pct}% ${pct > 0 ? '上昇' : '低下'}！`,
     });
   }
 
-  private effectUltGauge(target: EngineUnit, effect: SkillEffect): void {
+  private effectGauge(target: EngineUnit, effect: SkillEffect, grouped = false): void {
+    // amount は gaugeMax に対する % (100 なら1行動ぶん丸ごと)
+    const delta = (this.cfg.gaugeMax * (effect.amount ?? 0)) / 100;
+    if (delta === 0) return;
+    const before = target.gauge;
+    target.gauge = Math.max(0, target.gauge + delta);
+    const applied = target.gauge - before;
+    // P0-2: 下限0でクランプされ、既に0のゲージをさらに減らそうとした場合などに実際の変化が0になる。
+    if (applied === 0) return;
+    const pct = effect.amount ?? 0;
+    this.emit('GAUGE_CHANGE', {
+      targetId: target.id,
+      value: Math.round(applied * 100) / 100,
+      text: `${target.name} の 行動ゲージが ${pct > 0 ? '+' : ''}${pct}% ${pct > 0 ? '上昇' : '低下'}！`,
+      ...(grouped ? { grouped: true } : {}),
+    });
+  }
+
+  private effectUltGauge(target: EngineUnit, effect: SkillEffect, grouped = false): void {
     const delta = (this.cfg.ultMax * (effect.amount ?? 0)) / 100;
     if (delta === 0) return;
     const before = target.ultGauge;
     this.gainUlt(target, delta);
+    const applied = target.ultGauge - before;
+    // P0-2: 既に満タン/0で clamp され、実際の変化が0になるケースを抑止する。
+    if (applied === 0) return;
     this.emit('GAUGE_CHANGE', {
       targetId: target.id,
-      value: Math.round((target.ultGauge - before) * 100) / 100,
+      value: Math.round(applied * 100) / 100,
       text: `${target.name} の 必殺ゲージが ${effect.amount}% 変動！`,
+      ...(grouped ? { grouped: true } : {}),
     });
+  }
+
+  /* ========================================================
+   * キャラクターコンボ (設計書§13〜§15)
+   * ------------------------------------------------------------
+   * 成立判定は constructor で1回だけ行っている (combo.ts の qualifyCombos)。
+   * ここでは「成立済みのコンボについて、今このトリガーで発動していいか」だけを判定する。
+   * ====================================================== */
+
+  /** 発動可否 (cooldown / maxPerBattle) だけを見る。成立判定はここでは行わない。 */
+  private comboReady(runtime: ComboRuntime): boolean {
+    if (runtime.cooldownRemaining > 0) return false;
+    const max = runtime.def.trigger.maxPerBattle;
+    return max === undefined || runtime.timesTriggered < max;
+  }
+
+  /** runtime の参加キャラのうち、生存している最初の1体を slot 昇順で返す (excludeId は除外)。 */
+  private firstParticipant(runtime: ComboRuntime, excludeId?: string): EngineUnit | undefined {
+    return this.units
+      .filter((u) => u.side === 'ALLY' && u.alive && u.id !== excludeId
+        && runtime.participantDefIds.includes(u.defId))
+      .sort((a, b) => a.slot - b.slot)[0];
+  }
+
+  /** defId 指定で生存している味方ユニットを探す (ComboEffect.performer の明示指定用)。 */
+  private findAliveAllyByDefId(defId: string): EngineUnit | undefined {
+    return this.units
+      .filter((u) => u.side === 'ALLY' && u.alive && u.defId === defId)
+      .sort((a, b) => a.slot - b.slot)[0];
+  }
+
+  private fireBattleStartCombos(): void {
+    if (this.comboRuntimes.length === 0) return;
+    for (const runtime of this.comboRuntimes) {
+      if (runtime.def.trigger.type !== 'ON_BATTLE_START' || !this.comboReady(runtime)) continue;
+      const source = this.firstParticipant(runtime);
+      if (!source) continue;
+      this.fireCombo(runtime, source);
+    }
+  }
+
+  /** ON_SKILL_USE: actor が skill を使った直後に呼ぶ。 */
+  private checkComboOnSkillUse(actor: EngineUnit, skill: Skill): void {
+    if (this.comboRuntimes.length === 0 || actor.side !== 'ALLY') return;
+    for (const runtime of this.comboRuntimes) {
+      const t = runtime.def.trigger;
+      if (t.type !== 'ON_SKILL_USE') continue;
+      if (!runtime.eligibleActorDefIds.has(actor.defId)) continue;
+      const matchesSkill = t.skill !== undefined && t.skill === skill.id;
+      const matchesTag = t.skillTag !== undefined && (skill.tags ?? []).includes(t.skillTag);
+      if (!matchesSkill && !matchesTag) continue;
+      if (!this.comboReady(runtime)) continue;
+      this.fireCombo(runtime, actor);
+    }
+  }
+
+  /**
+   * ON_HP_BELOW: HPが変化した(かつ生存している)ユニットについて毎回呼ぶ。
+   * エッジトリガー化: 閾値を下回った瞬間に1回だけ発動し、閾値を上回るまでは再発動しない
+   * (cooldown/maxPerBattle が無いコンボでも、HPが低いままの間ずっと連発しないようにするため)。
+   */
+  private checkComboHpBelow(unit: EngineUnit): void {
+    if (this.comboRuntimes.length === 0 || unit.side !== 'ALLY' || !unit.alive) return;
+    const ratio = hpRatio(unit);
+    for (const runtime of this.comboRuntimes) {
+      const t = runtime.def.trigger;
+      if (t.type !== 'ON_HP_BELOW' || t.hpBelow === undefined) continue;
+      if (!runtime.participantDefIds.includes(unit.defId)) continue;
+
+      if (ratio > t.hpBelow) {
+        runtime.hpBelowArmed.delete(unit.id); // 回復して閾値を上回った -> 再武装
+        continue;
+      }
+      if (runtime.hpBelowArmed.has(unit.id)) continue; // 既にこの下降エッジで発動済み
+      runtime.hpBelowArmed.add(unit.id);
+      if (!this.comboReady(runtime)) continue;
+      this.fireCombo(runtime, unit);
+    }
+  }
+
+  /** ON_ALLY_DEFEATED: 味方が撃破された直後に呼ぶ。sourceId には撃破された本人を使う。 */
+  private checkComboAllyDefeated(defeatedUnit: EngineUnit): void {
+    if (this.comboRuntimes.length === 0) return;
+    for (const runtime of this.comboRuntimes) {
+      if (runtime.def.trigger.type !== 'ON_ALLY_DEFEATED' || !this.comboReady(runtime)) continue;
+      this.fireCombo(runtime, defeatedUnit);
+    }
+  }
+
+  /**
+   * コンボを実際に発動する。
+   *  - performer(既定は「起点キャラ以外の参加キャラ」)が戦闘不能なら発動しない
+   *    (COMBO イベントも出さない・cooldown/maxPerBattle も消費しない)。
+   *  - COMBO イベントは必ず1つ出す。sourceId=起点キャラ、targetId=performer (カットイン用に両方必須)。
+   *  - 効果は ComboDef.effects を順に適用する。skill 指定は既存の applySkillEffects を再利用するので、
+   *    ダメージ計算・snapshot・grouped 判定など通常のスキル実行と全く同じ経路を通る
+   *    (= 決定論も既存の乱数消費ルールのまま保たれる)。
+   *  - performer の行動ゲージ/必殺ゲージ/クールダウンは一切変更しない
+   *    (コンボは「追加のご褒美」であって、performer の本来の手番を消費しない設計)。
+   */
+  private fireCombo(runtime: ComboRuntime, sourceUnit: EngineUnit): void {
+    const defaultPerformer = this.firstParticipant(runtime, sourceUnit.id);
+    if (!defaultPerformer) return; // 相方が戦闘不能、または他に参加キャラがいない -> 発動しない
+
+    runtime.timesTriggered += 1;
+    // 自分自身の行動でクールダウンを消費したケースと同じ+1トリック
+    // (endOfAction の減算がこの直後に走っても、意図した cooldown 回数ぶんは待たされるようにする)。
+    runtime.cooldownRemaining = (runtime.def.trigger.cooldown ?? 0) + 1;
+
+    const def = runtime.def;
+    this.emit('COMBO', {
+      sourceId: sourceUnit.id,
+      targetId: defaultPerformer.id,
+      comboId: def.id,
+      skillName: def.name,
+      fx: def.fx,
+      text: `${sourceUnit.name} と ${defaultPerformer.name} の連携 ―― ${def.name}！`,
+    });
+
+    for (const effect of def.effects) {
+      this.applyComboEffect(def, effect, defaultPerformer);
+    }
+  }
+
+  /** ComboEffect 1件を適用する。performer 省略時は defaultPerformer を使う。 */
+  private applyComboEffect(def: ComboDef, effect: ComboEffect, defaultPerformer: EngineUnit): void {
+    const performer = effect.performer ? this.findAliveAllyByDefId(effect.performer) : defaultPerformer;
+    if (!performer || !performer.alive) return; // この効果の performer だけが戦闘不能 -> この効果だけ諦める
+
+    const tendency = profileTendency(this.ctx.aiProfiles.get(performer.aiProfileId));
+
+    if (effect.skill) {
+      const skill = this.ctx.skills.get(effect.skill);
+      if (!skill) return; // データ不整合 -> 静かに諦める (他のコンボ効果には影響させない)
+      const targets = selectTargets(
+        performer, skill.target, this.alliesOf(performer), this.foesOf(performer), this.rng, tendency,
+      );
+      this.applySkillEffects(performer, skill, targets);
+      return;
+    }
+
+    if (effect.effect) {
+      // skill を介さない直接効果。ComboDef の名前をそのままログ用スキル名として使う合成スキルにする。
+      const synthetic: Skill = {
+        id: def.id,
+        name: def.name,
+        kind: 'ACTIVE',
+        description: def.description,
+        cooldown: 0,
+        target: effect.effect.target ?? { side: 'SELF', pattern: 'SELF' },
+        effects: [effect.effect],
+        fx: def.fx,
+      };
+      const targets = selectTargets(
+        performer, synthetic.target, this.alliesOf(performer), this.foesOf(performer), this.rng, tendency,
+      );
+      this.applySkillEffects(performer, synthetic, targets);
+    }
   }
 
   /* ========================================================
@@ -686,6 +916,7 @@ class BattleRunner {
       targetId: unit.id,
       text: `${unit.name} は 倒れた！`,
     });
+    if (unit.side === 'ALLY') this.checkComboAllyDefeated(unit);
   }
 
   /**
@@ -831,16 +1062,25 @@ class BattleRunner {
  * テキスト生成 (演出の実況風1行)
  * ========================================================== */
 
+/**
+ * P0-4: 括弧は1行に最大1つまでとする。
+ * 優先度: 会心 > 属性相性 > シールド肩代わり。
+ *   - 会心/属性相性は「その一撃の質」を表す最重要情報 (次の編成判断に直結する)。
+ *   - シールド肩代わりは「結果的にどれだけ通ったか」という補足情報で、優先度は最も低い。
+ *   - 落ちた情報は BattleEvent.critical / affinity / value にそのまま残っているので、
+ *     UI側はテキストに出ていなくてもアイコン等で表示できる (テキストは1情報に絞るだけ)。
+ */
 function damageText(
   actor: string, skillName: string, target: string,
   value: number, critical: boolean, affinity: number, absorbed: number,
 ): string {
-  let s = `${actor} の ${skillName}！ ${target} に ${value} ダメージ！`;
-  if (critical) s += '(会心)';
-  if (affinity > 1.001) s += '(効果は抜群だ！)';
-  else if (affinity < 0.999) s += '(効果はいまひとつ…)';
-  if (absorbed > 0) s += `(シールドが ${absorbed} 肩代わり)`;
-  return s;
+  const base = `${actor} の ${skillName}！ ${target} に ${value} ダメージ！`;
+  let suffix = '';
+  if (critical) suffix = '(会心)';
+  else if (affinity > 1.001) suffix = '(効果は抜群だ！)';
+  else if (affinity < 0.999) suffix = '(効果はいまひとつ…)';
+  else if (absorbed > 0) suffix = `(シールドが ${absorbed} 肩代わり)`;
+  return suffix ? `${base}${suffix}` : base;
 }
 
 /** バフは「〜が上がった」、デバフは「〜状態になった」で語調を分ける */

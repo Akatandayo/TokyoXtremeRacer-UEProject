@@ -210,7 +210,9 @@ export const fallbackRunBattle: RunBattle = (allies, enemies, ctx): BattleLog =>
     id: `btl_${ctx.seed.toString(36)}`,
     seed: ctx.seed,
     stageId: ctx.stageId,
-    createdAt: new Date().toISOString(),
+    // P0-3: createdAt はAPI層(呼び出し元)から渡された ctx.now を使う。
+    // エンジン内で Date.now() を呼ぶと決定論(同シード同ログ)が壊れるため。
+    createdAt: ctx.now || new Date().toISOString(),
     units: inputs.map(toUnit),
     events,
     result: {

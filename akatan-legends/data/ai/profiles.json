@@ -3,6 +3,7 @@
     "id": "ai_hitori_glitch",
     "name": "グリッチ・アグレッサー",
     "description": "敵が多いときは全体沈黙、少なくなったら単体を落とし切る。独の既定戦術。",
+    "playerSelectable": true,
     "rules": [
       { "priority": 10, "condition": { "type": "ULT_READY" }, "skill": "ult_hitori_void_collapse", "comment": "必殺優先: 全体沈黙とゲージ削りは早いほど効く" },
       { "priority": 20, "condition": { "type": "ENEMY_COUNT_ATLEAST", "value": 3 }, "skill": "sk_hitori_packet_storm", "comment": "敵3体以上で範囲攻撃" },
@@ -15,11 +16,12 @@
   {
     "id": "ai_momiji_support",
     "name": "バフ・リレー",
-    "description": "味方の攻撃力を先に上げ、余裕があれば範囲炎上。支援寄りの汎用戦術。",
+    "description": "初手は攻撃で様子を見て、2ターン目以降に味方の攻撃力を上げる。支援寄りの汎用戦術。",
+    "playerSelectable": true,
     "rules": [
       { "priority": 10, "condition": { "type": "ULT_READY" }, "skill": "ult_momiji_autumn_blaze", "comment": "必殺優先: 全体火力+味方バフ" },
-      { "priority": 20, "condition": { "type": "ALWAYS" }, "skill": "sk_momiji_relay", "comment": "クールダウンが明けていれば常にバフを回す" },
-      { "priority": 30, "condition": { "type": "ENEMY_COUNT_ATLEAST", "value": 2 }, "skill": "sk_momiji_scatter", "comment": "敵複数で範囲攻撃" },
+      { "priority": 20, "condition": { "type": "TURN_ATLEAST", "value": 2 }, "skill": "sk_momiji_relay", "comment": "2ターン目以降、クールダウンが明けていればバフを回す(開幕の無条件バフ連打を防ぐ。1ターン目は下のルールで殴る)" },
+      { "priority": 30, "condition": { "type": "ENEMY_COUNT_ATLEAST", "value": 2 }, "skill": "sk_momiji_scatter", "comment": "敵複数で範囲攻撃(1ターン目はここに落ちて必ず殴る)" },
       { "priority": 99, "condition": { "type": "ALWAYS" }, "skill": "NORMAL" }
     ]
   },
@@ -27,6 +29,7 @@
     "id": "ai_kurogane_guard",
     "name": "アイアン・ウォール",
     "description": "味方が削れたら全体防壁、自分が削れたら挑発。壁役の既定戦術。",
+    "playerSelectable": true,
     "rules": [
       { "priority": 10, "condition": { "type": "ULT_READY" }, "skill": "ult_kurogane_immovable", "comment": "必殺優先: 全体シールドで一度耐える" },
       { "priority": 20, "condition": { "type": "ALLY_HP_BELOW", "value": 60 }, "skill": "sk_kurogane_bulwark", "comment": "味方HP60%以下で全体シールド" },
@@ -39,6 +42,7 @@
     "id": "ai_shizuku_medic",
     "name": "エマージェンシー・メディック",
     "description": "HP40%以下で必殺回復、55%以下で単体回復、デバフがあれば解除。回復優先の既定戦術。",
+    "playerSelectable": true,
     "rules": [
       { "priority": 10, "condition": { "type": "ALLY_HP_BELOW", "value": 40 }, "skill": "ult_shizuku_spring", "comment": "味方HP40%以下: 必殺で全体回復+全体解除" },
       { "priority": 20, "condition": { "type": "ALLY_HP_BELOW", "value": 55 }, "skill": "sk_shizuku_tide_heal", "comment": "味方HP55%以下で単体集中回復" },
@@ -51,6 +55,7 @@
     "id": "ai_rin_control",
     "name": "ロックダウン",
     "description": "敵が多ければ全体足止め、少なければ最大火力役を気絶させる。妨害特化の既定戦術。",
+    "playerSelectable": true,
     "rules": [
       { "priority": 10, "condition": { "type": "ULT_READY" }, "skill": "ult_rin_storm_prison", "comment": "必殺優先: 全体気絶で手番を丸ごと奪う" },
       { "priority": 20, "condition": { "type": "ENEMY_COUNT_ATLEAST", "value": 3 }, "skill": "sk_rin_binding_gale", "comment": "敵3体以上で全体スロー" },
@@ -63,6 +68,7 @@
     "id": "ai_hokuto_striker",
     "name": "シングルターゲット・ストライカー",
     "description": "単体を確実に落とす。敵が増えたときだけ範囲に切り替える攻撃寄り戦術。",
+    "playerSelectable": true,
     "rules": [
       { "priority": 10, "condition": { "type": "ULT_READY" }, "skill": "ult_hokuto_seven_stars", "comment": "必殺優先: 単体7連撃" },
       { "priority": 20, "condition": { "type": "ENEMY_HP_BELOW", "value": 40 }, "skill": "sk_hokuto_piercing_ray", "comment": "敵HP40%以下でフィニッシャー" },
@@ -75,6 +81,7 @@
     "id": "ai_yomi_affliction",
     "name": "アフリクション",
     "description": "毒と出血を先に全員へ通し、あとは時間に働かせる。長期戦向け戦術。",
+    "playerSelectable": true,
     "rules": [
       { "priority": 10, "condition": { "type": "ULT_READY" }, "skill": "ult_yomi_river_of_death", "comment": "必殺優先: 全体に確定で毒と出血" },
       { "priority": 20, "condition": { "type": "ENEMY_COUNT_ATLEAST", "value": 3 }, "skill": "sk_yomi_plague_veil", "comment": "敵3体以上で全体に毒を撒く" },
@@ -85,11 +92,12 @@
   {
     "id": "ai_sazanami_shield",
     "name": "タイド・キーパー",
-    "description": "味方が危なければ回復、平時はアタッカーの手番を増やす。支援寄りの既定戦術。",
+    "description": "味方が危なければ回復、平時(2ターン目以降)はアタッカーの手番を増やす。支援寄りの既定戦術。",
+    "playerSelectable": true,
     "rules": [
       { "priority": 10, "condition": { "type": "ALLY_HP_BELOW", "value": 50 }, "skill": "ult_sazanami_high_tide", "comment": "味方HP50%以下: 必殺で回復+シールド+ゲージ加速" },
       { "priority": 20, "condition": { "type": "ALLY_HP_BELOW", "value": 70 }, "skill": "sk_sazanami_still_water", "comment": "味方HP70%以下で全体シールド" },
-      { "priority": 30, "condition": { "type": "ALWAYS" }, "skill": "sk_sazanami_undertow", "comment": "平時は攻撃力上位2名の行動ゲージを押し上げる" },
+      { "priority": 30, "condition": { "type": "TURN_ATLEAST", "value": 2 }, "skill": "sk_sazanami_undertow", "comment": "2ターン目以降、平時は攻撃力上位2名の行動ゲージを押し上げる(1ターン目はNORMALで殴る)" },
       { "priority": 40, "condition": { "type": "ULT_READY" }, "skill": "ult_sazanami_high_tide" },
       { "priority": 99, "condition": { "type": "ALWAYS" }, "skill": "NORMAL" }
     ]
@@ -98,6 +106,7 @@
     "id": "ai_enji_burst",
     "name": "バースト・アタッカー",
     "description": "とにかく最大火力を押し付ける。攻撃特化の既定戦術。",
+    "playerSelectable": true,
     "rules": [
       { "priority": 10, "condition": { "type": "ULT_READY" }, "skill": "ult_enji_conflagration", "comment": "必殺優先: 全体最大火力" },
       { "priority": 20, "condition": { "type": "ENEMY_COUNT_ATLEAST", "value": 3 }, "skill": "sk_enji_crimson_wave", "comment": "敵3体以上で範囲攻撃" },
@@ -109,12 +118,13 @@
   {
     "id": "ai_amagi_grace",
     "name": "グレイス・アンカー",
-    "description": "回復・解除・全体バフを状況で切り替える。編成の軸に置く前提の戦術。",
+    "description": "回復・解除・全体バフを状況で切り替える。編成の軸に置く前提の戦術。1ターン目は無条件バフを撃たず通常攻撃で様子を見る。",
+    "playerSelectable": true,
     "rules": [
       { "priority": 10, "condition": { "type": "ALLY_HP_BELOW", "value": 45 }, "skill": "ult_amagi_dawn", "comment": "味方HP45%以下: 必殺で立て直す" },
       { "priority": 20, "condition": { "type": "ALLY_HP_BELOW", "value": 65 }, "skill": "sk_amagi_grace", "comment": "味方HP65%以下で全体回復" },
       { "priority": 30, "condition": { "type": "ALLY_HAS_DEBUFF" }, "skill": "sk_amagi_grace", "comment": "状態異常があれば回復ついでに解除" },
-      { "priority": 40, "condition": { "type": "ALWAYS" }, "skill": "sk_amagi_aegis", "comment": "平時は誓約でシールドとバフを維持" },
+      { "priority": 40, "condition": { "type": "TURN_ATLEAST", "value": 2 }, "skill": "sk_amagi_aegis", "comment": "2ターン目以降、平時は誓約でシールドとバフを維持(1ターン目に全員満タンで撃たせないための下限)" },
       { "priority": 50, "condition": { "type": "ULT_READY" }, "skill": "ult_amagi_dawn" },
       { "priority": 99, "condition": { "type": "ALWAYS" }, "skill": "NORMAL" }
     ]

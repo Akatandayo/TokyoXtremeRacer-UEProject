@@ -33,7 +33,8 @@ async function main(): Promise<void> {
   console.log('[boot] マスターデータをロードしました:', summary);
   console.log(
     `[boot] キャラ ${data.characters.size} 体 / 敵 ${data.enemies.size} 体 / スキル ${data.skills.size} 件 / ` +
-    `AI ${data.aiProfiles.size} 件 / チャプター ${data.chapters.size} 件 / ステージ ${data.stages.size} 件`,
+    `AI ${data.aiProfiles.size} 件 / チャプター ${data.chapters.size} 件 / ステージ ${data.stages.size} 件 / ` +
+    `コンボ ${data.combos.size} 件`,
   );
   if (data.warnings.length > 0) {
     console.warn(`[boot] データ警告 ${data.warnings.length} 件:`);

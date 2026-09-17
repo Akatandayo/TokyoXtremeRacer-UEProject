@@ -227,29 +227,50 @@ export interface GrantExpResult {
 }
 
 /**
+ * 戦闘不能者への EXP 減額率(生存者比)。P1-4 で導入。
+ * 0.5 = 生存者の半額。0 にはしない(育成が詰んだキャラがさらに育たなくなる
+ * 負のループを避けるため。詳細は下の grantBattleExp のコメント参照)。
+ */
+export const DEFEATED_EXP_RATE = 0.5;
+
+/**
  * 出撃メンバーへ EXP を配分する。
  *
- * 配分ルール(MVP):
- *   **生存/戦闘不能を問わず、出撃した全員に同額** を配る。
- *   理由:
- *     - 完全オート戦闘のため「誰が落ちるか」はプレイヤーの操作でコントロールできない。
- *       戦闘不能を減EXPで罰すると、育成が遅れたキャラがさらに育たない負のループになる。
- *     - 控えメンバーには配らないので「編成して出す」動機は保たれる。
- *   将来: 与ダメージ/生存に応じた傾斜配分を入れる場合は、ここで BattleUnitStat を
- *         受け取って係数を掛ける(呼び出し側の互換を保つため引数は末尾に追加すること)。
+ * 配分ルール(P1-4 で第2ラウンド差し戻し対応として変更):
+ *   **生存者には全額、戦闘不能になった者には `DEFEATED_EXP_RATE`(50%)** を配る。
+ *   `survivedByUid` を渡さない場合は従来通り全員同額(呼び出し側の後方互換)。
+ *
+ *   経緯:
+ *     - 第1回評価で「全員生き残る編成を組む動機が無い」ことが 30/30 全勝の一因と
+ *       指摘された(docs/REVIEW_ROUND1.md B節)。前任は「オート戦闘なので誰が落ちる
+ *       かをプレイヤーが操作できず、減EXPは育成の負ループになる」と警告しており、
+ *       この指摘自体は妥当。そのため **0%(無配布)ではなく 50%** を選び、
+ *       「敗北のダメージはあるが再起不能ではない」バランスにした。
+ *     - P0-1(ステージ開放制御)導入により、そもそも身の丈に合わないステージへ
+ *       直行できなくなったため、「弱いキャラだけが延々ハンデを受け続ける」状況は
+ *       起きにくくなっている。難しすぎるステージで負け続けて育成が詰む前に、
+ *       開放条件が下位ステージでの育成を促す形になっている。
+ *     - 控えメンバーには配らないので「編成して出す」動機は変わらず保たれる。
+ *   将来: 与ダメージ量に応じた傾斜配分を入れる場合は、BattleUnitStat を丸ごと
+ *         受け取って係数を掛ける形に拡張する(呼び出し側の互換を保つため引数は
+ *         末尾に追加すること)。
  */
 export function grantBattleExp(
   targets: RewardTarget[],
   stageExp: number,
   config: ProgressionConfig,
+  survivedByUid?: Map<string, boolean>,
 ): GrantExpResult {
   const expPerMember = Math.max(0, Math.floor(stageExp || 0));
+  const defeatedExp = Math.max(0, Math.round(expPerMember * DEFEATED_EXP_RATE));
   const updates: GrantedProgress[] = [];
   const levelUps: LevelUpInfo[] = [];
 
   for (const t of targets) {
+    const survived = survivedByUid ? survivedByUid.get(t.owned.uid) ?? true : true;
+    const amount = survived ? expPerMember : defeatedExp;
     const before = computeOwnedStats(t.def, t.owned);
-    const result = applyExp({ level: t.owned.level, exp: t.owned.exp }, expPerMember, config);
+    const result = applyExp({ level: t.owned.level, exp: t.owned.exp }, amount, config);
     const entry: GrantedProgress = { uid: t.owned.uid, level: result.level, exp: result.exp };
 
     if (result.leveledUp) {

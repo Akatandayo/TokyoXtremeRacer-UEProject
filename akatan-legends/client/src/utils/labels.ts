@@ -1,7 +1,7 @@
 /** 日本語ラベル / 表示用ヘルパー */
 import type {
   Element, Role, Rarity, StatusType, StatKey, AwakeningCondition,
-  SkillKind, TargetPattern, TargetSide, Stats,
+  SkillKind, TargetPattern, TargetSide, Stats, ComboKind,
 } from '@akatan/shared';
 
 export const ELEMENT_LABEL: Record<Element, string> = {
@@ -108,4 +108,41 @@ export function affinityLabel(affinity?: number): 'weak' | 'resist' | 'normal' {
 
 export function elementVar(e?: Element): string {
   return e ? `var(--el-${e})` : 'var(--cyan)';
+}
+
+export const COMBO_KIND_LABEL: Record<ComboKind, string> = {
+  PAIR: 'ペアコンボ', TRIO: 'トリオコンボ', PARTY: 'パーティコンボ', TAG: 'タイプコンボ',
+};
+
+/** 所持キャラ一覧の平均Lv(空編成は0) */
+export function averageLevel(list: { owned: { level: number } }[]): number {
+  if (list.length === 0) return 0;
+  return list.reduce((n, c) => n + c.owned.level, 0) / list.length;
+}
+
+export interface Readiness {
+  cls: 'power-ok' | 'power-warn' | 'power-bad' | '';
+  label: string;
+  ratio: number;
+}
+
+/**
+ * 推奨Lvとパーティ平均Lvを比較する。
+ *
+ * 「平均Lv」を採用した理由(docs/UI.md にも記載):
+ * ステージ推奨は「このくらいのLv帯を想定して調整した」という難易度の目安であり、
+ * 5人のうち1人だけ育成が遅れていても(例: サポート/サブ枠)残り4人が十分な
+ * 戦力を持っていれば押し切れる場面が多い。**最低Lv**を基準にすると、
+ * 育成が均一でない編成(意図的な起用も含む)を過剰に「戦力不足」と表示してしまい、
+ * 編成の自由度を狙う設計(§44 レアリティ≠強さ)と食い合わせが悪い。
+ * そのため平均Lvを基準に「十分/やや不足/戦力不足」を判定する。
+ */
+export function levelReadiness(avgLevel: number, recommendedLevel?: number): Readiness {
+  if (!recommendedLevel || recommendedLevel <= 0) {
+    return { cls: '', label: '', ratio: 1 };
+  }
+  const ratio = avgLevel / recommendedLevel;
+  if (ratio >= 1) return { cls: 'power-ok', label: '十分', ratio };
+  if (ratio >= 0.8) return { cls: 'power-warn', label: 'やや不足', ratio };
+  return { cls: 'power-bad', label: '戦力不足', ratio };
 }

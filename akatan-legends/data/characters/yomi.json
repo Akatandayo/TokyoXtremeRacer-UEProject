@@ -34,6 +34,7 @@
     "description": "自分の血を一度見てから、彼女の刻印は「効き方」を変える。咲かせているのが誰の呪いなのかは、本人にも判然としない。",
     "fx": "awaken_dark"
   },
+  "combos": ["seasoned_trio"],
   "defaultAi": "ai_yomi_affliction",
   "description": "静かに笑いながら相手の内側だけを壊していく術者。瞬間火力は低いが、毒と出血を重ねたときの総ダメージは長期戦で全キャラ中最大になる。HPが高いだけのボスほど彼女に弱く、逆に短期決戦の雑魚戦では出番がない。",
   "tags": ["DoT", "Poison", "AntiBoss"],

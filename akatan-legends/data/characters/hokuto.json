@@ -33,6 +33,7 @@
     "description": "二つ落として、ようやく手が震えなくなる。三つ目からが彼の本番だと、本人だけが知っている。",
     "fx": "awaken_light"
   },
+  "combos": ["first_strike_duet", "seasoned_trio", "low_rarity_bond"],
   "defaultAi": "ai_hokuto_striker",
   "description": "闇を祓うためだけに弓と陣を覚えた、真面目すぎる若者。汎用性はSSRアタッカーに一歩譲るが、DARK属性を相手にしたときの単体火力は編成中最高で、闇のボスに対してはRのまま最終編成に残り続ける。属性が噛み合わない戦場では、素直に控えに回すのが正解。",
   "tags": ["AntiDark", "Nuker", "LowRarityCore"],

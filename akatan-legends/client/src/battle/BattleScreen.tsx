@@ -80,19 +80,40 @@ function PopupView({ p }: { p: Popup }): JSX.Element {
 
 /* ---------- 状態異常 ---------- */
 
+/**
+ * P1-2: 状態異常アイコンの再設計。
+ * - 色だけに頼らない: バフは「+」+丸みのあるチップ、デバフは「−」+角ばったチップ。
+ * - チップを大きく/横並びにして、アイコン・符号・残ターン数を読める大きさにする。
+ * - 多い場合は省略して「+n」チップにまとめる(カードが崩れないように)。
+ */
 function StatusStrip({ statuses }: { statuses: ActiveStatus[] }): JSX.Element {
+  const MAX = 4;
+  const shown = statuses.slice(0, MAX);
+  const overflow = statuses.slice(MAX);
   return (
     <div className="status-strip">
-      {statuses.slice(0, 6).map((s, i) => (
+      {shown.map((s, i) => {
+        const buff = isBuff(s.type);
+        return (
+          <span
+            key={`${s.type}-${i}`}
+            className={`status-chip ${buff ? 'buff' : 'debuff'}`}
+            title={`${STATUS_LABEL[s.type]}(${buff ? 'バフ' : 'デバフ'}) 残り${s.duration}ターン`}
+          >
+            <i className="sign" aria-hidden>{buff ? '+' : '−'}</i>
+            <i className="ic" aria-hidden>{STATUS_ICON[s.type]}</i>
+            <i className="dur">{s.duration}</i>
+          </span>
+        );
+      })}
+      {overflow.length > 0 && (
         <span
-          key={`${s.type}-${i}`}
-          className={`status-chip ${isBuff(s.type) ? 'buff' : 'debuff'}`}
-          title={`${STATUS_LABEL[s.type]} 残り${s.duration}ターン`}
+          className="status-chip more"
+          title={overflow.map((s) => `${STATUS_LABEL[s.type]} 残り${s.duration}ターン`).join(' / ')}
         >
-          {STATUS_ICON[s.type]}
-          <i className="dur">{s.duration}</i>
+          +{overflow.length}
         </span>
-      ))}
+      )}
     </div>
   );
 }
@@ -483,6 +504,17 @@ export function BattleScreen(): JSX.Element {
     />
   );
 
+  // P1-3: 敵/味方は常に「5レーン」のグリッドへ、人数に応じて中央寄せで配置する。
+  // slot ではなく現在の並び順で中央寄せするため、敵1〜5体・味方1〜5体のどの組み合わせでも
+  // 崩れず、かつ両列の水平位置が視覚的に揃う(敵0番目の列と味方0番目の列が一致する)。
+  const LANES = 5;
+  const layoutLane = (units: UnitRuntime[]) => {
+    const start = Math.max(0, Math.floor((LANES - units.length) / 2));
+    return units.map((u, i) => ({ u, col: start + i + 1 }));
+  };
+  const enemyLanes = layoutLane(enemies);
+  const allyLanes = layoutLane(allies);
+
   const flash = state.screenFx?.kind === 'flash' ? state.screenFx : null;
 
   return (
@@ -544,12 +576,20 @@ export function BattleScreen(): JSX.Element {
 
           <div className="side-row enemies">
             <span className="side-label">ENEMY</span>
-            {enemies.map(renderUnit)}
+            {enemyLanes.map(({ u, col }) => (
+              <div className="lane" key={u.base.id} style={{ gridColumn: col }}>
+                {renderUnit(u)}
+              </div>
+            ))}
           </div>
 
           <div className="side-row allies">
             <span className="side-label">PARTY</span>
-            {allies.map(renderUnit)}
+            {allyLanes.map(({ u, col }) => (
+              <div className="lane" key={u.base.id} style={{ gridColumn: col }}>
+                {renderUnit(u)}
+              </div>
+            ))}
           </div>
 
           <CutInView state={state} />
@@ -565,8 +605,16 @@ export function BattleScreen(): JSX.Element {
           <h3>BATTLE LOG</h3>
           <div className="log-list" ref={logRef}>
             {state.logs.map((l) => (
-              <div key={l.id} className={`log-line t-${l.type} ${l.critical ? 'is-crit' : ''}`}>
+              <div
+                key={l.id}
+                className={[
+                  'log-line', `t-${l.type}`,
+                  l.critical ? 'is-crit' : '',
+                  l.highlight ? `hl-${l.highlight}` : '',
+                ].filter(Boolean).join(' ')}
+              >
                 {l.text}
+                {l.count > 1 && <span className="log-count"> 他{l.count - 1}人</span>}
               </div>
             ))}
           </div>

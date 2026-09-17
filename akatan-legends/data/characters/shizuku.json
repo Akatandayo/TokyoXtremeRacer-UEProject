@@ -34,6 +34,7 @@
     "description": "目の前で一人失ってから、彼女は泣くのをやめる。手が止まらなくなるのは、そのあとだ。",
     "fx": "awaken_water"
   },
+  "combos": ["tearless_grace", "low_rarity_bond"],
   "defaultAi": "ai_shizuku_medic",
   "description": "回復量そのものは控えめな、駆け出しの治療役。ただし味方全体の状態異常を毎ターン近く洗い流せるのは彼女だけで、毒・出血・凍結を軸にしてくる相手に対してはURの回復役より確実に機能する。状態異常特化編成に対するメタそのもの。",
   "tags": ["Cleanse", "Anti-Status", "LowRarityCore"],

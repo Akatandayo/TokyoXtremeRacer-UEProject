@@ -37,6 +37,7 @@
     "description": "膝をついた瞬間に、逆に前へ出る。守ると言った以上は最後まで守る、という一点だけで成り立っている覚醒。",
     "fx": "awaken_earth"
   },
+  "combos": ["unshaken_tide", "low_rarity_bond"],
   "defaultAi": "ai_kurogane_guard",
   "description": "無口で融通の利かない、元・現場作業員という設定の男。攻撃性能はゲーム中最低クラスだが、挑発と防御バフを両立できるのは彼だけで、壁役の仕事に限ればSSRやURを上回る。星の数を気にする人間ほど、彼を外して全滅する。",
   "tags": ["Taunt", "Wall", "LowRarityCore"],

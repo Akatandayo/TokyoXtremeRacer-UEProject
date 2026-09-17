@@ -39,8 +39,7 @@
     "cooldown": 4,
     "target": { "side": "ALLY", "pattern": "ALL" },
     "effects": [
-      { "type": "STATUS", "status": "ATK_UP", "duration": 4, "potency": 32 },
-      { "type": "ULT_GAUGE", "amount": 30 }
+      { "type": "STATUS", "status": "ATK_UP", "duration": 4, "potency": 38 }
     ],
     "fx": "ember_aura_ex",
     "tags": ["Network", "Buff", "Awakened"]

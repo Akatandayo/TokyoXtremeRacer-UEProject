@@ -1,0 +1,181 @@
+[
+  {
+    "id": "network_link",
+    "name": "ネットワーク・リンク",
+    "kind": "PAIR",
+    "description": "独がグリッチ系の技を使った直後、回線の向こうで紅葉が中継して追撃する。設計書§13で言及される看板コンボ。独のグリッチ攻撃を軸にした編成を組む理由になる。",
+    "members": ["hitori", "momiji"],
+    "trigger": {
+      "type": "ON_SKILL_USE",
+      "actor": "hitori",
+      "skillTag": "Glitch",
+      "cooldown": 2,
+      "maxPerBattle": 4
+    },
+    "effects": [
+      {
+        "performer": "momiji",
+        "effect": {
+          "type": "DAMAGE",
+          "power": 1.35,
+          "scaling": "attack",
+          "target": { "side": "ENEMY", "pattern": "LOWEST_HP", "count": 1 }
+        }
+      }
+    ],
+    "fx": "combo_link_ember"
+  },
+  {
+    "id": "first_strike_duet",
+    "name": "祓拍子",
+    "kind": "PAIR",
+    "description": "凛が妨害技で敵の足を止めた瞬間、北斗がその隙を狩る。凛の足止めを狙って組む動機になるペア。凛(R)と北斗(R)は共に低レア中核キャラで、高レアに頼らない先制コンビを成立させる。",
+    "members": ["rin", "hokuto"],
+    "trigger": {
+      "type": "ON_SKILL_USE",
+      "actor": "rin",
+      "skillTag": "Control",
+      "cooldown": 3,
+      "maxPerBattle": 3
+    },
+    "effects": [
+      {
+        "performer": "hokuto",
+        "effect": {
+          "type": "DAMAGE",
+          "power": 1.2,
+          "scaling": "attack",
+          "target": { "side": "ENEMY", "pattern": "HIGHEST_ATK", "count": 1 }
+        }
+      }
+    ],
+    "fx": "combo_light_pierce"
+  },
+  {
+    "id": "unshaken_tide",
+    "name": "不動の凪",
+    "kind": "PAIR",
+    "description": "巌が挑発で敵の狙いを引きつけた瞬間、漣が編成全体の守りをもう一段厚くする。低レアの壁役(黒鉄 巌・N)を切る理由を強化するペア。",
+    "members": ["kurogane", "sazanami"],
+    "trigger": {
+      "type": "ON_SKILL_USE",
+      "actor": "kurogane",
+      "skillTag": "Taunt",
+      "cooldown": 4,
+      "maxPerBattle": 3
+    },
+    "effects": [
+      {
+        "performer": "sazanami",
+        "effect": {
+          "type": "STATUS",
+          "status": "SHIELD",
+          "duration": 2,
+          "potency": 12,
+          "target": { "side": "ALLY", "pattern": "ALL" }
+        }
+      }
+    ],
+    "fx": "combo_water_shield"
+  },
+  {
+    "id": "tearless_grace",
+    "name": "涙を拭う二人",
+    "kind": "PAIR",
+    "description": "低レアの雫と最高レアの天城、どちらかが崖際に立たされたとき、もう一方が編成で一番危ない味方を救いに動く。回復役を二枚積む価値を数値にしたペア。雫(N)の存在意義を強化する。",
+    "members": ["shizuku", "amagi"],
+    "trigger": {
+      "type": "ON_HP_BELOW",
+      "hpBelow": 50,
+      "cooldown": 3,
+      "maxPerBattle": 3
+    },
+    "effects": [
+      {
+        "performer": "amagi",
+        "effect": {
+          "type": "HEAL",
+          "power": 1.8,
+          "target": { "side": "ALLY", "pattern": "LOWEST_HP", "count": 1 }
+        }
+      },
+      {
+        "performer": "shizuku",
+        "effect": {
+          "type": "CLEANSE",
+          "hits": 1,
+          "target": { "side": "ALLY", "pattern": "LOWEST_HP", "count": 1 }
+        }
+      }
+    ],
+    "fx": "combo_heal_wave"
+  },
+  {
+    "id": "seasoned_trio",
+    "name": "職人三人衆",
+    "kind": "TRIO",
+    "description": "腕に覚えのある三人が同じ戦場に立つと、口を揃えずとも呼吸が合う。開幕に一度だけ、互いの調子を確かめ合う小さな攻勢ブースト。",
+    "members": ["enji", "hokuto", "yomi"],
+    "trigger": {
+      "type": "ON_BATTLE_START",
+      "maxPerBattle": 1
+    },
+    "effects": [
+      {
+        "performer": "enji",
+        "effect": {
+          "type": "STATUS",
+          "status": "ATK_UP",
+          "duration": 99,
+          "potency": 12,
+          "target": { "side": "SELF", "pattern": "SELF" }
+        }
+      },
+      {
+        "performer": "hokuto",
+        "effect": {
+          "type": "STATUS",
+          "status": "ATK_UP",
+          "duration": 99,
+          "potency": 12,
+          "target": { "side": "SELF", "pattern": "SELF" }
+        }
+      },
+      {
+        "performer": "yomi",
+        "effect": {
+          "type": "STATUS",
+          "status": "ATK_UP",
+          "duration": 99,
+          "potency": 12,
+          "target": { "side": "SELF", "pattern": "SELF" }
+        }
+      }
+    ],
+    "fx": "combo_flame_burst"
+  },
+  {
+    "id": "low_rarity_bond",
+    "name": "低レアの結束",
+    "kind": "TAG",
+    "description": "北斗・黒鉄・雫、レアリティで数値を盛らずに専門性で戦う3人が揃うと、開幕に小さな連携ボーナスが乗る。『レアリティは強さではない』を編成の数値として裏付けるコンボ。",
+    "requireTag": { "tag": "LowRarityCore", "count": 3 },
+    "trigger": {
+      "type": "ON_BATTLE_START",
+      "maxPerBattle": 1
+    },
+    "effects": [
+      {
+        "performer": "kurogane",
+        "effect": {
+          "type": "STATUS",
+          "status": "DEF_UP",
+          "duration": 99,
+          "potency": 10,
+          "target": { "side": "ALLY", "pattern": "ALL" }
+        }
+      }
+    ],
+    "fx": "combo_earth_guard"
+  }
+]

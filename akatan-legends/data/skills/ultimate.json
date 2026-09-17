@@ -150,9 +150,7 @@
     "effects": [
       { "type": "HEAL", "power": 4.0 },
       { "type": "CLEANSE" },
-      { "type": "STATUS", "status": "ATK_UP", "duration": 4, "potency": 30 },
-      { "type": "STATUS", "status": "SHIELD", "duration": 3, "potency": 30 },
-      { "type": "ULT_GAUGE", "amount": 20 }
+      { "type": "STATUS", "status": "SHIELD", "duration": 3, "potency": 30 }
     ],
     "fx": "ult_dawn",
     "tags": ["Cleanse"]

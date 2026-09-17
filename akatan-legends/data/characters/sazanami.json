@@ -35,6 +35,7 @@
     "description": "凪を保つのをやめて、潮位そのものを上げにいく。守りきれなかった一人ぶんを、残り全員に上乗せする。",
     "fx": "awaken_water"
   },
+  "combos": ["unshaken_tide"],
   "defaultAi": "ai_sazanami_shield",
   "description": "戦場の呼吸を整えるのが仕事だと言い切る、落ち着いた支援役。回復量では専門職に劣るが、シールドと行動ゲージ操作を同時に持つ唯一のキャラで、味方アタッカーの手番を一回増やせる。耐久編成でも速攻編成でも腐らない万能枠。",
   "tags": ["Shield", "GaugeControl", "Enabler"],

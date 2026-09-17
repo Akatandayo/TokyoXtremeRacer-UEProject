@@ -37,8 +37,7 @@
     "cooldown": 4,
     "target": { "side": "ALLY", "pattern": "ALL" },
     "effects": [
-      { "type": "STATUS", "status": "ATK_UP", "duration": 3, "potency": 20 },
-      { "type": "ULT_GAUGE", "amount": 15 }
+      { "type": "STATUS", "status": "ATK_UP", "duration": 3, "potency": 24 }
     ],
     "fx": "ember_aura",
     "tags": ["Network", "Buff"]
@@ -280,8 +279,7 @@
     "target": { "side": "ALLY", "pattern": "ALL" },
     "effects": [
       { "type": "STATUS", "status": "SHIELD", "duration": 3, "potency": 25 },
-      { "type": "STATUS", "status": "ATK_UP", "duration": 3, "potency": 18 },
-      { "type": "STATUS", "status": "REGEN", "duration": 3, "potency": 7 }
+      { "type": "STATUS", "status": "ATK_UP", "duration": 3, "potency": 18 }
     ],
     "fx": "holy_aegis"
   }

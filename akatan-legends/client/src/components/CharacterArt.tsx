@@ -24,6 +24,12 @@ export interface CharacterArtProps {
   className?: string;
   /** 紋章の大きさ倍率 */
   sigilScale?: number;
+  /**
+   * true: 属性/レアリティの角バッジ(cart-element / cart-rarity)を描画しない。
+   * 呼び出し側が別のUI(編成枠のヘッダ行など)で同じ情報を出す場合に使う。
+   * (角バッジと他要素の絶対配置が重なる問題への対処。PARTY 画面で使用)
+   */
+  hideBadges?: boolean;
 }
 
 const FALLBACK: Art = {
@@ -282,7 +288,7 @@ const PATTERNS: Record<NonNullable<Art['pattern']>, (p: PatternProps) => JSX.Ele
 
 export function CharacterArtView({
   art, name, element, rarity, silhouette, awakened,
-  ratio = 'portrait', className = '', sigilScale = 1,
+  ratio = 'portrait', className = '', sigilScale = 1, hideBadges = false,
 }: CharacterArtProps): JSX.Element {
   const uid = useId().replace(/[:]/g, '');
   const a = art ?? FALLBACK;
@@ -315,8 +321,8 @@ export function CharacterArtView({
       <div className="cart-sigil" style={{ fontSize: `calc(var(--sigil-size) * ${sigilScale})` }}>
         {silhouette ? '?' : a.sigil}
       </div>
-      {!silhouette && element && <span className="cart-element">{ELEMENT_LABEL[element]}</span>}
-      {rarity && <span className="cart-rarity">{rarity}</span>}
+      {!hideBadges && !silhouette && element && <span className="cart-element">{ELEMENT_LABEL[element]}</span>}
+      {!hideBadges && rarity && <span className="cart-rarity">{rarity}</span>}
       {(rarity === 'SSR' || rarity === 'UR') && !silhouette && (
         <div className="cart-sparkles" aria-hidden>
           {Array.from({ length: rarity === 'UR' ? 10 : 6 }, (_, i) => (

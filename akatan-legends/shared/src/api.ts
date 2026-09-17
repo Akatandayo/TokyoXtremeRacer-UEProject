@@ -5,7 +5,7 @@
  */
 import type {
   CharacterView, ChapterDef, StageDef, BattleLog, BattleRewards,
-  PlayerProfile, Party, AiProfile, Skill, EnemyDef, CharacterDef,
+  PlayerProfile, Party, AiProfile, Skill, EnemyDef, CharacterDef, ComboDef,
 } from './types.js';
 
 /** 全レスポンスの共通封筒 */
@@ -45,6 +45,12 @@ export interface MasterDataResponse {
   skills: Skill[];
   aiProfiles: AiProfile[];
   chapters: ChapterDef[];
+  /**
+   * コンボ定義。編成画面が「今この編成で成立するコンボ」をリアルタイム表示するため、
+   * クライアント側で判定できるよう定義そのものを配る(勝敗に関わる実際の発動判定は
+   * サーバの戦闘エンジンが行うので、これを配ってもサーバ権威は崩れない)。
+   */
+  combos?: ComboDef[];
 }
 
 /* ---------- PUT /api/party ---------- */

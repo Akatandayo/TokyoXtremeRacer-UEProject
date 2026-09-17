@@ -22,7 +22,7 @@ import type {
 import type { BattleContext, CombatantInput } from '../battle/contract.js';
 import * as repo from '../db/repository.js';
 import { getGameData, type GameData } from '../data/loader.js';
-import { badRequest, notFound, partyEmpty, partyInvalid } from './app-error.js';
+import { badRequest, notFound, partyEmpty, partyInvalid, stageLocked } from './app-error.js';
 import { getBattleEngine } from './battle-engine.js';
 import { computeEnemyStats, computeOwnedStats, computeGoldReward, grantBattleExp } from './progression.js';
 import { listCharacterViews, getPlayerProfile } from './player-service.js';
@@ -59,6 +59,8 @@ export function toAllyCombatant(
     awakening: def.awakening,
     art: def.art,
     rarity: def.rarity,
+    // ComboDef の TAG コンボ判定 (requireTag) に使う。CharacterDef.tags をそのまま渡す。
+    tags: def.tags,
   };
 }
 
@@ -84,6 +86,7 @@ export function toEnemyCombatant(
     ultimate: def.ultimate,
     aiProfile: def.defaultAi,
     art: def.art,
+    tags: def.tags,
   };
 }
 
@@ -95,6 +98,30 @@ export function resolveStage(stageId: string, data: GameData = getGameData()): S
   const entry = data.stages.get(stageId);
   if (!entry) throw notFound(`ステージが見つかりません: ${stageId}`);
   return entry.stage;
+}
+
+/**
+ * P0-1: ステージ開放制御。
+ * `StageDef.unlockAfter` が設定されている場合、そのステージIDがクリア済みでなければ
+ * 挑戦を拒否する(サーバ側で必ず判定。クライアントのボタン制御には依存しない)。
+ * `unlockAfter` 未指定は常時開放(第1章の入口など)。
+ * 参照先ステージがマスタに存在しない場合は「絶対にクリアできない」判定にはせず、
+ * 起動時警告(loader.ts)に留めた上でここでは通す(データ不整合でロックし続けないため)。
+ */
+export function assertStageUnlocked(
+  playerId: string,
+  stage: StageDef,
+  data: GameData = getGameData(),
+): void {
+  const requiredStageId = stage.unlockAfter;
+  if (!requiredStageId) return;
+  if (!data.stages.has(requiredStageId)) return; // 参照切れ: loader が警告済み。ロックしない。
+  if (!repo.isStageCleared(playerId, requiredStageId)) {
+    throw stageLocked(
+      `このステージはまだ開放されていません。先に '${requiredStageId}' をクリアしてください。`,
+      { stageId: stage.id, unlockAfter: requiredStageId },
+    );
+  }
 }
 
 /**
@@ -169,6 +196,8 @@ export function startBattle(
     throw badRequest('stageId は必須の文字列です');
   }
   const stage = resolveStage(params.stageId, data);
+  // P0-1: 未開放ステージへの挑戦をサーバ側で拒否する
+  assertStageUnlocked(playerId, stage, data);
 
   const members = resolveBattleMembers(playerId, params.members, data);
   const allies = members.map((m) => toAllyCombatant(m.owned, m.def, m.slot));
@@ -178,6 +207,9 @@ export function startBattle(
   }
 
   const seed = generateSeed();
+  // P0-3: createdAt の時刻付与はAPI層の責務。エンジン内で Date.now() を呼ぶと
+  // ログ全体のハッシュ比較が壊れるため、ここで確定した値を注入する。
+  const now = new Date().toISOString();
   const ctx: BattleContext = {
     skills: data.skills,
     aiProfiles: data.aiProfiles,
@@ -185,22 +217,25 @@ export function startBattle(
     config: data.progression.battle,
     seed,
     stageId: stage.id,
+    // P0-2: 味方編成から成立するコンボをエンジンに渡す。データが0件でも動作する。
+    combos: data.combos,
+    now,
   };
 
   const runBattle = getBattleEngine();
   const log: BattleLog = runBattle(allies, enemies, ctx);
 
-  // エンジンが id/seed を埋めていないケースに備える(契約上は埋めてくるはず)
+  // エンジンが id/seed/createdAt を埋めていないケースに備える(契約上は埋めてくるはず)
   if (!log.id) log.id = `btl_${randomUUID()}`;
   if (typeof log.seed !== 'number') log.seed = seed;
   if (!log.stageId) log.stageId = stage.id;
-  if (!log.createdAt) log.createdAt = new Date().toISOString();
+  if (!log.createdAt) log.createdAt = now;
 
   const victory = log.result?.victory === true;
 
   // 報酬付与とログ保存は 1 トランザクションで行う(途中失敗で片方だけ残らないように)
   const rewards = repo.inTransaction<BattleRewards | null>(() => {
-    const granted = victory ? grantRewards(playerId, stage, members, data) : null;
+    const granted = victory ? grantRewards(playerId, stage, members, data, log) : null;
     repo.saveBattleLog(playerId, log);
     return granted;
   });
@@ -219,7 +254,7 @@ export function startBattle(
 
 /**
  * 報酬をサーバ側で確定して付与する。
- * - EXP: 出撃した全員に同額 (理由は progression.grantBattleExp のコメント参照)
+ * - EXP: 生存/戦闘不能で傾斜配分 (P1-4。理由は progression.grantBattleExp のコメント参照)
  * - ゴールド: プレイヤーへ加算
  * - クリア記録: cleared_stages に記録(2回目以降も報酬自体は貰える)
  */
@@ -228,14 +263,23 @@ function grantRewards(
   stage: StageDef,
   members: { owned: OwnedCharacter; def: CharacterDef }[],
   data: GameData,
+  log: BattleLog,
 ): BattleRewards {
   const stageExp = Math.max(0, Math.floor(stage.rewards?.exp ?? 0));
   const gold = computeGoldReward(stage.rewards?.gold ?? 0);
+
+  // P1-4: 出撃者のうち戦闘不能になった者を BattleLog.result.stats (side ALLY) から判定する。
+  // エンジンが stats を返さない/一致しない場合は「生存」扱いにフォールバックする(従来動作を維持)。
+  const survivedByUid = new Map<string, boolean>();
+  for (const s of log.result?.stats ?? []) {
+    if (s.side === 'ALLY') survivedByUid.set(s.id, s.survived !== false);
+  }
 
   const { updates, levelUps, expPerMember } = grantBattleExp(
     members.map((m) => ({ owned: m.owned, def: m.def })),
     stageExp,
     data.progression,
+    survivedByUid,
   );
 
   repo.updateCharacterProgressBulk(

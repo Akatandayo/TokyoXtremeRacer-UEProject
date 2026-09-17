@@ -10,7 +10,7 @@
       { "type": "DAMAGE", "power": 1.2 },
       { "type": "STATUS", "status": "SLOW", "duration": 2, "potency": 20, "chance": 50 }
     ],
-    "fx": "slime_splash"
+    "fx": "water_splash"
   },
   {
     "id": "sk_en_drain_bite",

@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type {
-  AffinityTable, AiProfile, ChapterDef, CharacterDef, EnemyDef,
+  AffinityTable, AiProfile, ChapterDef, CharacterDef, ComboDef, EnemyDef,
   ProgressionConfig, Skill, StageDef,
 } from '@akatan/shared';
 
@@ -49,6 +49,8 @@ export interface GameData {
   chapters: Map<string, ChapterDef>;
   /** stageId -> { stage, chapterId } の平坦インデックス */
   stages: Map<string, { stage: StageDef; chapterId: string }>;
+  /** キャラクターコンボ定義 (data/combos/*.json)。空でも戦闘は動く。 */
+  combos: Map<string, ComboDef>;
   affinity: AffinityTable;
   progression: ProgressionConfig;
   /** 起動時に検出した不整合(落とさずここに溜める) */
@@ -236,6 +238,44 @@ function validateReferences(data: GameData): void {
           w.push(`stage '${stage.id}': enemy '${p.enemyId}' が見つかりません`);
         }
       }
+      if (stage.unlockAfter && !data.stages.has(stage.unlockAfter)) {
+        w.push(`stage '${stage.id}': unlockAfter '${stage.unlockAfter}' が見つかりません(開放条件が永久に満たせません)`);
+      }
+    }
+  }
+
+  // コンボ (P0-2): 参照切れは警告のみ・落とさない。
+  for (const combo of data.combos.values()) {
+    for (const memberId of combo.members ?? []) {
+      if (!data.characters.has(memberId)) {
+        w.push(`combo '${combo.id}': member '${memberId}' が characters に見つかりません`);
+      }
+    }
+    if (combo.trigger?.actor && !data.characters.has(combo.trigger.actor)) {
+      w.push(`combo '${combo.id}': trigger.actor '${combo.trigger.actor}' が characters に見つかりません`);
+    }
+    if (combo.trigger?.skill && !hasSkill(combo.trigger.skill)) {
+      w.push(`combo '${combo.id}': trigger.skill '${combo.trigger.skill}' が skills に見つかりません`);
+    }
+    for (const effect of combo.effects ?? []) {
+      if (effect.performer && !data.characters.has(effect.performer)) {
+        w.push(`combo '${combo.id}': effect.performer '${effect.performer}' が characters に見つかりません`);
+      }
+      if (effect.skill && !hasSkill(effect.skill)) {
+        w.push(`combo '${combo.id}': effect.skill '${effect.skill}' が skills に見つかりません`);
+      }
+    }
+  }
+
+  // P1-3 移行期チェック: playerSelectable を誰も持っていない間は全AI許可で運用する。
+  // (server/src/routes/characters.ts の PUT /api/characters/:uid/ai が同じ判定を行う)
+  if (data.aiProfiles.size > 0) {
+    const anyFlagged = [...data.aiProfiles.values()].some((p) => typeof p.playerSelectable === 'boolean');
+    if (!anyFlagged) {
+      w.push(
+        'aiProfiles: playerSelectable を持つプロファイルが1件もありません。' +
+        '移行期として全プロファイルをプレイヤー選択可能扱いにしています(データ担当が付与完了したら自動的に敵/ボス用AIが弾かれます)。',
+      );
     }
   }
 }
@@ -314,6 +354,10 @@ export function loadGameData(): GameData {
   const chapters = loadCollection<ChapterDef>(
     path.join(dataDir, 'dungeons'), 'chapter', ['chapters', 'dungeons'], warnings,
   );
+  // P0-2: data/combos/*.json (単体 ComboDef / 配列 のいずれも受け付ける)
+  const combos = loadCollection<ComboDef>(
+    path.join(dataDir, 'combos'), 'combo', ['combos'], warnings,
+  );
 
   const affinity = loadSystemFile<AffinityTable>(dataDir, 'affinity.json', {}, warnings);
   const progression = mergeProgression(
@@ -329,6 +373,7 @@ export function loadGameData(): GameData {
     aiProfiles,
     chapters,
     stages: buildStageIndex(chapters, warnings),
+    combos,
     affinity,
     progression,
     warnings,
@@ -376,6 +421,7 @@ export function summarizeGameData(data: GameData): Record<string, number | strin
     aiProfiles: data.aiProfiles.size,
     chapters: data.chapters.size,
     stages: data.stages.size,
+    combos: data.combos.size,
     warnings: data.warnings.length,
   };
 }

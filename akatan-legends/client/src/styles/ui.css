@@ -452,9 +452,9 @@
   border-radius: var(--r-md);
   border: 1px dashed var(--line-strong);
   background: rgba(255, 255, 255, 0.02);
-  min-height: 150px;
-  display: grid;
-  place-items: center;
+  min-height: 168px;
+  display: flex;
+  flex-direction: column;
   padding: 0;
   overflow: hidden;
   transition: border-color 0.16s, background 0.16s, transform 0.12s;
@@ -465,36 +465,97 @@
   transform: scale(1.03);
 }
 .party-slot.is-target { border-color: var(--magenta); box-shadow: 0 0 14px rgba(255, 62, 165, 0.3); }
-.party-slot .slot-no {
-  position: absolute;
-  top: 4px;
-  left: 6px;
-  z-index: 3;
+
+/* SLOT n / 属性 / レアリティ / 削除ボタンは通常のフローに並べ、
+   キャラアート自身の角バッジ(cart-element/cart-rarity)とは絶対配置で重ならないようにする
+   (第1回レビュー P1-1: ラベル重なり) */
+.party-slot .slot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 4px 6px;
   font-size: 10px;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.1em;
   color: var(--muted);
+  background: rgba(0, 0, 0, 0.4);
+  flex: none;
+  z-index: 2;
 }
-.party-slot .empty-label { color: var(--muted); font-size: 11px; letter-spacing: 0.1em; }
+.party-slot .slot-no { font-weight: 800; white-space: nowrap; }
+.party-slot .slot-head-right { display: flex; align-items: center; gap: 5px; }
+.party-slot .empty-label {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.party-slot .slot-body { display: flex; flex-direction: column; flex: 1; }
 .party-slot .remove {
-  position: absolute;
-  z-index: 3;
-  right: 4px;
-  top: 4px;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 5px;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 180, 187, 0.35);
   color: #ffb4bb;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1;
   display: grid;
   place-items: center;
 }
+.party-slot .remove:hover { background: rgba(255, 80, 90, 0.28); }
 
 .comp-bars { display: grid; gap: 6px; }
 .comp-line { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
 .comp-line .bar { flex: 1; height: 7px; border-radius: 99px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
 .comp-line .bar span { display: block; height: 100%; background: var(--c, var(--cyan)); transition: width 0.4s; }
+
+/* ---------- コンボ (PARTY / CHARACTER DETAIL) ---------- */
+
+.combo-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.combo-card {
+  border-radius: var(--r-md);
+  padding: 11px 12px;
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+}
+.combo-card.is-active {
+  border-color: rgba(255, 62, 165, 0.55);
+  background: linear-gradient(140deg, rgba(255, 62, 165, 0.14), rgba(255, 255, 255, 0.02) 60%);
+  box-shadow: 0 0 16px rgba(255, 62, 165, 0.18);
+}
+.combo-card.is-almost { border-style: dashed; opacity: 0.85; }
+.combo-card-head { display: flex; align-items: center; justify-content: space-between; }
+.combo-kind { font-size: 10px; letter-spacing: 0.12em; color: var(--muted); }
+.combo-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 1px 8px;
+  border-radius: 99px;
+}
+.combo-tag.active { color: var(--magenta); background: rgba(255, 62, 165, 0.18); }
+.combo-tag.almost { color: var(--warn); background: rgba(255, 197, 66, 0.16); }
+.combo-name { font-weight: 800; font-size: 14px; letter-spacing: 0.02em; }
+.combo-desc { font-size: 11.5px; line-height: 1.45; }
+.combo-members { display: flex; gap: 5px; flex-wrap: wrap; }
+.combo-member {
+  font-size: 10.5px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: rgba(255, 62, 165, 0.16);
+  color: #ffd3ec;
+  font-weight: 700;
+}
+.combo-missing { font-size: 11px; color: var(--warn); }
 
 /* ---------- ダンジョン ---------- */
 
@@ -527,6 +588,23 @@
 .power-ok { color: var(--ok); }
 .power-warn { color: var(--warn); }
 .power-bad { color: var(--danger); }
+
+.stage-card.is-locked {
+  opacity: 0.62;
+  filter: grayscale(0.35);
+  cursor: not-allowed;
+}
+.stage-card.is-locked:hover { transform: none; box-shadow: none; }
+.lock-mark { font-size: 12px; }
+.lock-note {
+  font-size: 11px;
+  color: var(--warn);
+  background: rgba(255, 197, 66, 0.08);
+  border: 1px solid rgba(255, 197, 66, 0.28);
+  border-radius: var(--r-sm);
+  padding: 5px 8px;
+  line-height: 1.4;
+}
 
 /* ---------- 図鑑 ---------- */
 

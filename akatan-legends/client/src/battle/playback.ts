@@ -67,12 +67,20 @@ export interface Banner {
   expires: number;
 }
 
+export type LogHighlight = 'crit' | 'defeat' | 'awaken' | 'combo';
+
 export interface LogLine {
   id: number;
   seq: number;
   type: BattleEventType;
   text: string;
   critical?: boolean;
+  /** 同一行動内でまとめられた件数(2以上でログに "他n人" を追記表示する) */
+  count: number;
+  /** まとめ判定用の内部キー(表示しない) */
+  groupKey: string;
+  /** DEFEAT/AWAKEN/COMBO/会心DAMAGE を強調するための種別 */
+  highlight?: LogHighlight;
 }
 
 export interface PlaybackState {
@@ -318,7 +326,10 @@ export function applyEvent(state: PlaybackState, ev: BattleEvent, opts: ApplyOpt
 
     case 'HEAL':
       addFx(ev.targetId);
-      addPopup({ unitId: ev.targetId ?? '', kind: 'heal', value: ev.value, color: '#56f0a8', affinity: 'normal' });
+      // 値0の回復(実質無効果)はポップアップを出さない(「0回復」の意味の無い表示を避ける)
+      if (ev.value) {
+        addPopup({ unitId: ev.targetId ?? '', kind: 'heal', value: ev.value, color: '#56f0a8', affinity: 'normal' });
+      }
       break;
 
     case 'STATUS_APPLY':
@@ -419,10 +430,29 @@ export function applyEvent(state: PlaybackState, ev: BattleEvent, opts: ApplyOpt
   }
 
   const text = ev.text ?? fallbackText(ev, units);
-  const logs =
-    text && ev.type !== 'ACTION_END'
-      ? [...state.logs, { id: nextId(), seq: ev.seq, type: ev.type, text, critical: ev.critical }].slice(-Math.max(10, logLines))
-      : state.logs;
+  // 値0のHEAL/STATUS_TICKは「0回復」等の意味の無い行になるためログにも出さない
+  const zeroNoise = (ev.type === 'HEAL' || ev.type === 'STATUS_TICK') && ev.value === 0;
+  let logs = state.logs;
+  if (text && ev.type !== 'ACTION_END' && !zeroNoise) {
+    // P0-3: grouped イベント(同一行動内で同じスキル・同じ効果が複数対象に連続適用された
+    // 2件目以降)はログに新しい行を作らず、直前の行へ「他n人」としてまとめる。
+    const groupKey = `${ev.type}:${ev.skillId ?? ''}:${ev.sourceId ?? ''}:${ev.status ?? ''}`;
+    const last = state.logs[state.logs.length - 1];
+    if (ev.grouped && last && last.groupKey === groupKey) {
+      logs = [...state.logs.slice(0, -1), { ...last, count: last.count + 1 }];
+    } else {
+      const highlight: LogHighlight | undefined =
+        ev.type === 'DEFEAT' ? 'defeat'
+          : ev.type === 'AWAKEN' ? 'awaken'
+            : ev.type === 'COMBO' ? 'combo'
+              : ev.type === 'DAMAGE' && ev.critical ? 'crit'
+                : undefined;
+      logs = [
+        ...state.logs,
+        { id: nextId(), seq: ev.seq, type: ev.type, text, critical: ev.critical, count: 1, groupKey, highlight },
+      ].slice(-Math.max(10, logLines));
+    }
+  }
 
   return {
     ...state,

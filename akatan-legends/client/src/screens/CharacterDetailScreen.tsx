@@ -1,13 +1,15 @@
 /** CHARACTER DETAIL: 設計書 §39 のキャラ詳細 */
 import React, { useMemo, useState } from 'react';
-import type { Skill, StatKey } from '@akatan/shared';
+import type { CharacterDef, Skill, StatKey } from '@akatan/shared';
 import { useStore } from '../state/store';
+import { describeError } from '../api/client';
 import { CharacterArtView } from '../components/CharacterArt';
 import { ElementChip, RoleChips, StatRow, Panel } from '../components/common';
 import {
   SKILL_KIND_LABEL, targetText, awakenConditionText, statPower, formatNumber,
-  STAT_LABEL, ELEMENT_LABEL, ROLE_FULL,
+  STAT_LABEL, ELEMENT_LABEL, ROLE_FULL, COMBO_KIND_LABEL,
 } from '../utils/labels';
+import { combosOf, evaluateCombo } from '../utils/combo';
 
 const SHOWN_STATS: StatKey[] = ['hp', 'attack', 'defense', 'speed', 'critical', 'criticalDamage', 'resistance', 'healing'];
 
@@ -50,13 +52,32 @@ export function CharacterDetailScreen(): JSX.Element {
 
   const { def, owned, stats, skills, normalAttack, ultimate, expToNext } = view;
   const allProfiles = store.master?.aiProfiles ?? [];
-  // 敵/ボス専用AIはプレイヤーが選べないように除外する
-  const profiles = allProfiles.filter((p) => !/^ai_(en|boss)_/i.test(p.id));
+  // P1-5: playerSelectable フラグを優先。データ移行中で誰も付いていない場合のみ、
+  // 旧来のID接頭辞判定(敵/ボス専用AIの除外)にフォールバックする。
+  const anyFlagged = allProfiles.some((p) => typeof p.playerSelectable === 'boolean');
+  const profiles = anyFlagged
+    ? allProfiles.filter((p) => p.playerSelectable === true)
+    : allProfiles.filter((p) => !/^ai_(en|boss)_/i.test(p.id));
   const ownProfiles = profiles.filter((p) => p.id.includes(def.id));
   const otherProfiles = profiles.filter((p) => !p.id.includes(def.id));
   const currentAi = owned.aiProfile ?? def.defaultAi;
   const aiDesc = allProfiles.find((p) => p.id === currentAi)?.description;
   const known = profiles.some((p) => p.id === currentAi);
+
+  // P0-4(a): コンボ一覧を ID 文字列表示から実際の定義(名前/説明/参加キャラ)へ差し替える
+  const comboDefs = combosOf(store.master);
+  const charDefById = useMemo(() => {
+    const m = new Map<string, CharacterDef>();
+    for (const d of store.master?.characters ?? []) m.set(d.id, d);
+    return m;
+  }, [store.master]);
+  const currentPartyDefIds = useMemo(
+    () =>
+      (store.party?.members ?? [])
+        .map((uid) => (uid ? store.characters.find((c) => c.owned.uid === uid)?.def.id : undefined))
+        .filter((id): id is string => !!id),
+    [store.party, store.characters],
+  );
 
   const onChangeAi = async (id: string) => {
     setSaving(true);
@@ -64,7 +85,9 @@ export function CharacterDetailScreen(): JSX.Element {
     try {
       await store.setAi(owned.uid, id);
     } catch (e) {
-      setAiError(e instanceof Error ? e.message : String(e));
+      // サーバは playerSelectable !== true のAIプロファイル(敵/ボス専用)を
+      // BAD_REQUEST で拒否する。クライアント側の絞り込みをすり抜けた場合の保険。
+      setAiError(describeError(e).detail);
     } finally {
       setSaving(false);
     }
@@ -189,17 +212,41 @@ export function CharacterDetailScreen(): JSX.Element {
           <Panel title="COMBO" jp="コンボ">
             {def.combos && def.combos.length > 0 ? (
               <div className="stack" style={{ gap: 6 }}>
-                {def.combos.map((c) => (
-                  <div key={c} className="skill-card">
-                    <div className="head">
-                      <span className="kind kind-ULTIMATE">COMBO</span>
-                      <span className="name">{c}</span>
+                {def.combos.map((cid) => {
+                  const cd = comboDefs.find((c) => c.id === cid);
+                  if (!cd) {
+                    return (
+                      <div key={cid} className="skill-card">
+                        <div className="head">
+                          <span className="kind kind-ULTIMATE">COMBO</span>
+                          <span className="name">{cid}</span>
+                        </div>
+                        <div className="desc muted">
+                          このコンボの定義はまだ読み込まれていません(データ側の対応待ち)。
+                        </div>
+                      </div>
+                    );
+                  }
+                  const match = evaluateCombo(cd, currentPartyDefIds, charDefById);
+                  const memberNames = (cd.members ?? []).map((m) => charDefById.get(m)?.name ?? m);
+                  return (
+                    <div key={cid} className="skill-card">
+                      <div className="head">
+                        <span className="kind kind-ULTIMATE">{COMBO_KIND_LABEL[cd.kind]}</span>
+                        <span className="name">{cd.name}</span>
+                        {match?.state === 'active' && (
+                          <span className="tag" style={{ color: 'var(--ok)' }}>現在の編成で発動中</span>
+                        )}
+                      </div>
+                      <div className="desc">{cd.description}</div>
+                      <div className="foot">
+                        {memberNames.length > 0 && <span>参加: {memberNames.join(' / ')}</span>}
+                        {cd.requireTag && <span>条件: 「{cd.requireTag.tag}」タグ×{cd.requireTag.count}</span>}
+                        {cd.requireAllElement && <span>条件: 全員が{ELEMENT_LABEL[cd.requireAllElement]}属性</span>}
+                      </div>
                     </div>
-                    <div className="desc muted">
-                      コンボの詳細は Phase 4 で実装予定。戦闘中に COMBO イベントが届けば演出が再生されます。
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="muted" style={{ fontSize: 12 }}>設定されたコンボはありません。</div>

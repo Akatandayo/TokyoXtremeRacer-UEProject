@@ -33,6 +33,13 @@ export interface CombatantInput {
   awakening?: Awakening;
   art?: CharacterArt;
   rarity?: Rarity;
+  /**
+   * キャラクター定義側のタグ (CharacterDef.tags)。
+   * ComboDef の TAG コンボ (requireTag) 判定に使う。
+   * 省略時は空配列扱い (= TAG コンボは成立しない)。
+   * API層は CharacterDef.tags をそのまま渡すこと。
+   */
+  tags?: string[];
 }
 
 export interface BattleContext {

@@ -63,33 +63,33 @@
   position: relative;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  padding: 16px 14px;
+  padding: 20px 16px 26px;
   background:
     radial-gradient(70% 55% at 50% 0%, rgba(255, 62, 165, 0.12), transparent 70%),
     radial-gradient(75% 60% at 50% 100%, rgba(53, 230, 255, 0.12), transparent 70%),
     linear-gradient(180deg, #0a0d19, #06070e);
   overflow: hidden;
-  min-height: 460px;
+  min-height: 360px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 18px;
+  justify-content: center;
+  gap: 30px;
 }
 
 .arena::before {
-  /* 地平線グリッド */
+  /* 地平線グリッド(P1-3: 下半分をほぼ覆い、空白の黒帯を減らす) */
   content: "";
   position: absolute;
   left: -20%;
   right: -20%;
   bottom: -10%;
-  height: 46%;
+  height: 68%;
   background:
     repeating-linear-gradient(to right, rgba(53, 230, 255, 0.11) 0 1px, transparent 1px 44px),
     repeating-linear-gradient(to bottom, rgba(53, 230, 255, 0.11) 0 1px, transparent 1px 30px);
   transform: perspective(300px) rotateX(62deg);
   pointer-events: none;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .arena.shake-shake { animation: arena-shake 0.34s ease-out; }
@@ -120,16 +120,22 @@
 }
 @keyframes flash-out { to { opacity: 0; } }
 
+/*
+ * P1-3: 敵/味方の各列は常に「5レーン」の固定グリッドを使う(.lane の grid-column は
+ * BattleScreen 側で人数に応じて中央寄せ計算する)。これにより敵・味方の人数が
+ * 1〜5体のどの組み合わせでも列の水平位置が揃い、画面幅いっぱいに配置されるので
+ * 中央だけに寄って左右が余る/上下に間延びする問題を避けられる。
+ */
 .side-row {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
   z-index: 2;
 }
-.side-row.enemies { align-items: flex-start; }
-.side-row.allies { align-items: flex-end; }
+.side-row.enemies { align-items: start; }
+.side-row.allies { align-items: end; }
+.lane { display: flex; justify-content: center; }
 
 .side-label {
   position: absolute;
@@ -154,6 +160,15 @@
   transition: transform 0.18s, box-shadow 0.25s, opacity 0.4s, filter 0.4s;
 }
 @media (max-width: 720px) { .bunit { width: 104px; } }
+@media (max-width: 480px) {
+  .side-row { gap: 4px; }
+  .bunit { width: 66px; padding: 4px; gap: 3px; }
+  .bunit-name { font-size: 8.5px; }
+  .bunit-name .lv { font-size: 8px; }
+  .hp-text { font-size: 8px; }
+  .status-chip { height: 15px; padding: 0 3px; font-size: 8px; gap: 1px; }
+  .status-chip .ic { display: none; }
+}
 
 .bunit.is-active {
   border-color: var(--cyan);
@@ -259,33 +274,42 @@
   50% { filter: brightness(1.8); }
 }
 
-/* 状態異常 */
-.status-strip { display: flex; gap: 3px; flex-wrap: wrap; min-height: 15px; }
+/*
+ * 状態異常 (P1-2 再設計)
+ * - 色だけに頼らない: バフ(丸いチップ/「+」符号) / デバフ(角ばったチップ/「−」符号)。
+ * - 符号・アイコン・残ターン数を1行に横並びにし、絶対配置の重なりを避けて実寸で読める大きさに。
+ * - 表示件数はカード側([StatusStrip]コンポーネント)で4件+overflowチップに制限する。
+ */
+.status-strip { display: flex; gap: 3px; flex-wrap: wrap; min-height: 18px; align-items: center; }
 .status-chip {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 15px;
-  height: 15px;
-  border-radius: 4px;
-  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  font-size: 9.5px;
   font-weight: 800;
   color: #06070d;
   background: var(--sc, #8592bb);
+  border: 1px solid color-mix(in srgb, var(--sc, #8592bb) 60%, #000);
   animation: chip-in 0.28s ease-out;
+  line-height: 1;
 }
-.status-chip.buff { --sc: #56f0a8; }
-.status-chip.debuff { --sc: #ff7d9c; }
+.status-chip.buff { --sc: #56f0a8; border-radius: 9px; }
+.status-chip.debuff { --sc: #ff7d9c; border-radius: 3px; }
+.status-chip .sign { font-size: 10.5px; font-weight: 900; }
+.status-chip .ic { font-size: 9.5px; }
 .status-chip .dur {
-  position: absolute;
-  right: -3px;
-  bottom: -4px;
-  font-size: 8px;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.8);
-  border-radius: 3px;
-  padding: 0 2px;
-  line-height: 1.3;
+  font-size: 9px;
+  font-weight: 800;
+  color: rgba(6, 7, 13, 0.75);
+}
+.status-chip.more {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text-mid);
+  border: 1px solid var(--line-strong);
+  font-size: 9.5px;
 }
 @keyframes chip-in {
   from { transform: scale(0.2) rotate(-25deg); opacity: 0; }
@@ -934,6 +958,31 @@
 .log-line.t-COMBO { border-color: var(--sakura); color: var(--sakura); font-weight: 800; }
 .log-line.t-BATTLE_END { border-color: var(--gold); color: #fff; font-weight: 900; letter-spacing: 0.1em; }
 .log-line.is-crit { color: #ffe08a; font-weight: 700; }
+
+/*
+ * P0-3: 重要な行(会心DAMAGE/DEFEAT/AWAKEN/COMBO)はバフの羅列に埋もれないよう、
+ * 背景を薄く敷いて視覚的に一段強調する。
+ */
+.log-line.hl-crit,
+.log-line.hl-defeat,
+.log-line.hl-awaken,
+.log-line.hl-combo {
+  border-left-width: 3px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.log-line.hl-crit { background: rgba(255, 224, 138, 0.14); }
+.log-line.hl-defeat { background: rgba(255, 90, 67, 0.16); }
+.log-line.hl-awaken { background: rgba(255, 204, 87, 0.14); }
+.log-line.hl-combo { background: rgba(255, 158, 194, 0.14); }
+
+.log-count {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
 
 /* ---------- 速度コントロール ---------- */
 

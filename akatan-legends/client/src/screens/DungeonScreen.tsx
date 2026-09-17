@@ -4,8 +4,8 @@ import type { StageDef, EnemyDef } from '@akatan/shared';
 import { useStore } from '../state/store';
 import { Panel } from '../components/common';
 import { CharacterArtView } from '../components/CharacterArt';
-import { describeError } from '../api/client';
-import { statPower, formatNumber } from '../utils/labels';
+import { describeError, ApiClientError } from '../api/client';
+import { statPower, formatNumber, averageLevel, levelReadiness } from '../utils/labels';
 
 export function DungeonScreen(): JSX.Element {
   const store = useStore();
@@ -20,17 +20,36 @@ export function DungeonScreen(): JSX.Element {
     return m;
   }, [store.master]);
 
-  const partyPower = useMemo(() => {
-    if (!store.party) return 0;
-    return store.party.members.reduce((sum, uid) => {
-      const c = store.characters.find((x) => x.owned.uid === uid);
-      return sum + (c ? statPower(c.stats) : 0);
-    }, 0);
-  }, [store.party, store.characters]);
+  // 全チャプターを通したステージID -> 表示名(unlockAfter の開放条件文言に使う)
+  const stageNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of store.chapters) for (const s of c.stages) m.set(s.id, s.name);
+    return m;
+  }, [store.chapters]);
+
+  const partyViews = useMemo(
+    () =>
+      (store.party?.members ?? [])
+        .map((uid) => (uid ? store.characters.find((x) => x.owned.uid === uid) : undefined))
+        .filter((c): c is NonNullable<typeof c> => !!c),
+    [store.party, store.characters],
+  );
+
+  const partyPower = useMemo(
+    () => partyViews.reduce((sum, c) => sum + statPower(c.stats), 0),
+    [partyViews],
+  );
+  const partyAvgLevel = useMemo(() => averageLevel(partyViews), [partyViews]);
 
   const partyCount = store.party?.members.filter(Boolean).length ?? 0;
 
   const start = async (stage: StageDef) => {
+    // ロック中はボタン自体を無効化しているが、すり抜け対策として二重にガードする
+    if (stage.unlockAfter && !store.clearedStages.includes(stage.unlockAfter)) {
+      const unlockName = stageNameMap.get(stage.unlockAfter) ?? stage.unlockAfter;
+      setErr(new ApiClientError('STAGE_LOCKED', `「${unlockName}」をクリアすると開放されます。`));
+      return;
+    }
     setStarting(true);
     setErr(null);
     try {
@@ -59,7 +78,7 @@ export function DungeonScreen(): JSX.Element {
     <div className="stack">
       <Panel
         title="DUNGEON"
-        jp={`編成 ${partyCount}人 / 戦力 ${formatNumber(partyPower)}`}
+        jp={`編成 ${partyCount}人 / 平均Lv ${partyAvgLevel > 0 ? partyAvgLevel.toFixed(1) : '-'} / 戦力 ${formatNumber(partyPower)}`}
         right={
           <button className="btn btn-sm btn-ghost" onClick={() => store.navigate('PARTY')}>
             編成を変更
@@ -101,10 +120,10 @@ export function DungeonScreen(): JSX.Element {
         <div className="grid-auto" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(238px, 1fr))' }}>
           {(chapter?.stages ?? []).map((s) => {
             const cleared = store.clearedStages.includes(s.id);
+            const locked = !!s.unlockAfter && !store.clearedStages.includes(s.unlockAfter);
+            const unlockName = s.unlockAfter ? (stageNameMap.get(s.unlockAfter) ?? s.unlockAfter) : null;
             const rec = s.recommendedLevel ?? 0;
-            const ratio = rec > 0 ? partyPower / rec : 1;
-            const cls = ratio >= 1 ? 'power-ok' : ratio >= 0.75 ? 'power-warn' : 'power-bad';
-            const label = ratio >= 1 ? '十分' : ratio >= 0.75 ? 'やや不足' : '戦力不足';
+            const { cls, label } = levelReadiness(partyAvgLevel, rec);
             return (
               <div
                 key={s.id}
@@ -112,11 +131,13 @@ export function DungeonScreen(): JSX.Element {
                   'stage-card',
                   s.boss ? 'is-boss' : '',
                   selected?.id === s.id ? 'is-selected' : '',
+                  locked ? 'is-locked' : '',
                 ].filter(Boolean).join(' ')}
                 onClick={() => setSelected(s)}
               >
                 <div className="stage-head">
-                  {cleared && <span className="cleared-mark" title="クリア済み">✓</span>}
+                  {locked && <span className="lock-mark" title="未開放" aria-hidden>🔒</span>}
+                  {!locked && cleared && <span className="cleared-mark" title="クリア済み">✓</span>}
                   <span className="nm">{s.name}</span>
                   {s.boss && <span className="tag" style={{ color: 'var(--shu)' }}>BOSS</span>}
                 </div>
@@ -139,20 +160,28 @@ export function DungeonScreen(): JSX.Element {
                     );
                   })}
                 </div>
-                <div className="power-compare">
-                  <span className="muted">推奨戦力 {formatNumber(rec)}</span>
-                  <span className={cls}>({label})</span>
-                </div>
+                {locked ? (
+                  <div className="lock-note">
+                    🔒 「{unlockName}」をクリアすると開放
+                  </div>
+                ) : (
+                  rec > 0 && (
+                    <div className="power-compare">
+                      <span className="muted">推奨Lv {formatNumber(rec)}</span>
+                      <span className={cls}>({label})</span>
+                    </div>
+                  )
+                )}
                 <div className="reward-line">
                   <span>EXP <b>{formatNumber(s.rewards.exp)}</b></span>
                   <span>GOLD <b>{formatNumber(s.rewards.gold)}</b></span>
                 </div>
                 <button
                   className="btn btn-primary btn-sm"
-                  disabled={starting || partyCount === 0}
+                  disabled={starting || partyCount === 0 || locked}
                   onClick={(e) => { e.stopPropagation(); void start(s); }}
                 >
-                  {starting && selected?.id === s.id ? '開始中…' : '⚔ 戦闘開始'}
+                  {locked ? '🔒 未開放' : starting && selected?.id === s.id ? '開始中…' : '⚔ 戦闘開始'}
                 </button>
               </div>
             );

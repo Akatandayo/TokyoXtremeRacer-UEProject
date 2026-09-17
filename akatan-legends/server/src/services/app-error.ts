@@ -12,7 +12,9 @@ const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   NOT_FOUND: 404,
   PARTY_EMPTY: 400,
   PARTY_INVALID: 400,
-  STAGE_LOCKED: 403,
+  // P0-1 (第2ラウンド差し戻し): 統括の指示で 403 ではなく 400 に統一。
+  // (他のバリデーション系エラー PARTY_INVALID 等も 400 なので揃える)
+  STAGE_LOCKED: 400,
   INTERNAL: 500,
 };
 

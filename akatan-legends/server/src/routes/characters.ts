@@ -34,8 +34,26 @@ charactersRouter.put('/characters/:uid/ai', handler((req, res) => {
 
   // マスタが読めている時のみ AI プロファイルの実在チェックを行う
   // (データ担当が data/ai を作成中でも API を止めないため)
-  if (data.aiProfiles.size > 0 && !data.aiProfiles.has(aiProfile)) {
-    throw badRequest(`存在しないAIプロファイルです: ${aiProfile}`);
+  if (data.aiProfiles.size > 0) {
+    const targetProfile = data.aiProfiles.get(aiProfile);
+    if (!targetProfile) {
+      throw badRequest(`存在しないAIプロファイルです: ${aiProfile}`);
+    }
+    // P1-3: 敵/ボス専用AI(playerSelectable !== true)への変更をサーバ側で拒否する。
+    // クライアントのID接頭辞フィルタだけに依存すると API 直叩きで敵AIを設定できてしまう(評価書 E節)。
+    //
+    // 移行期の配慮: データ担当が playerSelectable を付与中のため、マスタ全体に
+    // この項目を持つプロファイルが1件も無い間は「まだ何も区別されていない」とみなし、
+    // 従来通り全プロファイルを許可する(全拒否で詰まらせないため)。
+    // 1件でも playerSelectable が付いたら、以後は明示的に true のものだけを許可する。
+    const anyProfileFlagged = [...data.aiProfiles.values()]
+      .some((p) => typeof p.playerSelectable === 'boolean');
+    if (anyProfileFlagged && targetProfile.playerSelectable !== true) {
+      console.warn(
+        `[characters] 敵/ボス専用AIプロファイルへの変更を拒否しました: uid=${uid} aiProfile=${aiProfile}`,
+      );
+      throw badRequest(`このAIプロファイルはプレイヤーが選択できません(敵/ボス専用): ${aiProfile}`);
+    }
   }
 
   repo.updateCharacterAi(playerId, uid, aiProfile);

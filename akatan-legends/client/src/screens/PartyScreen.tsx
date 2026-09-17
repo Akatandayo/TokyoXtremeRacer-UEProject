@@ -3,13 +3,14 @@
  * ドラッグ&ドロップ対応 + タッチ非対応環境向けのクリック選択フォールバック。
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CharacterView, Element, Role } from '@akatan/shared';
+import type { CharacterDef, CharacterView, Element, Role } from '@akatan/shared';
 import { useStore } from '../state/store';
-import { CharacterCard, Panel, ElementChip } from '../components/common';
+import { CharacterCard, Panel, ElementChip, RarityBadge } from '../components/common';
 import { CharacterArtView } from '../components/CharacterArt';
 import {
-  ELEMENT_LABEL, ROLE_FULL, statPower, formatNumber,
+  ELEMENT_LABEL, ROLE_FULL, COMBO_KIND_LABEL, statPower, formatNumber,
 } from '../utils/labels';
+import { combosOf, evaluateCombos } from '../utils/combo';
 
 const PARTY_SIZE = 5;
 
@@ -96,6 +97,16 @@ export function PartyScreen(): JSX.Element {
     for (const r of c.def.roles) roleCount.set(r, (roleCount.get(r) ?? 0) + 1);
   }
 
+  // P0-4(a): 発動コンボ欄。編成のdefIdをコンボ定義に照らして成立/惜しいを判定する。
+  const charDefById = useMemo(() => {
+    const m = new Map<string, CharacterDef>();
+    for (const d of store.master?.characters ?? []) m.set(d.id, d);
+    return m;
+  }, [store.master]);
+  const comboDefs = combosOf(store.master);
+  const partyDefIds = chosen.map((c) => c.def.id);
+  const comboMatches = evaluateCombos(comboDefs, partyDefIds, charDefById);
+
   return (
     <div className="stack">
       <Panel
@@ -148,39 +159,46 @@ export function PartyScreen(): JSX.Element {
                 }}
                 aria-label={`編成枠 ${i + 1}: ${c ? c.def.name : '空き'}`}
               >
-                <span className="slot-no">SLOT {i + 1}</span>
+                <div className="slot-head">
+                  <span className="slot-no">SLOT {i + 1}</span>
+                  {c && (
+                    <span className="slot-head-right">
+                      <ElementChip element={c.def.element} />
+                      <RarityBadge rarity={c.def.rarity} />
+                      <button
+                        className="remove"
+                        onClick={(e) => { e.stopPropagation(); removeAt(i); }}
+                        aria-label={`${c.def.name} を編成から外す`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                </div>
                 {c ? (
-                  <>
-                    <button
-                      className="remove"
-                      onClick={(e) => { e.stopPropagation(); removeAt(i); }}
-                      aria-label={`${c.def.name} を編成から外す`}
-                    >
-                      ×
-                    </button>
-                    <div
-                      style={{ width: '100%' }}
-                      draggable
-                      onDragStart={(e) => e.dataTransfer.setData('text/plain', c.owned.uid)}
-                    >
-                      <CharacterArtView
-                        art={c.def.art}
-                        name={c.def.name}
-                        element={c.def.element}
-                        rarity={c.def.rarity}
-                        ratio="square"
-                        sigilScale={0.9}
-                      />
-                      <div style={{ padding: '5px 6px 7px' }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {c.def.name}
-                        </div>
-                        <div className="muted" style={{ fontSize: 10 }}>
-                          Lv{c.owned.level} / 戦力{formatNumber(statPower(c.stats))}
-                        </div>
+                  <div
+                    className="slot-body"
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData('text/plain', c.owned.uid)}
+                  >
+                    <CharacterArtView
+                      art={c.def.art}
+                      name={c.def.name}
+                      element={c.def.element}
+                      rarity={c.def.rarity}
+                      ratio="square"
+                      sigilScale={0.9}
+                      hideBadges
+                    />
+                    <div style={{ padding: '5px 6px 7px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.def.name}
+                      </div>
+                      <div className="muted" style={{ fontSize: 10 }}>
+                        Lv{c.owned.level} / 戦力{formatNumber(statPower(c.stats))}
                       </div>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <span className="empty-label">{selected ? 'ここに配置' : '空き枠'}</span>
                 )}
@@ -223,6 +241,45 @@ export function PartyScreen(): JSX.Element {
             </div>
           </div>
         </div>
+      </Panel>
+
+      <Panel
+        title="COMBO"
+        jp="発動コンボ — 誰と組ませるかで戦況が変わる (設計書§13/§40)"
+      >
+        {comboDefs.length === 0 ? (
+          <div className="muted" style={{ fontSize: 12 }}>
+            コンボデータを準備中です。まだ表示できるコンボがありません。
+          </div>
+        ) : comboMatches.length === 0 ? (
+          <div className="muted" style={{ fontSize: 12 }}>
+            現在の編成では発動するコンボがありません。組み合わせを変えて研究してみましょう。
+          </div>
+        ) : (
+          <div className="combo-grid">
+            {comboMatches.map((m) => (
+              <div key={m.def.id} className={`combo-card is-${m.state}`}>
+                <div className="combo-card-head">
+                  <span className="combo-kind">{COMBO_KIND_LABEL[m.def.kind]}</span>
+                  <span className={`combo-tag ${m.state}`}>
+                    {m.state === 'active' ? '発動中' : 'もう少し'}
+                  </span>
+                </div>
+                <div className="combo-name">{m.def.name}</div>
+                <div className="combo-desc muted">{m.def.description}</div>
+                {m.state === 'active' ? (
+                  <div className="combo-members">
+                    {m.memberDefIds.map((id) => (
+                      <span key={id} className="combo-member">{charDefById.get(id)?.name ?? id}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="combo-missing">{m.missingNote}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </Panel>
 
       <Panel
