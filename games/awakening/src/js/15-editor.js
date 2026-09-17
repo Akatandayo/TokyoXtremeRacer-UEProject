@@ -1413,7 +1413,7 @@ const Editor = {
             :`<div class="fld"><label>持続T</label>
               <input type="number" inputmode="numeric" pattern="[0-9]*" min="1" max="99" data-k="duration" data-i="${i}" value="${dur}"></div>`}
           ${amt?`<div class="fld"><label>${amt.label}</label>
-            <input type="number" inputmode="decimal" step="${amt.step}" data-k="amount" data-i="${i}" value="${ef.amount!=null?ef.amount:amt.def}"></div>`:`<div></div>`}
+            <input type="number" inputmode="decimal" min="0" step="${amt.step}" data-k="amount" data-i="${i}" value="${ef.amount!=null?ef.amount:amt.def}"></div>`:`<div></div>`}
         </div></div>`;
     }).join("");
     box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
@@ -1433,8 +1433,9 @@ const Editor = {
     box.querySelectorAll("[data-k]").forEach(el=>{
       const live=()=>{
         const i=+el.dataset.i, k=el.dataset.k;
-        const v=Number(el.value);
-        if(!isNaN(v)) this.effects[i][k]=v;
+        // 負の数は受け取らない。大きさとして扱い、向きはカタログ側が決める。
+        const v=Math.abs(Number(el.value));
+        if(Number.isFinite(v)) this.effects[i][k]=v;
         const line=$("#efl-"+i); if(line) line.textContent=this.effLine(this.effects[i]);
       };
       el.oninput=()=>{ live(); this.queueSim(); };
@@ -1448,24 +1449,38 @@ const Editor = {
       const e={target:ef.target,kind:st.kind,name:st.name,icon:st.icon,tone:st.tone,
         duration:instant?0:(ef.duration!=null?ef.duration:(st.duration||1))};
       if(st.stat) e.stat=st.stat;
+      /* 大きさはユーザーが決め、向き（上げるか下げるか）はカタログが決める。
+         負の数をそのまま通すと、RC の点数を削って強い技を規定内に見せかけられる。 */
+      const 大きさ=x=>Math.abs(Number(x)||0);
+      const 向き=x=>((Number(x)||0)<0?-1:1);
       const amt=ef.amount;
-      if(st.kind==="STAT") e.mult=amt!=null?amt:st.mult;
-      else if(st.percent!=null) e.percent=amt!=null?amt:st.percent;
-      else if(st.kind==="COUNTER") e.ratio=amt!=null?amt:st.ratio;
-      else if(st.value!=null) e.value=amt!=null?amt:st.value;
-      if(ef.chance<100) e.chance=Math.max(0,Math.min(1,ef.chance/100));
+      if(st.kind==="STAT"){
+        // 倍率は正の数でしかありえない。0倍や負の倍率は意味をなさない。
+        const m=(amt!=null)?大きさ(amt):st.mult;
+        e.mult=Math.min(5,Math.max(0.05,m||1));
+      }
+      else if(st.percent!=null) e.percent=向き(st.percent)*((amt!=null)?大きさ(amt):Math.abs(st.percent));
+      else if(st.kind==="COUNTER") e.ratio=(amt!=null)?大きさ(amt):st.ratio;
+      else if(st.value!=null) e.value=向き(st.value)*((amt!=null)?大きさ(amt):Math.abs(st.value));
+      e.duration=Math.max(0,Math.min(99,Number(e.duration)||0));
+      if(ef.chance<100) e.chance=Math.max(0,Math.min(1,大きさ(ef.chance)/100));
       return e;
     });
   },
   /* 画面の入力を技オブジェクトにまとめる（保存とシミュレーションで共用） */
   collectSkill(){
-    const v=id=>($("#"+id)?$("#"+id).value.trim():""), n=id=>($("#"+id)?Number($("#"+id).value)||0:0),
+    /* 入力欄の min は、JS から .value を読むときには効かない（送信時の検証でしかない）。
+       負の数を入れて RC の点数を削る抜け道があったので、読むときに必ず 0 以上へ丸める。
+       負にできてよいのは、向きに意味がある効果（命中低下など）だけで、それは buildEffects 側で扱う。 */
+    const v=id=>($("#"+id)?$("#"+id).value.trim():""),
+      n=id=>{ const el=$("#"+id); if(!el) return 0;
+              const x=Number(el.value); return (Number.isFinite(x)&&x>0)?x:0; },
       b=id=>($("#"+id)?$("#"+id).checked:false);
     const cost=Math.max(0,Math.min(BALANCE.sp.max,n("k-cost"))), cmax=n("k-costmax");
     const s={id:this.skillEditId||this.skill.id,name:v("k-name"),description:v("k-desc"),
       type:$("#k-type").value,power:n("k-power"),
       accuracy:Math.max(BALANCE.accuracyMin,Math.min(BALANCE.accuracyMax,n("k-acc")||95)),
-      cost,priority:n("k-prio"),hits:Math.max(1,n("k-hits")),formula:$("#k-formula").value,
+      cost,priority:Math.max(0,n("k-prio")),hits:Math.max(1,n("k-hits")),formula:$("#k-formula").value,
       guardBreak:b("k-gb"),buffPierce:b("k-bp"),cleanse:b("k-cleanse"),
       effects:this.buildEffects(),custom:true};
     if(this.skill&&this.skill.sfxId) s.sfxId=this.skill.sfxId;

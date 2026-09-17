@@ -102,12 +102,14 @@ const RC = {
       if(hits>1) dmg*=1+this.atk.multiHitBonus*(hits-1);
       add("攻撃",dmg);
     }
-    if(s.priority) add("先制",this.atk.perPriority*s.priority);
+    // 後手に回る（負の先制）ぶんを値引きとして認めると、そこが抜け道になる
+    const 先制=Math.max(0,Number(s.priority)||0);
+    if(先制) add("先制",this.atk.perPriority*先制);
     const crit=(s.critRate||0)-(BALANCE.baseCritRate||0.05);
     if(crit>0) add("会心",crit*this.hitDamage(s)*hits*((BALANCE.critMultiplier||1.5)-1)*this.atk.critPerPoint);
 
     /* --- その場の回復・解除・SP --- */
-    if(s.healPercent) add("回復",this.refHp*(s.healPercent/100)*this.eff.healFactor);
+    if(s.healPercent) add("回復",this.refHp*(Math.abs(Number(s.healPercent)||0)/100)*this.eff.healFactor);
     if(s.cleanse) add("解除",30);
 
     /* --- 付与する効果 --- */
@@ -116,7 +118,8 @@ const RC = {
       if(v) add(e.name||e.kind||"効果",v);
     });
 
-    let total=parts.reduce((a,p)=>a+p.points,0);
+    // ここまでの部品は、どれも 0 以上でなければならない（値引きは下の2つだけ）
+    let total=parts.reduce((a,p)=>a+Math.max(0,p.points),0);
 
     /* --- 割り引き --- */
     if(s.selfHpCost){
@@ -157,7 +160,8 @@ const RC = {
     const dur=Math.min(E.maxDuration,Math.max(1,Number(e.duration)||1));
     const chance=(e.chance==null)?1:Math.min(1,Math.max(0,e.chance));
     const side=(e.target==="self")?E.selfMult:E.enemyMult;
-    const amount=()=> (e.percent?this.refHp*(e.percent/100):(Number(e.value)||0));
+    // 大きさは絶対値で見る。「-200%の毒」は毒として重いのであって、値引きではない。
+    const amount=()=> Math.abs(e.percent?this.refHp*(e.percent/100):(Number(e.value)||0));
     let v=0;
     switch(e.kind){
       case "DOT":       v=amount()*dur*E.dotFactor; break;
@@ -167,21 +171,24 @@ const RC = {
       case "STUN": case "SLEEP": case "PETRIFY": case "TIMESTOP": case "PARALYZE":
                         v=(E.holdPerTurn[e.kind]||40)*dur*chance; break;
       case "SILENCE":   v=E.silencePerTurn*dur; break;
-      case "CONFUSE":   v=E.confusePerTurn*dur*((Number(e.value)||35)/35); break;
+      case "CONFUSE":   v=E.confusePerTurn*dur*Math.abs((Number(e.value)||35)/35); break;
       case "ACC":       v=Math.abs(Number(e.value)||0)*E.accPerPoint*Math.min(dur,4); break;
       case "CRIT":      v=Math.abs(Number(e.value)||0)*E.critPerPoint*dur; break;
-      case "COUNTER":   v=(Number(e.ratio)||0.5)*E.counterPerTurn*dur*2; break;
+      case "COUNTER":   v=Math.abs(Number(e.ratio)||0.5)*E.counterPerTurn*dur*2; break;
       case "PIERCE":    v=E.piercePerTurn*dur; break;
       case "NEGATE":    v=E.negatePerTurn*dur; break;
       case "ENDURE":    v=E.endurePerTurn*dur; break;
       case "HEALBLOCK": v=E.healBlockPerTurn*dur; break;
       case "EXTRA":     v=E.extraPerTurn*dur; break;
-      case "SP":        v=(Number(e.value)||0)*this.discount.spGainPerPoint; break;
-      case "TIMESKIP":  v=E.instant.TIMESKIP*(Number(e.value)||1); break;
+      case "SP":        v=Math.abs(Number(e.value)||0)*this.discount.spGainPerPoint; break;
+      case "TIMESKIP":  v=E.instant.TIMESKIP*Math.abs(Number(e.value)||1); break;
       case "INVERT":    v=E.instant.INVERT; break;
       default:          v=0;
     }
-    return v*side;
+    /* 負の値を入れて点数を削り、強い技を規定内に見せかける抜け道を塞ぐ。
+       符号は効果の向き（上げるか下げるか）を表すものであって、値引きではない。
+       よってどの効果も、価値としては 0 を下回らせない。 */
+    return Math.max(0, v*side);
   },
 
   /* 許容量。awakened=true なら覚醒形態として甘くする */
