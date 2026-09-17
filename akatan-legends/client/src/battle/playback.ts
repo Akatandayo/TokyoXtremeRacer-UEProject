@@ -334,8 +334,11 @@ export function applyEvent(state: PlaybackState, ev: BattleEvent, opts: ApplyOpt
 
     case 'STATUS_TICK':
       addFx(ev.targetId);
-      hit(ev.targetId);
-      addPopup({ unitId: ev.targetId ?? '', kind: 'tick', value: ev.value, color: spec.color, affinity: 'normal' });
+      if (ev.value) hit(ev.targetId);
+      // 値0のティック(実質無効果)はポップアップを出さない
+      if (ev.value) {
+        addPopup({ unitId: ev.targetId ?? '', kind: 'tick', value: ev.value, color: spec.color, affinity: 'normal' });
+      }
       break;
 
     case 'STATUS_RESIST':

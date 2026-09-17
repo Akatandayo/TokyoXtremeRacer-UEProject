@@ -42,9 +42,11 @@ const FAMILY_COLOR: Record<FxFamily, string> = {
 
 /** fxキーの部分一致ルール(上から順に評価) */
 const RULES: [RegExp, FxFamily][] = [
-  [/(^|_)ult|ultimate|finisher/i, 'ult'],
+  // 覚醒 / コンボ は属性より優先
   [/awaken|awake|覚醒/i, 'awaken'],
   [/combo|link|chain_combo/i, 'combo'],
+  // 必殺技でも「属性が分かる」キー(ult_flame_burst 等)は属性演出を優先する。
+  // 必殺技としての扱い(カットイン・画面揺れ)は isUltimateFx() が別途判定する。
   [/heal|cure|regen|medic/i, 'heal'],
   [/cleanse|purify|dispel/i, 'cleanse'],
   [/buff|aria|guard_up|up$/i, 'buff'],
@@ -63,6 +65,7 @@ const RULES: [RegExp, FxFamily][] = [
   [/acid|poison|venom|toxic/i, 'acid'],
   [/laser|beam|ray/i, 'laser'],
   [/roar|howl|shout/i, 'roar'],
+  [/(^|_)ult|ultimate|finisher/i, 'ult'],
   [/slash|blade|cut|sword|edge/i, 'slash'],
   [/pierce|stab|arrow|shot|snipe/i, 'pierce'],
   [/impact|bash|smash|blunt|hammer/i, 'impact'],
@@ -101,6 +104,20 @@ const DURATION_BY_FAMILY: Partial<Record<FxFamily, number>> = {
   ult: 1100, awaken: 1400, combo: 1000, defeat: 800, heal: 700,
 };
 
+/** 覚醒 / コンボは属性トークンより常に優先する */
+const PRIORITY_RULES: [RegExp, FxFamily][] = [
+  [/awaken|awake|覚醒/i, 'awaken'],
+  [/combo|link|chain_combo/i, 'combo'],
+];
+
+function matchRule(text: string): FxFamily | undefined {
+  if (!text) return undefined;
+  for (const [re, f] of RULES) {
+    if (re.test(text)) return f;
+  }
+  return undefined;
+}
+
 export function resolveFx(
   fxKey: string | undefined,
   element: Element | undefined,
@@ -108,12 +125,11 @@ export function resolveFx(
 ): FxSpec {
   let family: FxFamily | undefined;
   if (fxKey) {
-    for (const [re, f] of RULES) {
-      if (re.test(fxKey)) {
-        family = f;
-        break;
-      }
-    }
+    // 1) 先頭トークンを最優先で見る (dark_wave が「波」ではなく「闇」になるように)。
+    //    ult_ / awaken_ などの接頭辞は剥がしてから判定する。
+    const priority = PRIORITY_RULES.find(([re]) => re.test(fxKey))?.[1];
+    const head = fxKey.replace(/^(ult|ultimate|finisher)_/i, '').split('_')[0] ?? '';
+    family = priority ?? matchRule(head) ?? matchRule(fxKey);
   }
   if (!family) family = TYPE_FALLBACK[type] ?? 'generic';
 
@@ -121,12 +137,16 @@ export function resolveFx(
     element !== undefined &&
     (family === 'generic' || family === 'slash' || family === 'pierce' || family === 'impact' || family === 'ult');
 
+  // 必殺技キーは属性演出でも「大きく」する
+  const grand = isUltimateFx(fxKey);
+  const baseShards = family === 'ult' || family === 'awaken' ? 14 : family === 'generic' ? 8 : 10;
+
   return {
     family,
     color: useElementColor ? ELEMENT_COLOR[element] : FAMILY_COLOR[family],
-    shards: family === 'ult' || family === 'awaken' ? 14 : family === 'generic' ? 8 : 10,
-    screen: SCREEN_BY_FAMILY[family] ?? 'none',
-    duration: DURATION_BY_FAMILY[family] ?? 620,
+    shards: grand ? baseShards + 4 : baseShards,
+    screen: grand ? (SCREEN_BY_FAMILY[family] ?? 'flash') : (SCREEN_BY_FAMILY[family] ?? 'none'),
+    duration: grand ? Math.max(900, DURATION_BY_FAMILY[family] ?? 620) : (DURATION_BY_FAMILY[family] ?? 620),
   };
 }
 

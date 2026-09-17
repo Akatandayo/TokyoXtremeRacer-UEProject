@@ -49,9 +49,14 @@ export function CharacterDetailScreen(): JSX.Element {
   }
 
   const { def, owned, stats, skills, normalAttack, ultimate, expToNext } = view;
-  const profiles = store.master?.aiProfiles ?? [];
+  const allProfiles = store.master?.aiProfiles ?? [];
+  // 敵/ボス専用AIはプレイヤーが選べないように除外する
+  const profiles = allProfiles.filter((p) => !/^ai_(en|boss)_/i.test(p.id));
+  const ownProfiles = profiles.filter((p) => p.id.includes(def.id));
+  const otherProfiles = profiles.filter((p) => !p.id.includes(def.id));
   const currentAi = owned.aiProfile ?? def.defaultAi;
-  const aiDesc = profiles.find((p) => p.id === currentAi)?.description;
+  const aiDesc = allProfiles.find((p) => p.id === currentAi)?.description;
+  const known = profiles.some((p) => p.id === currentAi);
 
   const onChangeAi = async (id: string) => {
     setSaving(true);
@@ -109,10 +114,23 @@ export function CharacterDetailScreen(): JSX.Element {
               style={{ width: '100%' }}
               aria-label="AI戦術の選択"
             >
-              {profiles.length === 0 && <option value={currentAi}>{currentAi}</option>}
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
+              {(profiles.length === 0 || !known) && <option value={currentAi}>{currentAi}</option>}
+              {ownProfiles.length > 0 && (
+                <optgroup label="このキャラの戦術">
+                  {ownProfiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}{p.id === def.defaultAi ? '(既定)' : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {otherProfiles.length > 0 && (
+                <optgroup label="ほかの戦術">
+                  {otherProfiles.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             {aiDesc && <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{aiDesc}</div>}
             {saving && <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>保存中…</div>}
