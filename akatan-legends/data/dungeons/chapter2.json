@@ -8,52 +8,132 @@
       "name": "廃されたサーバ棟",
       "recommendedLevel": 11,
       "enemies": [
-        { "enemyId": "en_drone_scan", "level": 11, "position": 0 },
-        { "enemyId": "en_drone_scan", "level": 11, "position": 1 },
-        { "enemyId": "en_drone_scan", "level": 11, "position": 2 },
-        { "enemyId": "en_bat_shadow", "level": 11, "position": 3 }
+        {
+          "enemyId": "en_drone_scan",
+          "level": 11,
+          "position": 0
+        },
+        {
+          "enemyId": "en_drone_scan",
+          "level": 11,
+          "position": 1
+        },
+        {
+          "enemyId": "en_drone_scan",
+          "level": 11,
+          "position": 2
+        },
+        {
+          "enemyId": "en_bat_shadow",
+          "level": 11,
+          "position": 3
+        }
       ],
-      "rewards": { "exp": 700, "gold": 380 },
-      "description": "沈黙の初見殺し。スキルを封じられても通常攻撃で押せる素の火力が要る、という第2章の前提を提示する。"
+      "rewards": {
+        "exp": 700,
+        "gold": 380
+      },
+      "description": "沈黙の初見殺し。スキルを封じられても通常攻撃で押せる素の火力が要る、という第2章の前提を提示する。",
+      "unlockAfter": "ch1-5"
     },
     {
       "id": "ch2-2",
       "name": "亡霊の資料室",
       "recommendedLevel": 13,
       "enemies": [
-        { "enemyId": "en_specter_pale", "level": 13, "position": 0 },
-        { "enemyId": "en_specter_pale", "level": 13, "position": 1 },
-        { "enemyId": "en_acolyte_lost", "level": 13, "position": 2 },
-        { "enemyId": "en_mold_toxic", "level": 13, "position": 3 }
+        {
+          "enemyId": "en_specter_pale",
+          "level": 13,
+          "position": 0
+        },
+        {
+          "enemyId": "en_specter_pale",
+          "level": 13,
+          "position": 1
+        },
+        {
+          "enemyId": "en_acolyte_lost",
+          "level": 13,
+          "position": 2
+        },
+        {
+          "enemyId": "en_mold_toxic",
+          "level": 13,
+          "position": 3
+        }
       ],
-      "rewards": { "exp": 900, "gold": 460 },
-      "description": "敵側に回復役が出る。狙う順番を間違えると戦闘が終わらない、ターゲット選択の教材。"
+      "rewards": {
+        "exp": 900,
+        "gold": 460
+      },
+      "description": "敵側に回復役が出る。狙う順番を間違えると戦闘が終わらない、ターゲット選択の教材。",
+      "unlockAfter": "ch2-1"
     },
     {
       "id": "ch2-3",
       "name": "虚王の玉座前",
       "recommendedLevel": 15,
       "enemies": [
-        { "enemyId": "boss_vald_hollow", "level": 15, "position": 0 },
-        { "enemyId": "en_knight_husk", "level": 14, "position": 1 },
-        { "enemyId": "en_knight_husk", "level": 14, "position": 2 }
+        {
+          "enemyId": "boss_vald_hollow",
+          "level": 15,
+          "position": 0
+        },
+        {
+          "enemyId": "en_knight_husk",
+          "level": 14,
+          "position": 1
+        },
+        {
+          "enemyId": "en_knight_husk",
+          "level": 14,
+          "position": 2
+        }
       ],
-      "rewards": { "exp": 1300, "gold": 700 },
-      "description": "中ボス戦。闇属性の高速アタッカーで、北斗の対闇特効と凛の足止めが正面から刺さる。属性編成を組み替える動機づけ。"
+      "rewards": {
+        "exp": 1300,
+        "gold": 700
+      },
+      "description": "中ボス戦。闇属性の高速アタッカーで、北斗の対闇特効と凛の足止めが正面から刺さる。属性編成を組み替える動機づけ。",
+      "unlockAfter": "ch2-2"
     },
     {
       "id": "ch2-4",
       "name": "零番演算層",
       "recommendedLevel": 17,
       "enemies": [
-        { "enemyId": "en_drone_scan", "level": 17, "position": 0 },
-        { "enemyId": "en_drone_scan", "level": 17, "position": 1 },
-        { "enemyId": "en_knight_husk", "level": 17, "position": 2 },
-        { "enemyId": "en_golem_stone", "level": 17, "position": 3 },
-        { "enemyId": "en_acolyte_lost", "level": 17, "position": 4 }
+        {
+          "enemyId": "en_drone_scan",
+          "level": 17,
+          "position": 0
+        },
+        {
+          "enemyId": "en_drone_scan",
+          "level": 17,
+          "position": 1
+        },
+        {
+          "enemyId": "en_knight_husk",
+          "level": 17,
+          "position": 2
+        },
+        {
+          "enemyId": "en_golem_stone",
+          "level": 17,
+          "position": 3
+        },
+        {
+          "enemyId": "en_acolyte_lost",
+          "level": 17,
+          "position": 4
+        }
       ],
-      "rewards": { "exp": 1700, "gold": 900 },
-      "description": "第2章の稼ぎ場。妨害・壁・回復が同時に出る総合問題で、ここをLv17前後で安定周回できればボスに挑める。"
+      "rewards": {
+        "exp": 1700,
+        "gold": 900
+      },
+      "description": "第2章の稼ぎ場。妨害・壁・回復が同時に出る総合問題で、ここをLv17前後で安定周回できればボスに挑める。",
+      "unlockAfter": "ch2-3"
     },
     {
       "id": "ch2-5",
@@ -61,13 +141,33 @@
       "recommendedLevel": 20,
       "boss": true,
       "enemies": [
-        { "enemyId": "boss_null_daemon", "level": 20, "position": 0 },
-        { "enemyId": "en_drone_scan", "level": 14, "position": 1 },
-        { "enemyId": "en_drone_scan", "level": 14, "position": 2 },
-        { "enemyId": "en_specter_pale", "level": 14, "position": 3 }
+        {
+          "enemyId": "boss_null_daemon",
+          "level": 20,
+          "position": 0
+        },
+        {
+          "enemyId": "en_drone_scan",
+          "level": 14,
+          "position": 1
+        },
+        {
+          "enemyId": "en_drone_scan",
+          "level": 14,
+          "position": 2
+        },
+        {
+          "enemyId": "en_specter_pale",
+          "level": 14,
+          "position": 3
+        }
       ],
-      "rewards": { "exp": 2600, "gold": 1500 },
-      "description": "第2章最終ボス。Lv20相当が必要。自己修復と状態異常解除を持つため、毒だけ・シールドだけといった単一戦術では落ちない。回復2枚で耐えるか、ファイアウォール再使用前に押し切るかを選ばせる。"
+      "rewards": {
+        "exp": 2600,
+        "gold": 1500
+      },
+      "description": "第2章最終ボス。Lv20相当が必要。自己修復と状態異常解除を持つため、毒だけ・シールドだけといった単一戦術では落ちない。回復2枚で耐えるか、ファイアウォール再使用前に押し切るかを選ばせる。",
+      "unlockAfter": "ch2-4"
     }
   ]
 }

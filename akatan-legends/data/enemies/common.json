@@ -8,7 +8,7 @@
     ],
     "baseStats": {
       "hp": 816,
-      "attack": 187.2,
+      "attack": 243,
       "defense": 51,
       "speed": 62,
       "critical": 2,
@@ -18,7 +18,7 @@
     },
     "growth": {
       "hp": 91.2,
-      "attack": 11.7,
+      "attack": 15.21,
       "defense": 3.52,
       "speed": 0.4
     },
@@ -48,7 +48,7 @@
     ],
     "baseStats": {
       "hp": 525,
-      "attack": 197.2,
+      "attack": 256,
       "defense": 34,
       "speed": 104,
       "critical": 8,
@@ -58,7 +58,7 @@
     },
     "growth": {
       "hp": 54.6,
-      "attack": 12.92,
+      "attack": 16.8,
       "defense": 2.31,
       "speed": 1
     },
@@ -88,7 +88,7 @@
     ],
     "baseStats": {
       "hp": 483,
-      "attack": 179.8,
+      "attack": 234,
       "defense": 29,
       "speed": 96,
       "critical": 6,
@@ -98,7 +98,7 @@
     },
     "growth": {
       "hp": 50.4,
-      "attack": 11.6,
+      "attack": 15.08,
       "defense": 2.1,
       "speed": 0.9
     },
@@ -129,7 +129,7 @@
     ],
     "baseStats": {
       "hp": 690,
-      "attack": 224.4,
+      "attack": 292,
       "defense": 38,
       "speed": 112,
       "critical": 10,
@@ -139,7 +139,7 @@
     },
     "growth": {
       "hp": 69,
-      "attack": 14.28,
+      "attack": 18.56,
       "defense": 2.52,
       "speed": 1.1
     },
@@ -169,7 +169,7 @@
     ],
     "baseStats": {
       "hp": 1352,
-      "attack": 156.6,
+      "attack": 204,
       "defense": 86,
       "speed": 52,
       "critical": 2,
@@ -179,7 +179,7 @@
     },
     "growth": {
       "hp": 114.4,
-      "attack": 9.18,
+      "attack": 11.93,
       "defense": 5.5,
       "speed": 0.3
     },
@@ -210,7 +210,7 @@
     ],
     "baseStats": {
       "hp": 644,
-      "attack": 156,
+      "attack": 203,
       "defense": 42,
       "speed": 108,
       "critical": 5,
@@ -220,7 +220,7 @@
     },
     "growth": {
       "hp": 64.4,
-      "attack": 10.2,
+      "attack": 13.26,
       "defense": 2.73,
       "speed": 1
     },
@@ -251,7 +251,7 @@
     ],
     "baseStats": {
       "hp": 672,
-      "attack": 162,
+      "attack": 211,
       "defense": 40,
       "speed": 98,
       "critical": 6,
@@ -261,7 +261,7 @@
     },
     "growth": {
       "hp": 67.2,
-      "attack": 10.53,
+      "attack": 13.69,
       "defense": 2.63,
       "speed": 0.9
     },
@@ -292,7 +292,7 @@
     ],
     "baseStats": {
       "hp": 1248,
-      "attack": 251.6,
+      "attack": 327,
       "defense": 68,
       "speed": 84,
       "critical": 8,
@@ -302,7 +302,7 @@
     },
     "growth": {
       "hp": 110.4,
-      "attack": 15.64,
+      "attack": 20.33,
       "defense": 4.4,
       "speed": 0.7
     },
@@ -332,7 +332,7 @@
     ],
     "baseStats": {
       "hp": 792,
-      "attack": 158.4,
+      "attack": 206,
       "defense": 48,
       "speed": 70,
       "critical": 2,
@@ -342,7 +342,7 @@
     },
     "growth": {
       "hp": 74.8,
-      "attack": 10.08,
+      "attack": 13.1,
       "defense": 3.3,
       "speed": 0.5
     },
@@ -372,7 +372,7 @@
     ],
     "baseStats": {
       "hp": 714,
-      "attack": 115,
+      "attack": 150,
       "defense": 44,
       "speed": 92,
       "critical": 3,
@@ -382,7 +382,7 @@
     },
     "growth": {
       "hp": 67.2,
-      "attack": 7.25,
+      "attack": 9.43,
       "defense": 3.05,
       "speed": 0.8,
       "healing": 1

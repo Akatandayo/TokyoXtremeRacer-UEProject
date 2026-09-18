@@ -113,8 +113,11 @@ try {
   check('実況テキスト付きイベントがある', withText.length > 0, `例: ${withText[0]?.text}`);
   check('1-1 は初期編成で勝てる', b?.log?.result?.victory === true,
     b?.log?.result?.victory ? `${b?.log?.result?.turns}ターンで勝利` : '敗北 — バランス要調整');
-  check('戦闘が現実的な長さで終わる', (b?.log?.result?.turns ?? 0) > 3 && (b?.log?.result?.turns ?? 999) < 200,
-    `${b?.log?.result?.turns}ターン`);
+  const actionCount = (log) => (log?.events ?? []).filter((e) => e.type === 'ACTION_START').length;
+  const acts1 = actionCount(b?.log);
+  // turns はラウンド数(生存数ぶんの行動で1)なので長さの指標にならない。行動数で測る。
+  check('戦闘が現実的な長さで終わる (行動数 8〜80)', acts1 >= 8 && acts1 <= 80,
+    `${acts1}行動 / ${b?.log?.result?.turns}ラウンド`);
 
   console.log('\n[6] 報酬とレベルアップ');
   check('勝利で EXP を獲得', (b?.rewards?.exp ?? 0) > 0, `EXP+${b?.rewards?.exp}`);
@@ -142,7 +145,45 @@ try {
   check('BattleLog に seed が記録されている', typeof b?.log?.seed === 'number', `seed=${b?.log?.seed}`);
   check('BattleLog に id と作成日時がある', !!b?.log?.id && !!b?.log?.createdAt);
 
-  console.log('\n[8] 不正入力');
+  console.log('\n[8] ステージ開放制御 (STAGE_LOCKED)');
+  const chapters = dungeons.json?.data?.chapters ?? [];
+  const gated = chapters.flatMap((c) => c.stages).find((s) => s.unlockAfter && !p.player.clearedStages?.includes(s.unlockAfter));
+  check('unlockAfter が設定されたステージが存在する', !!gated, gated ? `${gated.id} <- ${gated.unlockAfter}` : '未設定');
+  if (gated) {
+    const locked = await api('POST', '/battle/start', { stageId: gated.id });
+    check('未開放ステージへの挑戦を拒否 (サーバ権威)', locked.json?.error?.code === 'STAGE_LOCKED',
+      locked.json?.error?.message ?? JSON.stringify(locked.json).slice(0, 80));
+  }
+  const lastCh1 = chapters[0]?.stages?.at(-1);
+  const ch2First = chapters[1]?.stages?.[0];
+  check('第2章の先頭が第1章ボスで開放される', ch2First?.unlockAfter === lastCh1?.id,
+    `${ch2First?.id} <- ${ch2First?.unlockAfter}`);
+
+  console.log('\n[9] キャラクターコンボ');
+  const master2 = await api('GET', '/master');
+  const comboDefs = master2.json?.data?.combos ?? [];
+  check('コンボ定義が配信される', comboDefs.length >= 6, `${comboDefs.length}件`);
+  check('PAIR以外のコンボも存在する', new Set(comboDefs.map((c) => c.kind)).size >= 2,
+    [...new Set(comboDefs.map((c) => c.kind))].join('/'));
+  // コンボが成立する編成を作って発動を確認する
+  const defToUid = new Map((p.characters ?? []).map((c) => [c.def.id, c.owned.uid]));
+  const pairable = comboDefs.find((c) => (c.members ?? []).every((m) => defToUid.has(m)));
+  if (pairable) {
+    const rest = [...defToUid.keys()].filter((d) => !pairable.members.includes(d));
+    const comboParty = [...pairable.members, ...rest].slice(0, 5).map((d) => defToUid.get(d));
+    await api('PUT', '/party', { members: comboParty });
+    let fired = 0;
+    for (let i = 0; i < 6 && fired === 0; i++) {
+      const r = await api('POST', '/battle/start', { stageId: firstStage?.id });
+      fired += (r.json?.data?.log?.events ?? []).filter((e) => e.type === 'COMBO').length;
+    }
+    check(`コンボが戦闘中に発動する (${pairable.name})`, fired > 0, `${fired}回`);
+    await api('PUT', '/party', { members: uids });
+  } else {
+    check('コンボが成立する編成を作れる', false, 'スターターに相方が揃っていない');
+  }
+
+  console.log('\n[10] 不正入力');
   const badStage = await api('POST', '/battle/start', { stageId: 'no_such_stage' });
   check('存在しないステージを拒否', badStage.json?.ok === false, badStage.json?.error?.code);
   const noBody = await api('POST', '/battle/start', {});
