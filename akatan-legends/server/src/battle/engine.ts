@@ -53,6 +53,13 @@ interface EngineUnit extends AiUnit {
   stat: BattleUnitStat;
   /** 装備から解決済みの特殊効果 (CombatantInput.specials をそのまま保持)。省略時は空配列扱い。 */
   specials?: ItemSpecialEffect[];
+  /**
+   * 転生の SKILL_POWER 補正を事前に乗数化した値 (1 = 補正なし)。
+   * CombatantInput.rebirthMods.skillPowerPercent が未指定なら必ず 1 になる。
+   * effectDamage/effectHeal で effect.power に掛けるだけの純粋な倍率で、
+   * 乱数を一切消費しないので決定論には影響しない。
+   */
+  skillPowerMul: number;
 }
 
 /**
@@ -76,6 +83,25 @@ function normalizeConfig(cfg: Partial<BattleConfig> | undefined): BattleConfig {
 
 /** 行動回数の安全弁。ゲージ操作スキルの組み合わせで理論上ティックが進まない事態を止める。 */
 const MAX_ACTIONS = 100000;
+
+/**
+ * RebirthCombatMods の数値フィールドの防御的正規化。data不整合(NaN/undefined)で
+ * NaN が全計算に伝播しないよう、常に有限な数値(既定0)を返す。乱数は使わない。
+ */
+function safePercent(v: number | undefined): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+}
+
+/**
+ * 転生の GAUGE_START / ULT_GAUGE_START (§17〜§19) を「戦闘開始時の初期ゲージ実値」に変換する。
+ * effectGauge/effectUltGauge と同じ「gaugeMax(または ultMax) に対する%」という規約に揃える。
+ * pct 未指定/NaN なら 0 (= 従来通りゲージ0から開始)。[0, max] にクランプするので、
+ * ULT_GAUGE_START が100%を超えて持ち越されることはない。乱数は使わない。
+ */
+function resolveInitialGaugePercent(pct: number | undefined, max: number): number {
+  const p = safePercent(pct);
+  return Math.min(max, Math.max(0, (max * p) / 100));
+}
 
 class BattleRunner {
   private readonly units: EngineUnit[] = [];
@@ -136,6 +162,7 @@ class BattleRunner {
    */
   private toUnit(c: CombatantInput, side: Side): EngineUnit {
     const maxHp = Math.max(1, Math.round(c.stats.hp));
+    const mods = c.rebirthMods;
     const u: EngineUnit = {
       id: c.id,
       side,
@@ -148,8 +175,11 @@ class BattleRunner {
       stats: { ...c.stats, hp: maxHp },
       hp: maxHp,
       maxHp,
-      gauge: 0,
-      ultGauge: 0,
+      // 転生の GAUGE_START / ULT_GAUGE_START (§17〜§19)。mods 未指定なら resolveInitialGaugePercent が
+      // 常に0を返すので、従来通り「行動ゲージ0・必殺ゲージ0から開始」になる。
+      // ここで設定するのはコンストラクタ内(=戦闘開始前)の1回だけで、以後の行動では再適用しない。
+      gauge: resolveInitialGaugePercent(mods?.gaugeStart, this.cfg.gaugeMax),
+      ultGauge: resolveInitialGaugePercent(mods?.ultGaugeStart, this.cfg.ultMax),
       statuses: [],
       alive: true,
       awakened: false,
@@ -164,6 +194,8 @@ class BattleRunner {
       skillUseCount: new Map(),
       ultAnnounced: false,
       specials: c.specials,
+      // 転生の SKILL_POWER (§17〜§19)。未指定 (skillPowerPercent === undefined) なら 1 = 補正なし。
+      skillPowerMul: 1 + safePercent(mods?.skillPowerPercent) / 100,
       stat: {
         id: c.id, name: c.name, side,
         damageDealt: 0, damageTaken: 0, healing: 0, kills: 0, survived: true,
@@ -586,7 +618,9 @@ class BattleRunner {
     actor: EngineUnit, target: EngineUnit, skill: Skill, effect: SkillEffect, grouped = false,
   ): void {
     const hits = Math.max(1, Math.round(effect.hits ?? 1));
-    const power = effect.power ?? 1;
+    // 転生の SKILL_POWER (§17〜§19): actor.skillPowerMul は rebirthMods 未指定なら常に1なので、
+    // ここで乗じても既存の呼び出し(乱数消費・数値)には一切影響しない。
+    const power = (effect.power ?? 1) * actor.skillPowerMul;
     const element: Element = effect.element ?? actor.element;
     const affinity = affinityMultiplier(this.affinity as Record<string, Record<string, number>>, element, target.element);
 
@@ -653,9 +687,10 @@ class BattleRunner {
   ): void {
     // scaling: 'hp' のときは「対象の最大HP割合」回復、それ以外は術者のステータス基準。
     const scalingStat = effect.scaling === 'hp' ? target.maxHp : this.scalingValue(actor, effect.scaling);
+    // 転生の SKILL_POWER (§17〜§19): effectDamage と同じ規約 (skillPowerMul は未指定なら1)。
     const res = computeHeal({
       scalingStat,
-      power: effect.power ?? 1,
+      power: (effect.power ?? 1) * actor.skillPowerMul,
       healingStat: actor.stats.healing,
       variance: this.cfg.damageVariance,
       rng: this.rng,

@@ -41,6 +41,9 @@ const EQUIPMENT_SLOTS = ['WEAPON', 'ARMOR', 'ACCESSORY'];
 const ITEM_RARITIES = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'];
 const SPECIAL_TRIGGERS = ['ON_ATTACK', 'ON_HIT_TAKEN', 'ON_BATTLE_START', 'ON_KILL'];
 const DROP_KINDS = ['GOLD', 'EQUIPMENT', 'MATERIAL', 'CHARACTER', 'SUMMON_TICKET'];
+const REBIRTH_PATHS = ['ATTACK', 'SPEED', 'ENDURANCE', 'SPECIAL'];
+const REBIRTH_EFFECT_KINDS = ['STAT_FLAT', 'STAT_PERCENT', 'GROWTH_PERCENT', 'SKILL_POWER', 'GAUGE_START', 'ULT_GAUGE_START'];
+const REBIRTH_EFFECT_KINDS_NEEDING_STAT = ['STAT_FLAT', 'STAT_PERCENT', 'GROWTH_PERCENT'];
 const COMBO_KINDS = ['PAIR', 'TRIO', 'PARTY', 'TAG'];
 const COMBO_TRIGGER_TYPES = ['ON_SKILL_USE', 'ON_BATTLE_START', 'ON_HP_BELOW', 'ON_ALLY_DEFEATED'];
 const PORTRAITS_DIR = join(ROOT, 'client', 'public', 'portraits');
@@ -754,6 +757,179 @@ for (const path of listJson('items/droptables')) {
 }
 
 /* ------------------------------------------------------------------
+ * 5.6. 転生 (data/system/rebirth.json / data/rebirth/nodes.json)
+ * ------------------------------------------------------------------
+ * 設計書§19 の「同じキャラでも転生によって異なる方向へ育成できる」を
+ * 数値面で保証するため、通常のフィールド検査に加えて以下を必ず検査する:
+ *   - requiresPathPoints が同系統の他ノードの総コストを超えていないか
+ *     (超えていれば、その系統に全振りしても永久に届かないノードになる)
+ *   - pointsPerRebirth × maxRebirth (総獲得ポイント) が、全ノードの総コスト以上
+ *     になっていないか (以上だと全ノードを取り切れてしまい、§19の分岐が壊れる)
+ * ---------------------------------------------------------------- */
+
+// 素材が実際にドロップテーブルから入手できるか(=永久に転生できない事故を防ぐ)
+const obtainableMaterialIds = new Set();
+for (const t of dropTables.values()) {
+  for (const e of t.entries || []) {
+    if (e && e.kind === 'MATERIAL' && typeof e.id === 'string') obtainableMaterialIds.add(e.id);
+  }
+}
+
+function checkRebirthMaterialCost(where, key, list) {
+  if (list === undefined) return;
+  if (!Array.isArray(list)) { err(where, `"${key}" が配列ではありません`); return; }
+  list.forEach((c, i) => {
+    const cw = `${where}.${key}[${i}]`;
+    if (typeof c !== 'object' || c === null) { err(cw, 'オブジェクトではありません'); return; }
+    if (!requireStr(cw, c, 'materialId')) return;
+    if (!materials.has(c.materialId)) {
+      err(cw, `materialId "${c.materialId}" は data/items/materials.json に存在しません`);
+    } else if (!obtainableMaterialIds.has(c.materialId)) {
+      err(cw, `materialId "${c.materialId}" はどのドロップテーブルからも入手できません(このままでは転生が永久に不可能になります)`);
+    }
+    if (typeof c.count !== 'number' || c.count <= 0) err(cw, 'count が正の数値ではありません');
+    const allowed = ['materialId', 'count'];
+    for (const k of Object.keys(c)) {
+      if (!allowed.includes(k)) err(cw, `存在しないフィールド "${k}" があります`);
+    }
+  });
+}
+
+// -- 5.6.1 転生ノード (data/rebirth/nodes.json) --
+const rebirthNodes = new Map();
+const pathTotalCost = { ATTACK: 0, SPEED: 0, ENDURANCE: 0, SPECIAL: 0 };
+{
+  const rel = 'data/rebirth/nodes.json';
+  const p = join(DATA, 'rebirth', 'nodes.json');
+  if (!existsSync(p)) {
+    err(rel, 'ファイルがありません');
+  } else {
+    const arr = loadJson(p);
+    if (arr !== null) {
+      if (!Array.isArray(arr)) {
+        err(rel, 'RebirthNodeDef[] の配列である必要があります');
+      } else {
+        arr.forEach((n, i) => {
+          const where = `${rel}#${i}${n && n.id ? ` (${n.id})` : ''}`;
+          if (typeof n !== 'object' || n === null) { err(where, '転生ノードがオブジェクトではありません'); return; }
+          if (!requireStr(where, n, 'id')) return;
+          if (rebirthNodes.has(n.id)) { err(where, `転生ノードIDが重複しています: "${n.id}"`); return; }
+          requireStr(where, n, 'name');
+          requireStr(where, n, 'description');
+          const pathOk = requireEnum(where, n, 'path', REBIRTH_PATHS);
+          const costOk = requireNum(where, n, 'cost');
+          if (costOk && n.cost <= 0) err(where, 'cost は正の数値である必要があります');
+          const rankOk = requireNum(where, n, 'maxRank');
+          if (rankOk && (n.maxRank <= 0 || !Number.isInteger(n.maxRank))) err(where, 'maxRank は正の整数である必要があります');
+
+          if (!Array.isArray(n.effects) || n.effects.length === 0) {
+            err(where, '"effects" が空、または配列ではありません');
+          } else {
+            n.effects.forEach((e, j) => {
+              const ew = `${where}.effects[${j}]`;
+              if (typeof e !== 'object' || e === null) { err(ew, 'RebirthEffect がオブジェクトではありません'); return; }
+              if (!requireEnum(ew, e, 'kind', REBIRTH_EFFECT_KINDS)) return;
+              if (REBIRTH_EFFECT_KINDS_NEEDING_STAT.includes(e.kind)) {
+                if (!requireStr(ew, e, 'stat')) { /* already reported */ }
+                else if (!STAT_KEYS.includes(e.stat)) err(ew, `stat の値 ${JSON.stringify(e.stat)} は StatKey として不正です`);
+              } else if (e.stat !== undefined && !STAT_KEYS.includes(e.stat)) {
+                err(ew, `stat の値 ${JSON.stringify(e.stat)} は StatKey として不正です`);
+              }
+              requireNum(ew, e, 'value');
+              const allowed = ['kind', 'stat', 'value'];
+              for (const k of Object.keys(e)) {
+                if (!allowed.includes(k)) err(ew, `RebirthEffect に存在しないフィールド "${k}" があります`);
+              }
+            });
+          }
+
+          if (n.requiresPathPoints !== undefined && (typeof n.requiresPathPoints !== 'number' || n.requiresPathPoints < 0)) {
+            err(where, 'requiresPathPoints が0以上の数値ではありません');
+          }
+          if (n.requiresRebirth !== undefined && (typeof n.requiresRebirth !== 'number' || n.requiresRebirth < 0)) {
+            err(where, 'requiresRebirth が0以上の数値ではありません');
+          }
+
+          const allowedKeys = ['id', 'name', 'description', 'path', 'cost', 'maxRank', 'effects', 'requiresPathPoints', 'requiresRebirth'];
+          for (const k of Object.keys(n)) {
+            if (!allowedKeys.includes(k)) err(where, `RebirthNodeDef に存在しないフィールド "${k}" があります`);
+          }
+
+          if (pathOk && costOk && rankOk) {
+            pathTotalCost[n.path] += n.cost * n.maxRank;
+          }
+          rebirthNodes.set(n.id, n);
+        });
+      }
+    }
+  }
+}
+
+// requiresPathPoints が「同系統の他ノードの総コスト」を超えていないか
+// (超えていれば、その系統に全振りしても永久に取れないノードになる)
+for (const n of rebirthNodes.values()) {
+  if (n.requiresPathPoints === undefined || !REBIRTH_PATHS.includes(n.path)) continue;
+  const ownCost = (typeof n.cost === 'number' && typeof n.maxRank === 'number') ? n.cost * n.maxRank : 0;
+  const otherNodesTotal = pathTotalCost[n.path] - ownCost;
+  if (n.requiresPathPoints > otherNodesTotal) {
+    err(`data/rebirth/nodes.json (${n.id})`,
+      `requiresPathPoints (${n.requiresPathPoints}) が同系統 "${n.path}" の他ノード総コスト (${otherNodesTotal}) を超えています。このノードは全振りしても永久に取得できません`);
+  }
+}
+
+const rebirthNodesTotalCost = Object.values(pathTotalCost).reduce((a, b) => a + b, 0);
+
+// -- 5.6.2 転生設定 (data/system/rebirth.json) --
+{
+  const rel = 'data/system/rebirth.json';
+  const p = join(DATA, 'system', 'rebirth.json');
+  if (!existsSync(p)) {
+    err(rel, 'ファイルがありません');
+  } else {
+    const cfg = loadJson(p);
+    if (cfg && typeof cfg === 'object') {
+      const where = rel;
+      const levelOk = requireNum(where, cfg, 'requiredLevel');
+      requireNum(where, cfg, 'pointsPerRebirth');
+      requireNum(where, cfg, 'growthBonusPercent');
+      const maxRebirthOk = requireNum(where, cfg, 'maxRebirth');
+
+      // requiredLevel は levelCap 以下であること (levelCap を超えると絶対に転生できない)
+      const progPathForRebirth = join(DATA, 'system', 'progression.json');
+      if (levelOk && existsSync(progPathForRebirth)) {
+        const prog = loadJson(progPathForRebirth);
+        if (prog && typeof prog.levelCap === 'number' && cfg.requiredLevel > prog.levelCap) {
+          err(where, `requiredLevel (${cfg.requiredLevel}) が levelCap (${prog.levelCap}) を超えています。このままでは誰も転生できません`);
+        }
+      }
+
+      checkRebirthMaterialCost(where, 'cost', cfg.cost);
+      checkRebirthMaterialCost(where, 'resetCost', cfg.resetCost);
+
+      // ポイント総量チェック: 全力で転生を積んでも全ノードは取り切れないこと(§19の分岐の前提)
+      if (maxRebirthOk && typeof cfg.pointsPerRebirth === 'number') {
+        const totalPoints = cfg.pointsPerRebirth * cfg.maxRebirth;
+        if (rebirthNodesTotalCost > 0 && totalPoints >= rebirthNodesTotalCost) {
+          err(where,
+            `pointsPerRebirth × maxRebirth (${totalPoints}) が全転生ノードの総コスト (${rebirthNodesTotalCost}) 以上です。` +
+            'このままでは最大転生時に全ノードを取り切れてしまい、設計書§19のビルド分岐が成立しません');
+        }
+        for (const [path, total] of Object.entries(pathTotalCost)) {
+          if (total > 0 && totalPoints < total) {
+            warn(where, `系統 "${path}" を単独で全振りしても総コスト (${total}) に総獲得ポイント (${totalPoints}) が届きません。1系統も完成できない設計です(意図的か確認してください)`);
+          }
+        }
+      }
+
+      const allowedKeys = ['requiredLevel', 'pointsPerRebirth', 'growthBonusPercent', 'maxRebirth', 'cost', 'resetCost'];
+      for (const k of Object.keys(cfg)) {
+        if (!allowedKeys.includes(k)) err(where, `RebirthConfig に存在しないフィールド "${k}" があります`);
+      }
+    }
+  }
+}
+
+/* ------------------------------------------------------------------
  * 6. ダンジョン
  * ---------------------------------------------------------------- */
 const chapters = new Map();
@@ -1132,5 +1308,7 @@ console.log(`  素材            : ${materials.size} 種`);
 console.log(`  ドロップテーブル: ${dropTables.size} 件`);
 console.log(`  ガチャバナー    : ${gachaBanners.size} 件`);
 console.log(`  コンボ          : ${combos.size} 件`);
+console.log(`  転生ノード      : ${rebirthNodes.size} 件  (` +
+  REBIRTH_PATHS.map((p) => `${p}:${[...rebirthNodes.values()].filter((n) => n.path === p).length}`).join(' / ') + ')');
 console.log(`  システム設定    : affinity.json, progression.json`);
 process.exit(0);

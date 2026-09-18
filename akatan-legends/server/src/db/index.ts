@@ -140,7 +140,19 @@ const MIGRATIONS: ((db: Db) => void)[] = [
       );
     `);
   },
-  // v2 -> v3 以降はここに追記する
+  // v2 -> v3: 転生システム(第4ラウンド。設計書§17〜§20)
+  //   - owned_characters.rebirth_nodes: 転生ノードの取得状況(JSON: ノードID -> ランク)
+  //   - owned_characters.rebirth_points_available: 未使用の転生ポイント
+  //   既存の rebirth / rebirth_points 列はそのまま残す(旧形式のセーブを壊さないため。
+  //   rebirth_points は非推奨だが読み込みだけ継続する。shared/src/types.ts の
+  //   OwnedCharacter.rebirthPoints の @deprecated コメント参照)。
+  (db) => {
+    db.exec(`
+      ALTER TABLE owned_characters ADD COLUMN rebirth_nodes TEXT;
+      ALTER TABLE owned_characters ADD COLUMN rebirth_points_available INTEGER NOT NULL DEFAULT 0;
+    `);
+  },
+  // v3 -> v4 以降はここに追記する
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

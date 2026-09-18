@@ -57,3 +57,9 @@ export const slotMismatch = (message: string, details?: unknown): AppError =>
   new AppError('SLOT_MISMATCH', message, details);
 export const alreadyEquipped = (message: string, details?: unknown): AppError =>
   new AppError('ALREADY_EQUIPPED', message, details);
+/** 転生 (第4ラウンド): レベル/転生回数の条件未達、素材不足、ノードの解放条件未達などに使う */
+export const rebirthLocked = (message: string, details?: unknown): AppError =>
+  new AppError('REBIRTH_LOCKED', message, details);
+/** 転生ポイント割り振り時のポイント不足 */
+export const notEnoughPoints = (message: string, details?: unknown): AppError =>
+  new AppError('NOT_ENOUGH_POINTS', message, details);

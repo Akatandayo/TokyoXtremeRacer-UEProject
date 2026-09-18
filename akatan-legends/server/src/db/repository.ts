@@ -38,6 +38,10 @@ interface OwnedRow {
   exp: number;
   rebirth: number;
   rebirth_points: string | null;
+  /** v3 (第4ラウンド): 転生ノードの取得状況(JSON: ノードID -> ランク) */
+  rebirth_nodes: string | null;
+  /** v3 (第4ラウンド): 未使用の転生ポイント */
+  rebirth_points_available: number;
   limit_break: number;
   equipment: string | null;
   ai_profile: string | null;
@@ -72,6 +76,9 @@ function toOwnedCharacter(row: OwnedRow): OwnedCharacter {
   };
   const rebirthPoints = parseJson<Partial<Record<StatKey, number>> | null>(row.rebirth_points, null);
   if (rebirthPoints) owned.rebirthPoints = rebirthPoints;
+  const rebirthNodes = parseJson<Record<string, number> | null>(row.rebirth_nodes, null);
+  if (rebirthNodes) owned.rebirthNodes = rebirthNodes;
+  if (row.rebirth_points_available) owned.rebirthPointsAvailable = row.rebirth_points_available;
   if (row.limit_break) owned.limitBreak = row.limit_break;
   const equipment = parseJson<OwnedCharacter['equipment'] | null>(row.equipment, null);
   if (equipment) owned.equipment = equipment;
@@ -166,8 +173,9 @@ export function insertOwnedCharacter(
 ): OwnedCharacter {
   db.prepare(
     `INSERT INTO owned_characters
-       (uid, player_id, def_id, level, exp, rebirth, rebirth_points, limit_break, equipment, ai_profile, obtained_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (uid, player_id, def_id, level, exp, rebirth, rebirth_points, rebirth_nodes,
+        rebirth_points_available, limit_break, equipment, ai_profile, obtained_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     owned.uid,
     playerId,
@@ -176,6 +184,8 @@ export function insertOwnedCharacter(
     owned.exp,
     owned.rebirth,
     owned.rebirthPoints ? JSON.stringify(owned.rebirthPoints) : null,
+    owned.rebirthNodes ? JSON.stringify(owned.rebirthNodes) : null,
+    owned.rebirthPointsAvailable ?? 0,
     owned.limitBreak ?? 0,
     owned.equipment ? JSON.stringify(owned.equipment) : null,
     owned.aiProfile ?? null,
@@ -219,6 +229,48 @@ export function updateCharacterProgressBulk(
     for (const u of items) updateCharacterProgress(playerId, u.uid, u.level, u.exp, db);
   });
   tx(updates);
+}
+
+/* ============================================================
+ * 転生 (設計書§17〜§20, 第4ラウンド)
+ * ========================================================== */
+
+/**
+ * 転生の実行(POST /api/characters/:uid/rebirth)。
+ * レベル/EXPリセット・転生回数+1・転生ポイント加算を1行のUPDATEで確定させる。
+ * **転生ノードの取得状況(rebirth_nodes)はここでは変更しない**
+ * (取得済みノードは転生をまたいで維持する仕様。呼び出し側 rebirth-service.ts のコメント参照)。
+ * 素材消費(materials テーブル)は呼び出し側が同じ `repo.inTransaction` の中で行うこと。
+ */
+export function updateCharacterRebirth(
+  playerId: string,
+  uid: string,
+  fields: { level: number; exp: number; rebirth: number; rebirthPointsAvailable: number },
+  db: Db = getDb(),
+): void {
+  db.prepare(
+    `UPDATE owned_characters
+        SET level = ?, exp = ?, rebirth = ?, rebirth_points_available = ?
+      WHERE player_id = ? AND uid = ?`,
+  ).run(fields.level, fields.exp, fields.rebirth, fields.rebirthPointsAvailable, playerId, uid);
+}
+
+/**
+ * 転生ノードの割り振り・振り直し(POST /rebirth/allocate, /rebirth/reset)で使う。
+ * `nodes` をそのまま JSON で書き込み、`pointsAvailable`(割り振り後の残ポイント、
+ * または振り直し後の全額返却後ポイント)を同時に更新する。
+ */
+export function updateCharacterRebirthNodes(
+  playerId: string,
+  uid: string,
+  nodes: Record<string, number>,
+  pointsAvailable: number,
+  db: Db = getDb(),
+): void {
+  const hasAny = Object.keys(nodes).length > 0;
+  db.prepare(
+    `UPDATE owned_characters SET rebirth_nodes = ?, rebirth_points_available = ? WHERE player_id = ? AND uid = ?`,
+  ).run(hasAny ? JSON.stringify(nodes) : null, pointsAvailable, playerId, uid);
 }
 
 export function updateCharacterAi(

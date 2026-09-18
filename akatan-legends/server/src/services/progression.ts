@@ -13,8 +13,9 @@
  */
 import type {
   CharacterDef, EnemyDef, EquipmentInstance, GrowthRates, LevelUpInfo, OwnedCharacter,
-  ProgressionConfig, Stats, StatKey,
+  ProgressionConfig, RebirthNodeDef, RebirthPath, Stats, StatKey,
 } from '@akatan/shared';
+import { REBIRTH_PATHS } from '@akatan/shared';
 
 export const STAT_KEYS: StatKey[] = [
   'hp', 'attack', 'defense', 'speed', 'critical', 'criticalDamage', 'resistance', 'healing',
@@ -43,8 +44,26 @@ function normalizeStats(base: Partial<Stats> | undefined): Stats {
 export interface StatModifierSources {
   /** Phase2: 限界突破段階 */
   limitBreak?: number;
-  /** Phase2: 転生ポイント割り振り */
+  /**
+   * @deprecated 転生ポイント旧形式(ステータスへの素の加算)。系統ツリー方式(rebirthFlat/
+   * rebirthPercent)へ移行したので新規には使わない。既存セーブの読み込みだけ残している。
+   */
   rebirthPoints?: Partial<Record<StatKey, number>>;
+  /** 転生(Phase2 §18): 転生ノードの STAT_FLAT 効果を集計した値(resolveRebirthStatMods) */
+  rebirthFlat?: Partial<Record<StatKey, number>>;
+  /**
+   * 転生(Phase2 §18): 転生ノードの STAT_PERCENT 効果を集計した値(単位は%)。
+   * 装備%と同様「加算適用後の値に対する割合」として乗算するが、**装備%より先に**適用する
+   * (下記 computeStats のコメント参照。装備%は仕様上必ず最後)。
+   */
+  rebirthPercent?: Partial<Record<StatKey, number>>;
+  /**
+   * 転生(Phase2 §18): 成長率(1レベルあたりの上昇量)への割合加算(単位は%)。
+   * 「転生ボーナス(RebirthConfig.growthBonusPercent × rebirth回数)」と
+   * 「転生ノードの GROWTH_PERCENT 効果」の合計値を呼び出し側(computeOwnedStats)で
+   * 合算して渡す。growth 自体に効くので、レベル成長の一番最初に適用する。
+   */
+  growthPercent?: Partial<Record<StatKey, number>>;
   /** Phase3: 装備による加算(EquipmentInstance.stats を集計した値を渡す) */
   equipmentFlat?: Partial<Record<StatKey, number>>;
   /**
@@ -58,13 +77,18 @@ export interface StatModifierSources {
  * 最終ステータスを算出する。
  *
  * === 適用順序(変更すると既存バランスが壊れるので固定すること) ===
- *   1. base + growth * (level - 1)                    …… レベル成長
- *   2. + rebirthPoints[key]                            …… 転生ポイント(Phase2)
- *   3. + equipmentFlat[key]                             …… 装備の固定値加算(Phase3)
- *   4. × (1 + limitBreakRate * limitBreak)              …… 限界突破(Phase2。現状は係数0=無効)
- *   5. × (1 + equipmentPercent[key] / 100)              …… 装備の%加算(Phase3)
+ *   1. growth' = growth × (1 + growthPercent[key] / 100)  …… 転生の成長率ボーナス(Phase2 §18)
+ *      base + growth' * (level - 1)                       …… レベル成長
+ *   2. + rebirthPoints[key]                            …… 転生ポイント旧形式(非推奨。互換のみ)
+ *   3. + rebirthFlat[key]                              …… 転生ノード STAT_FLAT(Phase2)
+ *   4. + equipmentFlat[key]                             …… 装備の固定値加算(Phase3)
+ *   5. × (1 + limitBreakRate * limitBreak)              …… 限界突破(Phase2。現状は係数0=無効)
+ *   6. × (1 + rebirthPercent[key] / 100)                …… 転生ノード STAT_PERCENT(Phase2)
+ *   7. × (1 + equipmentPercent[key] / 100)              …… 装備の%加算(Phase3)
  * 「装備の%は装備フラット適用後の値に対する割合」という仕様(docs/API.md §3)を満たすため、
  * equipmentPercent は必ず他のすべての加算・乗算より後に適用する。
+ * 転生の%(rebirthPercent)はそれより手前、装備の直前に適用する
+ * (= 装備%は「転生込みの素の値」にもかかる、一番外側の乗算という位置づけを維持する)。
  */
 export function computeStats(
   base: Partial<Stats> | undefined,
@@ -77,25 +101,140 @@ export function computeStats(
   const out = { ...ZERO_STATS };
 
   for (const key of STAT_KEYS) {
-    const perLevel = growth?.[key] ?? 0;
+    // --- 手順1: 転生の成長率ボーナスを growth 自体に先に適用してからレベル成長を計算する ---
+    const growthBonus = mods.growthPercent?.[key];
+    const perLevel = (growth?.[key] ?? 0) * (1 + (typeof growthBonus === 'number' ? growthBonus / 100 : 0));
     let value = baseStats[key] + perLevel * (lv - 1);
 
-    // --- 手順2: 転生ポイント: 現状は単純加算だけ受け付ける ---
+    // --- 手順2: 転生ポイント旧形式: 単純加算(非推奨。互換のみ) ---
     const rebirth = mods.rebirthPoints?.[key];
     if (typeof rebirth === 'number') value += rebirth;
 
-    // --- 手順3: 装備(フラット): 装備解決済みの加算値を加える ---
+    // --- 手順3: 転生ノード(フラット): STAT_FLAT 効果の加算値 ---
+    const rebirthFlat = mods.rebirthFlat?.[key];
+    if (typeof rebirthFlat === 'number') value += rebirthFlat;
+
+    // --- 手順4: 装備(フラット): 装備解決済みの加算値を加える ---
     const equipFlat = mods.equipmentFlat?.[key];
     if (typeof equipFlat === 'number') value += equipFlat;
 
-    // --- 手順4: 限界突破: 乗算補正(現状は係数0 = 無効) ---
+    // --- 手順5: 限界突破: 乗算補正(現状は係数0 = 無効) ---
     // if (mods.limitBreak) value *= 1 + LIMIT_BREAK_RATE * mods.limitBreak;
 
-    // --- 手順5: 装備(%): 「ここまでの値」に対する割合加算。必ず最後に適用する ---
+    // --- 手順6: 転生ノード(%): STAT_PERCENT 効果。装備%の直前に適用する ---
+    const rebirthPercent = mods.rebirthPercent?.[key];
+    if (typeof rebirthPercent === 'number' && rebirthPercent !== 0) value *= 1 + rebirthPercent / 100;
+
+    // --- 手順7: 装備(%): 「ここまでの値」に対する割合加算。必ず最後に適用する ---
     const equipPercent = mods.equipmentPercent?.[key];
     if (typeof equipPercent === 'number' && equipPercent !== 0) value *= 1 + equipPercent / 100;
 
     out[key] = roundStat(key, value);
+  }
+  return out;
+}
+
+/* ============================================================
+ * 転生ノード効果の集計 (設計書§17〜§18)
+ * ------------------------------------------------------------
+ * `OwnedCharacter.rebirthNodes`(ノードID→取得ランク)と `RebirthNodeDef` の定義から、
+ * ステータス計算に必要な値をここで集計する(サーバのみ・純粋関数。DB/fsに依存しないので
+ * standalone からの import も安全)。
+ * ========================================================== */
+
+function forEachRebirthEffect(
+  nodes: Record<string, number> | undefined,
+  nodeDefs: Map<string, RebirthNodeDef> | undefined,
+  visit: (effect: RebirthNodeDef['effects'][number], rank: number) => void,
+): void {
+  if (!nodes || !nodeDefs) return;
+  for (const [nodeId, rank] of Object.entries(nodes)) {
+    if (!rank || rank <= 0) continue;
+    const def = nodeDefs.get(nodeId);
+    // データ不整合(存在しないノードID)は起動時の参照整合性チェックとは別に、
+    // ここでも黙って無視する(壊れたセーブでステータス計算自体を落とさないため)。
+    if (!def) continue;
+    for (const effect of def.effects) visit(effect, rank);
+  }
+}
+
+export interface RebirthStatMods {
+  /** STAT_FLAT の合計(ランク×効果量) */
+  statFlat: Partial<Record<StatKey, number>>;
+  /** STAT_PERCENT の合計(%) */
+  statPercent: Partial<Record<StatKey, number>>;
+  /** GROWTH_PERCENT の合計(%)。RebirthConfig.growthBonusPercent との合算は呼び出し側の責務 */
+  growthPercent: Partial<Record<StatKey, number>>;
+}
+
+/** computeStats の rebirthFlat/rebirthPercent/growthPercent に渡す値を集計する */
+export function resolveRebirthStatMods(
+  nodes: Record<string, number> | undefined,
+  nodeDefs: Map<string, RebirthNodeDef> | undefined,
+): RebirthStatMods {
+  const statFlat: Partial<Record<StatKey, number>> = {};
+  const statPercent: Partial<Record<StatKey, number>> = {};
+  const growthPercent: Partial<Record<StatKey, number>> = {};
+  forEachRebirthEffect(nodes, nodeDefs, (effect, rank) => {
+    if (!effect.stat) return;
+    const amount = effect.value * rank;
+    if (effect.kind === 'STAT_FLAT') statFlat[effect.stat] = (statFlat[effect.stat] ?? 0) + amount;
+    else if (effect.kind === 'STAT_PERCENT') statPercent[effect.stat] = (statPercent[effect.stat] ?? 0) + amount;
+    else if (effect.kind === 'GROWTH_PERCENT') growthPercent[effect.stat] = (growthPercent[effect.stat] ?? 0) + amount;
+  });
+  return { statFlat, statPercent, growthPercent };
+}
+
+/**
+ * ステータスではない転生効果(SKILL_POWER / GAUGE_START / ULT_GAUGE_START)の集計。
+ * computeStats の対象外なので、戦闘エンジンへ渡すための値をここで用意する。
+ *
+ * TODO(戦闘エンジン担当と要調整): `server/src/battle/contract.ts` の `CombatantInput` に
+ * これらを受け取るフィールドが無いため、現時点では `toAllyCombatant`(battle-service.ts)
+ * から実際に渡す先が無い。フィールド名が決まったら `toAllyCombatant` の該当箇所
+ * (TODOコメントあり)に接続すること。
+ */
+export interface RebirthCombatMods {
+  /** スキル威力への割合加算(%)の合計 */
+  skillPowerPercent: number;
+  /** 戦闘開始時の行動ゲージ(%)の合計 */
+  gaugeStartPercent: number;
+  /** 戦闘開始時の必殺ゲージ(%)の合計 */
+  ultGaugeStartPercent: number;
+}
+
+export function resolveRebirthCombatMods(
+  nodes: Record<string, number> | undefined,
+  nodeDefs: Map<string, RebirthNodeDef> | undefined,
+): RebirthCombatMods {
+  const mods: RebirthCombatMods = { skillPowerPercent: 0, gaugeStartPercent: 0, ultGaugeStartPercent: 0 };
+  forEachRebirthEffect(nodes, nodeDefs, (effect, rank) => {
+    const amount = effect.value * rank;
+    if (effect.kind === 'SKILL_POWER') mods.skillPowerPercent += amount;
+    else if (effect.kind === 'GAUGE_START') mods.gaugeStartPercent += amount;
+    else if (effect.kind === 'ULT_GAUGE_START') mods.ultGaugeStartPercent += amount;
+  });
+  return mods;
+}
+
+/**
+ * 系統(RebirthPath)ごとの累計投資ポイント。`RebirthStatus.pathPoints` 用。
+ * §19 のビルド分岐(散らすと上位ノードに届かない)を成立させる判定はサーバが必ず
+ * ここから算出し、クライアントの申告は一切信用しない(呼び出し側は
+ * services/rebirth-service.ts の requiresPathPoints 検証を参照)。
+ */
+export function computeRebirthPathPoints(
+  nodes: Record<string, number> | undefined,
+  nodeDefs: Map<string, RebirthNodeDef> | undefined,
+): Record<RebirthPath, number> {
+  const out = {} as Record<RebirthPath, number>;
+  for (const p of REBIRTH_PATHS) out[p] = 0;
+  if (!nodes || !nodeDefs) return out;
+  for (const [nodeId, rank] of Object.entries(nodes)) {
+    if (!rank || rank <= 0) continue;
+    const def = nodeDefs.get(nodeId);
+    if (!def) continue;
+    out[def.path] += def.cost * rank;
   }
   return out;
 }
@@ -139,15 +278,36 @@ function roundStat(key: StatKey, value: number): number {
  * `equipmentByUid` を渡すと `owned.equipment` (スロット→装備uid) を解決して
  * 装備の効果(フラット+%)を反映する。省略時は装備なしとして計算する
  * (装備テーブルを引く必要が無い軽量な呼び出し向け)。
+ *
+ * `rebirthNodeDefs` / `rebirthGrowthBonusPercent` を渡すと転生ノードの効果
+ * (STAT_FLAT/STAT_PERCENT/GROWTH_PERCENT)を反映する(Phase2 §18)。
+ * 省略時は転生ノード無しとして計算する(既存呼び出しを壊さないための後方互換)。
+ * `rebirthGrowthBonusPercent` は `RebirthConfig.growthBonusPercent`(1転生あたりの%)を渡すこと。
+ * ここで `owned.rebirth` 回数を掛けた値とノードの GROWTH_PERCENT を合算して growthPercent とする。
  */
 export function computeOwnedStats(
   def: CharacterDef,
   owned: OwnedCharacter,
   equipmentByUid?: Map<string, EquipmentInstance>,
+  rebirthNodeDefs?: Map<string, RebirthNodeDef>,
+  rebirthGrowthBonusPercent = 0,
 ): Stats {
+  const { statFlat, statPercent, growthPercent: nodeGrowthPercent } =
+    resolveRebirthStatMods(owned.rebirthNodes, rebirthNodeDefs);
+  const globalGrowthBonus = rebirthGrowthBonusPercent * (owned.rebirth || 0);
+  const growthPercent: Partial<Record<StatKey, number>> = {};
+  if (globalGrowthBonus !== 0 || Object.keys(nodeGrowthPercent).length > 0) {
+    for (const key of STAT_KEYS) {
+      const g = (nodeGrowthPercent[key] ?? 0) + globalGrowthBonus;
+      if (g !== 0) growthPercent[key] = g;
+    }
+  }
   return computeStats(def.baseStats, def.growth, owned.level, {
     limitBreak: owned.limitBreak,
     rebirthPoints: owned.rebirthPoints,
+    rebirthFlat: statFlat,
+    rebirthPercent: statPercent,
+    growthPercent,
     ...resolveEquipmentMods(owned, equipmentByUid),
   });
 }
@@ -299,12 +459,16 @@ export const DEFEATED_EXP_RATE = 0.5;
  *   将来: 与ダメージ量に応じた傾斜配分を入れる場合は、BattleUnitStat を丸ごと
  *         受け取って係数を掛ける形に拡張する(呼び出し側の互換を保つため引数は
  *         末尾に追加すること)。
+ *
+ * `rebirthCtx` (Phase2 §18・転生): レベルアップ時の statGain 表示に転生ノードの
+ * 効果を反映させたい場合に渡す。省略時は転生ノード無しとして計算する(後方互換)。
  */
 export function grantBattleExp(
   targets: RewardTarget[],
   stageExp: number,
   config: ProgressionConfig,
   survivedByUid?: Map<string, boolean>,
+  rebirthCtx?: { nodeDefs: Map<string, RebirthNodeDef>; growthBonusPercent: number },
 ): GrantExpResult {
   const expPerMember = Math.max(0, Math.floor(stageExp || 0));
   const defeatedExp = Math.max(0, Math.round(expPerMember * DEFEATED_EXP_RATE));
@@ -314,15 +478,18 @@ export function grantBattleExp(
   for (const t of targets) {
     const survived = survivedByUid ? survivedByUid.get(t.owned.uid) ?? true : true;
     const amount = survived ? expPerMember : defeatedExp;
-    const before = computeOwnedStats(t.def, t.owned);
+    const before = computeOwnedStats(t.def, t.owned, undefined, rebirthCtx?.nodeDefs, rebirthCtx?.growthBonusPercent);
     const result = applyExp({ level: t.owned.level, exp: t.owned.exp }, amount, config);
     const entry: GrantedProgress = { uid: t.owned.uid, level: result.level, exp: result.exp };
 
     if (result.leveledUp) {
-      const after = computeStats(t.def.baseStats, t.def.growth, result.level, {
-        limitBreak: t.owned.limitBreak,
-        rebirthPoints: t.owned.rebirthPoints,
-      });
+      const after = computeOwnedStats(
+        t.def,
+        { ...t.owned, level: result.level },
+        undefined,
+        rebirthCtx?.nodeDefs,
+        rebirthCtx?.growthBonusPercent,
+      );
       const info: LevelUpInfo = {
         uid: t.owned.uid,
         name: t.def.name,

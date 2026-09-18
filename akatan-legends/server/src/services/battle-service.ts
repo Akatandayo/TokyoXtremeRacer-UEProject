@@ -17,14 +17,16 @@
 import { randomUUID } from 'node:crypto';
 import type {
   BattleLog, BattleRewards, BattleStartResponse, CharacterDef, DropResult, EnemyDef, EquipmentInstance,
-  ItemSpecialEffect, OwnedCharacter, StageDef,
+  ItemSpecialEffect, OwnedCharacter, RebirthNodeDef, StageDef,
 } from '@akatan/shared';
 import type { BattleContext, CombatantInput } from '../battle/contract.js';
 import * as repo from '../db/repository.js';
 import { getGameData, type GameData } from '../data/loader.js';
 import { badRequest, notFound, partyEmpty, partyInvalid, stageLocked } from './app-error.js';
 import { getBattleEngine } from './battle-engine.js';
-import { computeEnemyStats, computeOwnedStats, computeGoldReward, grantBattleExp } from './progression.js';
+import {
+  computeEnemyStats, computeOwnedStats, computeGoldReward, grantBattleExp, resolveRebirthCombatMods,
+} from './progression.js';
 import { listCharacterViews, getPlayerProfile } from './player-service.js';
 import { getParty, validateMembers } from './party-service.js';
 import { resolveDrops } from './drop-service.js';
@@ -52,14 +54,27 @@ function collectEquippedSpecials(
   return specials;
 }
 
-/** 所持キャラ + マスタ定義 -> 味方 CombatantInput */
+/**
+ * 所持キャラ + マスタ定義 -> 味方 CombatantInput。
+ * `rebirthNodeDefs` / `rebirthGrowthBonusPercent` を渡すと転生ノードの STAT_FLAT/STAT_PERCENT/
+ * GROWTH_PERCENT が `stats` に反映される(Phase2 §18)。省略時は転生なしとして計算する。
+ */
 export function toAllyCombatant(
   owned: OwnedCharacter,
   def: CharacterDef,
   slot: number,
   equipmentByUid: Map<string, EquipmentInstance> = new Map(),
+  rebirthNodeDefs?: Map<string, RebirthNodeDef>,
+  rebirthGrowthBonusPercent = 0,
 ): CombatantInput {
   const specials = collectEquippedSpecials(owned, equipmentByUid);
+  // 転生ノードの SKILL_POWER/GAUGE_START/ULT_GAUGE_START はステータスではないため
+  // computeOwnedStats の対象外。ここで集計しておくが、CombatantInput (contract.ts) には
+  // まだ受け口が無いため実際には渡せていない。
+  // TODO(戦闘エンジン担当と要調整): contract.ts にフィールドが追加されたら
+  // 下記 combatMods をここで CombatantInput に接続すること(docs/API.md §9 参照)。
+  const combatMods = resolveRebirthCombatMods(owned.rebirthNodes, rebirthNodeDefs);
+  // combatMods は接続待ち(上記TODO)。CombatantInput 拡張後にここへ渡す。
   return {
     // 戦闘中の識別子には uid をそのまま使う(報酬付与で紐付けるため)
     id: owned.uid,
@@ -70,8 +85,8 @@ export function toAllyCombatant(
     element: def.element,
     roles: def.roles ?? [],
     level: owned.level,
-    // ステータスはサーバ側で再計算した値のみ(装備込み。Phase3)
-    stats: computeOwnedStats(def, owned, equipmentByUid),
+    // ステータスはサーバ側で再計算した値のみ(装備・転生込み。Phase2/3)
+    stats: computeOwnedStats(def, owned, equipmentByUid, rebirthNodeDefs, rebirthGrowthBonusPercent),
     normalAttack: def.normalAttack,
     skills: def.skills ?? [],
     ultimate: def.ultimate,
@@ -224,7 +239,9 @@ export function startBattle(
 
   const members = resolveBattleMembers(playerId, params.members, data);
   const equipmentByUid = new Map(repo.listEquipment(playerId).map((e) => [e.uid, e]));
-  const allies = members.map((m) => toAllyCombatant(m.owned, m.def, m.slot, equipmentByUid));
+  const allies = members.map((m) => toAllyCombatant(
+    m.owned, m.def, m.slot, equipmentByUid, data.rebirthNodes, data.rebirthConfig.growthBonusPercent,
+  ));
   const enemies = buildEnemies(stage, data);
   if (enemies.length === 0) {
     throw badRequest(`ステージ '${stage.id}' に有効な敵が設定されていません`);
@@ -319,6 +336,7 @@ function grantRewards(
     stageExp,
     data.progression,
     survivedByUid,
+    { nodeDefs: data.rebirthNodes, growthBonusPercent: data.rebirthConfig.growthBonusPercent },
   );
 
   repo.updateCharacterProgressBulk(

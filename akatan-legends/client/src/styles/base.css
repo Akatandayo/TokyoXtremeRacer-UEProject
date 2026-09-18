@@ -58,6 +58,12 @@
   --irar-LEGENDARY: #ffc542;
   --irar-MYTHIC: #ff5ad4;
 
+  /* 転生ツリー4系統 (RebirthPath, 設計書§19のビルド分岐を色で見分ける) */
+  --path-ATTACK: #ff5a43;
+  --path-SPEED: #35e6ff;
+  --path-ENDURANCE: #7dff9b;
+  --path-SPECIAL: #b47dff;
+
   --nav-h: 56px;
   --speed: 1;
 }

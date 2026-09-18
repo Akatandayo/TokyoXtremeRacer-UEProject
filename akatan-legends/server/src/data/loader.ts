@@ -18,9 +18,9 @@ import { fileURLToPath } from 'node:url';
 import type {
   AffinityTable, AffixDef, AiProfile, ChapterDef, CharacterDef, ComboDef, DropTableDef,
   EnemyDef, GachaBannerDef, ItemBaseDef, MaterialDef, PlannedCharacterDef,
-  ProgressionConfig, Skill, StageDef,
+  ProgressionConfig, RebirthConfig, RebirthNodeDef, Skill, StageDef,
 } from '@akatan/shared';
-import { EQUIPMENT_SLOTS, ITEM_RARITIES } from '@akatan/shared';
+import { EQUIPMENT_SLOTS, ITEM_RARITIES, REBIRTH_PATHS } from '@akatan/shared';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,6 +38,19 @@ export const DEFAULT_PROGRESSION: ProgressionConfig = {
     maxTicks: 2000,
     damageVariance: 0.05,
   },
+};
+
+/**
+ * data/system/rebirth.json が無い/欠損している場合に使う既定値。
+ * `DEFAULT_PROGRESSION` と同じ方針(サーバを必ず起動可能に保つ)。
+ * `requiredLevel` は既定の `levelCap`(60)に合わせている。`cost`/`resetCost` は
+ * 未指定(=素材消費なし/振り直し不可)がもっとも安全なデフォルトなので省略する。
+ */
+export const DEFAULT_REBIRTH_CONFIG: RebirthConfig = {
+  requiredLevel: 60,
+  pointsPerRebirth: 10,
+  growthBonusPercent: 5,
+  maxRebirth: 5,
 };
 
 export interface GameData {
@@ -68,6 +81,11 @@ export interface GameData {
   gachaBanners: Map<string, GachaBannerDef>;
   /** 未実装キャラのプレースホルダ定義 (data/system/planned-characters.json) */
   plannedCharacters: Map<string, PlannedCharacterDef>;
+  /* ---- 転生 (設計書§17〜§20, Phase2): データが空でも起動できる ---- */
+  /** 転生ノード定義 (data/rebirth/nodes.json) */
+  rebirthNodes: Map<string, RebirthNodeDef>;
+  /** 転生の基本設定 (data/system/rebirth.json)。欠損時は DEFAULT_REBIRTH_CONFIG でマージ */
+  rebirthConfig: RebirthConfig;
   /**
    * 「チケット」として扱う素材ID。
    * MaterialDef 自体には種別フィールドが無いため、`gachaBanners` の
@@ -375,6 +393,24 @@ function validateReferences(data: GameData): void {
     }
   }
 
+  // 転生 (第4ラウンド): 参照切れ・不正値は警告のみ・落とさない。
+  for (const node of data.rebirthNodes.values()) {
+    if (!REBIRTH_PATHS.includes(node.path)) {
+      w.push(`rebirthNode '${node.id}': path '${node.path}' が不正な RebirthPath です`);
+    }
+    if (!(node.maxRank > 0)) {
+      w.push(`rebirthNode '${node.id}': maxRank が不正です (${node.maxRank})`);
+    }
+    if (!(node.cost > 0)) {
+      w.push(`rebirthNode '${node.id}': cost が不正です (${node.cost})`);
+    }
+  }
+  for (const cost of [...(data.rebirthConfig.cost ?? []), ...(data.rebirthConfig.resetCost ?? [])]) {
+    if (cost.materialId && !data.materials.has(cost.materialId)) {
+      w.push(`rebirthConfig: cost/resetCost の素材 '${cost.materialId}' が materials に見つかりません`);
+    }
+  }
+
   // P1-3 移行期チェック: playerSelectable を誰も持っていない間は全AI許可で運用する。
   // (server/src/routes/characters.ts の PUT /api/characters/:uid/ai が同じ判定を行う)
   if (data.aiProfiles.size > 0) {
@@ -447,6 +483,27 @@ function mergeProgression(loaded: Partial<ProgressionConfig>): ProgressionConfig
   };
 }
 
+/** rebirth.json の欠損キーを既定値で補完する(progression.json と同じ寛容マージ方針) */
+function mergeRebirthConfig(loaded: Partial<RebirthConfig>): RebirthConfig {
+  const merged: RebirthConfig = {
+    requiredLevel: typeof loaded.requiredLevel === 'number' && loaded.requiredLevel > 0
+      ? loaded.requiredLevel
+      : DEFAULT_REBIRTH_CONFIG.requiredLevel,
+    pointsPerRebirth: typeof loaded.pointsPerRebirth === 'number' && loaded.pointsPerRebirth >= 0
+      ? loaded.pointsPerRebirth
+      : DEFAULT_REBIRTH_CONFIG.pointsPerRebirth,
+    growthBonusPercent: typeof loaded.growthBonusPercent === 'number' && loaded.growthBonusPercent >= 0
+      ? loaded.growthBonusPercent
+      : DEFAULT_REBIRTH_CONFIG.growthBonusPercent,
+    maxRebirth: typeof loaded.maxRebirth === 'number' && loaded.maxRebirth >= 0
+      ? loaded.maxRebirth
+      : DEFAULT_REBIRTH_CONFIG.maxRebirth,
+  };
+  if (Array.isArray(loaded.cost)) merged.cost = loaded.cost;
+  if (Array.isArray(loaded.resetCost)) merged.resetCost = loaded.resetCost;
+  return merged;
+}
+
 export function loadGameData(): GameData {
   const warnings: string[] = [];
   const dataDir = resolveDataDir();
@@ -499,6 +556,15 @@ export function loadGameData(): GameData {
     'plannedCharacter', ['plannedCharacters', 'characters'], warnings,
   );
 
+  // 転生 (第4ラウンド): data/rebirth/nodes.json (単一ファイル or data/rebirth/*.json ディレクトリ)
+  const rebirthNodes = loadFromFiles<RebirthNodeDef>(
+    collectJsonSources(dataDir, 'rebirth/nodes.json', 'rebirth', warnings),
+    'rebirthNode', ['nodes', 'rebirthNodes'], warnings,
+  );
+  const rebirthConfig = mergeRebirthConfig(
+    loadSystemFile<Partial<RebirthConfig>>(dataDir, 'rebirth.json', {}, warnings),
+  );
+
   // ticketMaterialIds はデータロード後にバナー/ドロップテーブルの参照から逆引きする
   const ticketMaterialIds = new Set<string>();
   for (const banner of gachaBanners.values()) {
@@ -531,6 +597,8 @@ export function loadGameData(): GameData {
     gachaBanners,
     plannedCharacters,
     ticketMaterialIds,
+    rebirthNodes,
+    rebirthConfig,
     warnings,
   };
 
@@ -540,6 +608,7 @@ export function loadGameData(): GameData {
   if (chapters.size === 0) warnings.push('チャプターが 0 件です(data/dungeons/ 未作成?)');
   if (itemBases.size === 0) warnings.push('装備ベースが 0 件です(data/items/bases/ 未作成? ハクスラは無効化されます)');
   if (gachaBanners.size === 0) warnings.push('ガチャバナーが 0 件です(data/gacha/banners.json 未作成? ガチャは無効化されます)');
+  if (rebirthNodes.size === 0) warnings.push('転生ノードが 0 件です(data/rebirth/nodes.json 未作成? 転生ポイントを振れません)');
 
   return data;
 }
@@ -585,6 +654,7 @@ export function summarizeGameData(data: GameData): Record<string, number | strin
     dropTables: data.dropTables.size,
     gachaBanners: data.gachaBanners.size,
     plannedCharacters: data.plannedCharacters.size,
+    rebirthNodes: data.rebirthNodes.size,
     warnings: data.warnings.length,
   };
 }

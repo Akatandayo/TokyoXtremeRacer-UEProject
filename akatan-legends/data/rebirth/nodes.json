@@ -1,0 +1,260 @@
+[
+  {
+    "id": "rb_atk_edge",
+    "name": "刃引きの鍛錬",
+    "description": "何度生まれ変わっても、同じ得物を振り続けた実感だけは刃筋に残る。攻撃力を高める、攻撃型のもっとも素朴な鍛錬。",
+    "path": "ATTACK",
+    "cost": 1,
+    "maxRank": 5,
+    "effects": [{ "kind": "STAT_PERCENT", "stat": "attack", "value": 3 }]
+  },
+  {
+    "id": "rb_atk_eye",
+    "name": "会心の目",
+    "description": "生まれ変わるたびに、相手の隙が前よりも長く見えるようになる。クリティカル率を高める。",
+    "path": "ATTACK",
+    "cost": 1,
+    "maxRank": 5,
+    "effects": [{ "kind": "STAT_PERCENT", "stat": "critical", "value": 2 }]
+  },
+  {
+    "id": "rb_atk_finish",
+    "name": "必殺の型",
+    "description": "刃筋と会心の目、両方を鍛えた者だけに開く型。クリティカルダメージを大きく高める。",
+    "path": "ATTACK",
+    "cost": 2,
+    "maxRank": 4,
+    "requiresPathPoints": 6,
+    "effects": [{ "kind": "STAT_PERCENT", "stat": "criticalDamage", "value": 5 }]
+  },
+  {
+    "id": "rb_atk_flow",
+    "name": "連撃の呼吸",
+    "description": "型を極めた分だけ、スキル一つ一つの重みが増していく。スキル威力を高める。",
+    "path": "ATTACK",
+    "cost": 2,
+    "maxRank": 4,
+    "requiresPathPoints": 6,
+    "effects": [{ "kind": "SKILL_POWER", "value": 4 }]
+  },
+  {
+    "id": "rb_atk_philosophy",
+    "name": "刃の哲学",
+    "description": "何度目かの生まれ変わりでようやく掴む、自分の戦い方の核。レベルごとの攻撃力の伸びそのものを高める。2回目以降の転生でのみ開く、長く攻撃型を歩んだ者への褒賞。",
+    "path": "ATTACK",
+    "cost": 3,
+    "maxRank": 3,
+    "requiresPathPoints": 16,
+    "requiresRebirth": 2,
+    "effects": [{ "kind": "GROWTH_PERCENT", "stat": "attack", "value": 4 }]
+  },
+  {
+    "id": "rb_atk_zenith",
+    "name": "不滅の一閃",
+    "description": "刃の道を極限まで突き詰めた者だけが辿り着く境地。攻撃力とスキル威力を同時に大きく高める、攻撃型の到達点。",
+    "path": "ATTACK",
+    "cost": 6,
+    "maxRank": 1,
+    "requiresPathPoints": 28,
+    "requiresRebirth": 4,
+    "effects": [
+      { "kind": "STAT_PERCENT", "stat": "attack", "value": 15 },
+      { "kind": "SKILL_POWER", "value": 15 }
+    ]
+  },
+  {
+    "id": "rb_spd_stride",
+    "name": "疾走の心得",
+    "description": "生まれ変わるたびに、一歩目が速くなる。速度を高める、速度型のもっとも素朴な心得。",
+    "path": "SPEED",
+    "cost": 1,
+    "maxRank": 5,
+    "effects": [{ "kind": "STAT_PERCENT", "stat": "speed", "value": 3 }]
+  },
+  {
+    "id": "rb_spd_ready",
+    "name": "臨戦態勢",
+    "description": "戦いの始まりにはもう慣れている。戦闘開始時の行動ゲージを高める。",
+    "path": "SPEED",
+    "cost": 1,
+    "maxRank": 5,
+    "effects": [{ "kind": "GAUGE_START", "value": 4 }]
+  },
+  {
+    "id": "rb_spd_instinct",
+    "name": "勝負師の直感",
+    "description": "何度も同じ戦場に立った者だけが持つ、始まりの直感。戦闘開始時の必殺ゲージを高める。",
+    "path": "SPEED",
+    "cost": 2,
+    "maxRank": 4,
+    "requiresPathPoints": 6,
+    "effects": [{ "kind": "ULT_GAUGE_START", "value": 5 }]
+  },
+  {
+    "id": "rb_spd_accel",
+    "name": "加速の呼吸",
+    "description": "基本の速さをさらに突き詰めた呼吸法。速度をもう一段高める。",
+    "path": "SPEED",
+    "cost": 2,
+    "maxRank": 4,
+    "requiresPathPoints": 6,
+    "effects": [{ "kind": "STAT_PERCENT", "stat": "speed", "value": 3 }]
+  },
+  {
+    "id": "rb_spd_chaser",
+    "name": "時を追う者",
+    "description": "何度目かの生まれ変わりで、時間そのものに追いつき始める。レベルごとの速度の伸びを高める。2回目以降の転生でのみ開く。",
+    "path": "SPEED",
+    "cost": 3,
+    "maxRank": 3,
+    "requiresPathPoints": 16,
+    "requiresRebirth": 2,
+    "effects": [{ "kind": "GROWTH_PERCENT", "stat": "speed", "value": 5 }]
+  },
+  {
+    "id": "rb_spd_instant",
+    "name": "刹那の先手",
+    "description": "誰よりも先に動き続けた者の到達点。速度と必殺ゲージを同時に大きく高める、速度型の到達点。",
+    "path": "SPEED",
+    "cost": 6,
+    "maxRank": 1,
+    "requiresPathPoints": 28,
+    "requiresRebirth": 4,
+    "effects": [
+      { "kind": "STAT_PERCENT", "stat": "speed", "value": 10 },
+      { "kind": "ULT_GAUGE_START", "value": 20 }
+    ]
+  },
+  {
+    "id": "rb_end_stance",
+    "name": "不動の構え",
+    "description": "何度倒れても、また立ち上がる構えだけは覚えている。HPを高める、耐久型のもっとも素朴な心得。",
+    "path": "ENDURANCE",
+    "cost": 1,
+    "maxRank": 5,
+    "effects": [{ "kind": "STAT_PERCENT", "stat": "hp", "value": 3 }]
+  },
+  {
+    "id": "rb_end_wall",
+    "name": "鉄壁の心得",
+    "description": "受け止め方を繰り返し学んだ者の防御。防御力を高める。",
+    "path": "ENDURANCE",
+    "cost": 1,
+    "maxRank": 5,
+    "effects": [{ "kind": "STAT_PERCENT", "stat": "defense", "value": 3 }]
+  },
+  {
+    "id": "rb_end_grit",
+    "name": "痛みへの耐性",
+    "description": "何度も状態異常に苦しんだ経験が、耐性という形で残る。状態異常耐性を高める。",
+    "path": "ENDURANCE",
+    "cost": 2,
+    "maxRank": 4,
+    "requiresPathPoints": 6,
+    "effects": [{ "kind": "STAT_FLAT", "stat": "resistance", "value": 3 }]
+  },
+  {
+    "id": "rb_end_foundation",
+    "name": "礎の力",
+    "description": "壁としての在り方をさらに固める、礎の力。防御力をもう一段高める。",
+    "path": "ENDURANCE",
+    "cost": 2,
+    "maxRank": 4,
+    "requiresPathPoints": 6,
+    "effects": [{ "kind": "STAT_PERCENT", "stat": "defense", "value": 4 }]
+  },
+  {
+    "id": "rb_end_bloodline",
+    "name": "不屈の血脈",
+    "description": "何度目かの生まれ変わりで、倒れにくい体そのものが育っていく。レベルごとのHPの伸びを高める。2回目以降の転生でのみ開く。",
+    "path": "ENDURANCE",
+    "cost": 3,
+    "maxRank": 3,
+    "requiresPathPoints": 16,
+    "requiresRebirth": 2,
+    "effects": [{ "kind": "GROWTH_PERCENT", "stat": "hp", "value": 5 }]
+  },
+  {
+    "id": "rb_end_bastion",
+    "name": "絶対防壁",
+    "description": "誰にも抜けない壁となった者の到達点。防御力と状態異常耐性を同時に大きく高める、耐久型の到達点。",
+    "path": "ENDURANCE",
+    "cost": 6,
+    "maxRank": 1,
+    "requiresPathPoints": 28,
+    "requiresRebirth": 4,
+    "effects": [
+      { "kind": "STAT_PERCENT", "stat": "defense", "value": 15 },
+      { "kind": "STAT_FLAT", "stat": "resistance", "value": 15 }
+    ]
+  },
+  {
+    "id": "rb_spc_mercy",
+    "name": "癒しの心得",
+    "description": "何度も誰かを救い直してきた手が覚えている技。回復力を高める、特殊型のもっとも素朴な心得。",
+    "path": "SPECIAL",
+    "cost": 1,
+    "maxRank": 5,
+    "effects": [{ "kind": "STAT_PERCENT", "stat": "healing", "value": 4 }]
+  },
+  {
+    "id": "rb_spc_insight",
+    "name": "技の冴え",
+    "description": "生まれ変わるたびに、技の冴えが少しずつ増していく。スキル威力を高める。",
+    "path": "SPECIAL",
+    "cost": 1,
+    "maxRank": 5,
+    "effects": [{ "kind": "SKILL_POWER", "value": 3 }]
+  },
+  {
+    "id": "rb_spc_duality",
+    "name": "二刀の心得",
+    "description": "一つの生き方に縛られない、二刀の心得。攻撃力と防御力を同時に少しずつ高める、特殊型らしい複合効果。",
+    "path": "SPECIAL",
+    "cost": 2,
+    "maxRank": 4,
+    "requiresPathPoints": 6,
+    "effects": [
+      { "kind": "STAT_PERCENT", "stat": "attack", "value": 2 },
+      { "kind": "STAT_PERCENT", "stat": "defense", "value": 2 }
+    ]
+  },
+  {
+    "id": "rb_spc_resonance",
+    "name": "共鳴の理",
+    "description": "仲間との呼吸を何度も合わせてきた共鳴の理。戦闘開始時の行動ゲージと必殺ゲージを同時に高める。",
+    "path": "SPECIAL",
+    "cost": 2,
+    "maxRank": 4,
+    "requiresPathPoints": 6,
+    "effects": [
+      { "kind": "GAUGE_START", "value": 3 },
+      { "kind": "ULT_GAUGE_START", "value": 3 }
+    ]
+  },
+  {
+    "id": "rb_spc_legacy",
+    "name": "星導の記憶",
+    "description": "何度目かの生まれ変わりで、託されてきた記憶が力になる。レベルごとの回復力の伸びを高める。2回目以降の転生でのみ開く。",
+    "path": "SPECIAL",
+    "cost": 3,
+    "maxRank": 3,
+    "requiresPathPoints": 16,
+    "requiresRebirth": 2,
+    "effects": [{ "kind": "GROWTH_PERCENT", "stat": "healing", "value": 5 }]
+  },
+  {
+    "id": "rb_spc_axiom",
+    "name": "万象の術理",
+    "description": "特化ではなく併せ持つことを選んだ者の到達点。スキル威力と回復力を同時に大きく高める、特殊型の到達点。",
+    "path": "SPECIAL",
+    "cost": 6,
+    "maxRank": 1,
+    "requiresPathPoints": 28,
+    "requiresRebirth": 4,
+    "effects": [
+      { "kind": "SKILL_POWER", "value": 15 },
+      { "kind": "STAT_PERCENT", "stat": "healing", "value": 15 }
+    ]
+  }
+]

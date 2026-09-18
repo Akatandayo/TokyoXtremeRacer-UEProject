@@ -47,6 +47,43 @@ export interface CombatantInput {
    * 省略時は特殊効果なしとして動作し、乱数消費も一切増えない(既存の呼び出しを壊さない)。
    */
   specials?: ItemSpecialEffect[];
+  /**
+   * 転生ノードから解決済みの戦闘補正(設計書§17〜§19)。
+   * RebirthEffectKind のうち SKILL_POWER / GAUGE_START / ULT_GAUGE_START の3種に対応する。
+   * ステータス(攻撃力・HPなど)への寄与は既に stats に合算済みなので、
+   * ここに渡すのはステータスでは表現できない3種類だけ。API層が転生ノードの取得ランクから
+   * 事前に集計した最終値を渡すこと(ランク計算はエンジンの責務ではない)。
+   * 省略時は補正なしとして動作し、乱数消費も一切増えない(既存の呼び出しを壊さない)。
+   */
+  rebirthMods?: RebirthCombatMods;
+}
+
+/**
+ * CombatantInput.rebirthMods の形。
+ * 3フィールドとも省略可で、省略したフィールドは「補正なし」を意味する。
+ */
+export interface RebirthCombatMods {
+  /**
+   * スキル威力への割合加算(%)。例: 20 なら power が1.2倍になる。
+   * 通常攻撃(NORMAL)・アクティブ(ACTIVE)・必殺技(ULTIMATE)の
+   * すべてのスキル効果(DAMAGE/HEALの power)に等しく乗る(スキル種別による区別はしない)。
+   * キャラクターコンボ(combo.ts)経由でこのユニットが実行する効果にも同様に乗る
+   * (実行者=このユニット自身であるapplySkillEffectsの経路をそのまま通るため)。
+   * 乗らないもの: 装備の特殊効果(ItemSpecialEffect.bonusDamage)。あれは「スキル威力」ではなく
+   * 装備固有の追撃係数なので対象外(specials.ts/engine.tsのON_ATTACK処理を参照)。
+   */
+  skillPowerPercent?: number;
+  /**
+   * 戦闘開始時の行動ゲージ(%, 0が既定値=従来通り)。100を渡すと開幕から即座に行動できる。
+   * [0, 100] にクランプする。戦闘開始時に1回だけ適用し、以後の行動では再適用しない。
+   * 行動順の解決規則(ゲージ超過量 -> 実効speed -> slot -> 陣営 -> id)自体は変えない。
+   */
+  gaugeStart?: number;
+  /**
+   * 戦闘開始時の必殺ゲージ(%, 0が既定値=従来通り)。[0, 100] にクランプする
+   * (100%を超えて持ち越すことはできない)。戦闘開始時に1回だけ適用する。
+   */
+  ultGaugeStart?: number;
 }
 
 export interface BattleContext {

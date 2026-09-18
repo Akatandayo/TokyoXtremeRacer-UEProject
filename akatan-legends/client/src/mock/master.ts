@@ -528,5 +528,8 @@ export const MOCK_MATERIALS: MaterialDef[] = [
   { id: 'mat_prism_dust', name: '虹晶の粉', rarity: 'LEGENDARY', description: 'UR装備の強化に必要な稀少素材。', usage: '装備強化(高レア)', icon: '晶' },
   { id: 'mat_dup_n', name: '探索者の記憶片・小', rarity: 'COMMON', description: '重複したN〜Rキャラが変換される素材。', usage: '限界突破', icon: '片' },
   { id: 'mat_dup_ssr', name: '探索者の記憶片・大', rarity: 'EPIC', description: '重複したSSR/URキャラが変換される、濃い記憶の断片。', usage: '限界突破', icon: '片' },
+  // P4-1: 転生(設計書§17〜§20)用素材。data/items/materials.json の本実装と同じID/名称に揃えている。
+  { id: 'mat_rebirth_echo', name: '転生の残響', rarity: 'EPIC', description: '同じ探索者が、別の育ち方をやり直すための残響。', usage: 'キャラクター転生', icon: '転' },
+  { id: 'mat_rebirth_seal', name: '転生の刻印', rarity: 'LEGENDARY', description: '選んだ育ち方そのものを、もう一度選び直すための刻印。転生の残響より遥かに稀。', usage: '転生ノードの振り直し', icon: '刻' },
 ];
 export const MOCK_MATERIAL_MAP = new Map(MOCK_MATERIALS.map((m) => [m.id, m]));

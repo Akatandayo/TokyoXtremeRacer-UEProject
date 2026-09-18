@@ -63,7 +63,9 @@ export function buildCharacterView(
   return {
     owned,
     def,
-    stats: computeOwnedStats(def, owned, equipmentByUid),
+    // 転生ノードの効果(Phase2 §18)を反映する。data.rebirthNodes が空でも
+    // resolveRebirthStatMods が空集計を返すだけで落ちない。
+    stats: computeOwnedStats(def, owned, equipmentByUid, data.rebirthNodes, data.rebirthConfig.growthBonusPercent),
     expToNext: expToNext(owned.level, data.progression),
     skills: (def.skills ?? []).map((id) => resolveSkill(data, id)),
     normalAttack: resolveSkill(data, def.normalAttack),

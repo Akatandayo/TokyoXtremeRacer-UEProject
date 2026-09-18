@@ -37,6 +37,8 @@ node scripts/validate-data.mjs
 | `data/items/materials.json` | 強化・転生・重複変換・召喚チケット素材 | `MaterialDef[]` |
 | `data/items/droptables/*.json` | ドロップテーブル(`StageDef.rewards.dropTable` / `GachaBannerDef.equipment.dropTable` から参照) | `DropTableDef[]` |
 | `data/gacha/banners.json` | ガチャバナー | `GachaBannerDef[]` |
+| `data/system/rebirth.json` | 転生の全体設定(必要Lv・獲得ポイント・コスト) | `RebirthConfig` |
+| `data/rebirth/nodes.json` | 転生ツリーの全ノード | `RebirthNodeDef[]` |
 
 ### 命名規約(IDは全ファイル横断で一意)
 
@@ -215,6 +217,8 @@ ch1-1 が意図的に短いのはチュートリアルだからです。
 - ドロップテーブルが参照する素材ID/キャラID/装備スロットが妥当か、`weight` が正か、ステージの `rewards.dropTable` が実在するか
 - ガチャバナーの `rates.rarity` 合計が100か、`pool`/`pickup` のキャラIDが実在するか、`cost.ticketId` が素材として実在するか、`pity.rarity` が妥当か
 - コンボの `members`/`trigger.actor`/`effect.performer` が「実キャラ」または `data/system/planned-characters.json` の未実装キャラのどちらかとして実在するか
+- 転生ノード(`data/rebirth/nodes.json`): ID重複 / `path` が4系統のいずれか / `effects[].kind` が既定6種のいずれか / `STAT_FLAT`・`STAT_PERCENT`・`GROWTH_PERCENT` に `stat` があり `StatKey` として妥当か / `cost`・`maxRank` が正の数値か / **`requiresPathPoints` が同系統の他ノードの総コストを超えていないか(超えていれば全振りしても永久に取れないノードになる)**
+- 転生設定(`data/system/rebirth.json`): `requiredLevel` が `levelCap` 以下か / `cost`・`resetCost` の素材が実在するか、かつ**どれかのドロップテーブルから実際に入手できるか**(入手不能な素材を要求すると転生が永久に不可能になる) / **`pointsPerRebirth × maxRebirth` が全転生ノードの総コスト以上になっていないか**(以上だと最大転生時に全ノードを取り切れてしまい、設計書§19のビルド分岐が壊れる。1系統も完成できない場合は警告)
 - (警告) どこからも参照されていないスキル / AIプロファイル、`rewards.dropTable` 未設定のステージ、スロットあたりのベースアイテムが4種未満、Prefix/Suffixが10種未満
 
 ---
@@ -235,8 +239,88 @@ ch1-1 が意図的に短いのはチュートリアルだからです。
 ## 6. 装備 / ハクスラ / ガチャ (Phase 3 / Phase 5)
 
 - **装備生成**: `ItemBaseDef`(スロット3種 × 6種 = 18種) + `AffixDef`(Prefix12 / Suffix12、`stats` は `min`〜`max` の幅を持ち生成時に乱数で確定)。一部のアフィックスは `special`(`ON_ATTACK` / `ON_HIT_TAKEN` / `ON_BATTLE_START` / `ON_KILL`)を持ち、`minRarity` / `slots` で出現条件を絞っている。
-- **素材**: `data/items/materials.json` に9種。強化素材3段階・転生素材・重複キャラ変換素材2段階・アフィックス再抽選素材・召喚チケット2種(`ticket_summon_standard` / `ticket_summon_pickup`)。召喚チケットも `MaterialDef` として定義し、`GachaBannerDef.cost.ticketId` から参照する。
+- **素材**: `data/items/materials.json` に10種。強化素材3段階・転生素材2種(`mat_rebirth_echo` / `mat_rebirth_seal`、詳細は第7章)・重複キャラ変換素材2段階・アフィックス再抽選素材・召喚チケット2種(`ticket_summon_standard` / `ticket_summon_pickup`)。召喚チケットも `MaterialDef` として定義し、`GachaBannerDef.cost.ticketId` から参照する。
 - **ドロップテーブル**: 章・難易度で4種+ガチャ専用1種を用意(`dt_ch1_common` / `dt_ch1_boss` / `dt_ch2_common` / `dt_ch2_boss` / `dt_gacha_equipment`)。ボスほど装備の高レア率とキャラドロップ率を上げ、`nothingWeight` で「何も出ない」枠も必ず作っている。全ステージの `rewards.dropTable` に紐付け済み。
 - **ガチャ**: 3バナー(常設 / ピックアップ / 装備)。`rates.rarity` は合計100%になるようバリデータで検査。`pity`(天井)と `guarantee10`(10連最低保証)を設定し、重複はサーバ側で素材へ自動変換される(完全なハズレにならない)。コストは既存経済(ステージ報酬GOLD 40〜1500、初期所持1000G)と釣り合わせてある(詳細は評価報告を参照)。
 - **未実装キャラを先に参照する仕組み**: `data/system/planned-characters.json` に `id`/`name`/`note` だけ登録すると、`ComboDef.members` / `trigger.actor` / `effect.performer` からその未実装キャラを参照できる。バリデータは「実キャラ or 未実装キャラ」のどちらかであれば通す。実装され次第 `data/characters/<id>.json` を追加し、`planned-characters.json` から当該エントリを削除する。
 - **立ち絵 (`art.portrait`)**: `CharacterArt.portrait` にアセットキーを入れると、`client/public/portraits/<key>.webp` を参照する(バリデータがファイル存在を読み取り専用でチェックする)。未設定のキャラは従来通りプロシージャル描画にフォールバックするため、両方式が混在してよい。
+
+---
+
+## 7. 転生 (Phase 2 / 設計書§17〜§20)
+
+第3回評価(`docs/REVIEW_ROUND3.md`)が「次に着手する価値が最も高い」と結論した機能。
+**転生=長期的な育成 / 覚醒=戦闘中の特殊状態**、という役割分担(設計書§20)を型コメント(`shared/src/types.ts`)がすでに明文化している前提の上に、`data/system/rebirth.json`(`RebirthConfig`)と `data/rebirth/nodes.json`(`RebirthNodeDef[]`)を追加した。
+
+### 7-1. 数値の根拠(`data/system/rebirth.json`)
+
+**まず「Lv1→60 に累計でどれだけEXPが必要か」を計算した。**
+`expCurve`(`base:30, exponent:1.5`)から `Lv n→n+1 の必要EXP = round(30 × n^1.5)` を Lv59まで積み上げると、
+
+| 到達Lv | 累計EXP |
+|---|---|
+| 5 | 511 |
+| 9 | 2,522 |
+| 20 | 20,141 |
+| 40 | 117,661 |
+| **60** | **327,684** |
+
+現状もっとも効率の良い稼ぎ場は第2章最終ボス `ch2-5`(`dt_ch2_boss`、報酬 **2,600 EXP/戦**)。
+**327,684 ÷ 2,600 ≈ 126戦**が、Lv1から転生後に再びLv60まで戻す下限の目安になる(章が増えればもっと速くなるが、Phase 1〜3時点ではこれが最速)。
+「転生1回=短時間のミニゲーム」ではなく「かなりの周回を経てから踏む長期的な意思決定」になるよう、この試算に基づいて数値を決めた。
+
+| 項目 | 値 | 根拠 |
+|---|---|---|
+| `requiredLevel` | **60** | `levelCap`(`progression.json`)と同値。転生は「レベルを使い切った後の伸びしろ」という Phase 1 時点からの設計意図(`docs/DATA.md` 3-2)をそのまま踏襲する。 |
+| `pointsPerRebirth` | **5** | 1回の転生で得るノードポイント。後述のノード総コスト(1系統あたり41、全4系統で164)に対し、この値は「1系統を単独で全振りできるが、複数系統には広がらない」量を狙って逆算した。 |
+| `growthBonusPercent` | **3** | 転生1回ごとに基礎成長率+3%(加算、`rebirth回数 × 3%` として累積)。**下記「いつ転生するか」の試算に使う値。** |
+| `maxRebirth` | **10** | 総獲得ポイントを `5 × 10 = 50` に固定するための上限。10回という数はガチャの天井(60連)や強化素材3段階と並ぶ「長期目標」として桁を揃えた。 |
+| `cost` | `mat_rebirth_echo × 3` | 既存素材(第3回評価時点で `data/items/materials.json` に既存)。`dt_ch2_boss` から重み8/全体重み124前後で落ち、期待値は**ボス1戦あたり約0.26個**。3個集めるのに**目安11〜12戦**。転生そのものにも周回を要求することで「思いつきで転生し直す」を防ぐ。 |
+| `resetCost` | `mat_rebirth_seal × 2`(**新規追加**) | 振り直しは「積んだポイントの割り振りを変える」だけでレベルは減らないため、転生本体より軽くしてよいが、**素材は別種で希少にした**(LEGENDARY、`dt_ch2_boss` に重み4で追加)。期待値はボス1戦あたり約0.13個、2個で目安16戦。ビルドを試行錯誤する余地は残しつつ、毎戦ノリで組み直せるほど軽くはしていない。 |
+
+**「いつ転生するかの判断」が発生する理由(§18)**:
+攻撃力などのステータスは概ね `base + growth × (level - 1)` で伸びる。転生でLvを1に戻すと、その瞬間の攻撃力は激減する。
+`growthBonusPercent` は成長率に対して `+3% × 転生回数` の倍率がかかるので、1回転生した場合の損益分岐点は
+
+```
+base + growth × 59(転生前Lv60時点) = base + growth × 1.03 × (L - 1)
+→ L ≈ 58.3
+```
+
+つまり**Lv59付近まで再び上げないと、成長率ボーナスだけでは転生前の強さに戻らない**。1回だけの転生は「成長率の上昇」目的では見返りが薄く、実際に得るものは**転生ポイント(ノード)**の方が大きい。これにより、「レベルを吐き出す短期的な弱体化」と「ノード+成長率という長期的な上積み」を比較して転生タイミングを選ぶ、という設計書§18の要求どおりの意思決定が発生する。転生を繰り返すほど`growthBonusPercent`が積み重なり損益分岐点も早まるため、**後半の転生ほど「割に合う」**ようになっている。
+
+### 7-2. 4系統の役割とノード一覧(`data/rebirth/nodes.json`、計24ノード)
+
+各系統6ノード。構成は全系統共通(下位2つは無条件、中位2つが `requiresPathPoints: 6`、上位1つが `requiresPathPoints: 16` かつ `requiresRebirth: 2`、頂点1つが `requiresPathPoints: 28` かつ `requiresRebirth: 4`)。
+1系統をすべて取ると **cost×maxRank の合計は 5+5+8+8+9+6 = 41**。
+
+| 系統 | 役割 | ノード(基本→頂点) |
+|---|---|---|
+| **ATTACK**(刃) | 火力を伸ばす攻撃特化 | `rb_atk_edge`(攻撃力%)→`rb_atk_eye`(会心率%)→`rb_atk_finish`(会心ダメ%)/`rb_atk_flow`(スキル威力%)→`rb_atk_philosophy`(攻撃成長率%、転生2回目以降)→`rb_atk_zenith`(攻撃力+スキル威力、転生4回目以降) |
+| **SPEED**(疾) | 先手・行動回数を伸ばす速度特化 | `rb_spd_stride`(速度%)→`rb_spd_ready`(開始時行動ゲージ%)→`rb_spd_instinct`(開始時必殺ゲージ%)/`rb_spd_accel`(速度%追加)→`rb_spd_chaser`(速度成長率%、転生2回目以降)→`rb_spd_instant`(速度+必殺ゲージ、転生4回目以降) |
+| **ENDURANCE**(盾・礎) | 生存力を伸ばす耐久特化 | `rb_end_stance`(HP%)→`rb_end_wall`(防御%)→`rb_end_grit`(状態異常耐性+)/`rb_end_foundation`(防御%追加)→`rb_end_bloodline`(HP成長率%、転生2回目以降)→`rb_end_bastion`(防御+耐性、転生4回目以降) |
+| **SPECIAL**(術・因果) | 回復・スキル・複合効果の特殊型 | `rb_spc_mercy`(回復力%)→`rb_spc_insight`(スキル威力%)→`rb_spc_duality`(攻撃%+防御%の複合)/`rb_spc_resonance`(開始時行動ゲージ+必殺ゲージの複合)→`rb_spc_legacy`(回復力成長率%、転生2回目以降)→`rb_spc_axiom`(スキル威力+回復力、転生4回目以降) |
+
+`RebirthEffectKind` は型どおり6種(`STAT_FLAT`/`STAT_PERCENT`/`GROWTH_PERCENT`/`SKILL_POWER`/`GAUGE_START`/`ULT_GAUGE_START`)のみを使用し、`STAT_FLAT`/`STAT_PERCENT`/`GROWTH_PERCENT` には必ず妥当な `stat`(`StatKey`)を付けている。SPECIAL系統だけは1ノードに2つの効果を持たせ、「特化ではなく複合」という役割をノード単位でも表現した。
+
+### 7-3. ビルド分岐がどう成立するか(§19)
+
+- **全ノード総コストは 41 × 4系統 = 164。総獲得ポイントは `pointsPerRebirth(5) × maxRebirth(10) = 50`。**
+  50 < 164 なので、最大転生(10回)を積んでも**絶対に全ノードは取り切れない**(バリデータがこの不等式を検査し、崩れていればエラーにする)。
+- **1系統への全振り(41)は50以内に収まる**ので、「攻撃型に全振り」「速度型に全振り」はどちらも完成できる。ただし50−41=9ポイントしか残らないため、**2系統目は基本ノードの一部にしか手が回らない**(例: 2系統目の下位2ノード=10ポイントにすら届かない)。
+  → 同じキャラでも「攻撃全振り」「速度全振り」「耐久全振り」「特殊全振り」で明確に異なる性能になり、かつ「4系統に薄く広く振る」ことは**どの系統の頂点ノードにも届かない**(頂点は `requiresPathPoints: 28` を要求するため)分だけ尖りを失う。これが設計書§19「同じキャラクター＝同じ性能にならない」を数値面で保証する。
+- 頂点ノード(`requiresRebirth: 4`)と成長率ノード(`requiresRebirth: 2`)は**転生回数そのもの**を要求するため、「1回だけ転生してポイントを貯める」のではなく「同じ系統に長く投資し続ける」ことそのものにも価値を持たせている。
+- バリデータは `requiresPathPoints` が「同系統の他ノードの総コスト」を超えていないかも検査する。今回のノードは全系統で頂点28 ≤ 他ノード総35、上位16 ≤ 他ノード総32 なので、**その系統に全振りすれば必ず頂点まで届く**(散らせば届かない、が全振りなら詰まない、という設計)。
+
+### 7-4. 追加した素材と入手経路
+
+- `mat_rebirth_echo`(EPIC、既存): 転生本体のコスト。`dt_ch2_boss`(第2章ボス)に重み8で存在。
+- `mat_rebirth_seal`(LEGENDARY、**新規**): 振り直し(`resetCost`)専用。`dt_ch2_boss` に重み4で追加。転生素材より入手率を下げ、「積んだポイントの組み替え」を本転生よりレアな行為にしている。
+
+両方とも `node scripts/validate-data.mjs` が「ドロップテーブルから実際に入手できるか」まで検査するため、今後どちらかのドロップエントリを削除すると即エラーになる(=転生が詰む事故を機械的に防止)。
+
+### 7-5. 他担当への依頼事項
+
+- **バックエンド**: 転生API(レベルリセット・成長率再計算・`OwnedCharacter.rebirthNodes`/`rebirthPointsAvailable` の更新・`RebirthStatus` の算出)は本ラウンドで並行実装中と認識。データ側は `RebirthConfig`/`RebirthNodeDef[]` の形で確定させたので、そのまま読み込んで問題ない。
+- **フロント**: 転生画面で `pathPoints` ごとの内訳(系統別の投資量)を表示できると、「今どの系統に何ポイント入れているか」がプレイヤーに伝わりやすい。ノードの `requiresPathPoints`/`requiresRebirth` を満たしていない場合の理由表示も欲しい。
+- **既存の覚醒データとの混同注意**: `awakening`(`data/characters/*.json`)は戦闘中の一時的な強化、転生ノードは永続強化。両方とも `STAT_PERCENT` 的な効果を持つため、実装時に加算順序(基礎ステータス→転生→装備→覚醒、など)を揃えておくとバグが出にくい。
