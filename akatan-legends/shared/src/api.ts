@@ -8,6 +8,7 @@ import type {
   PlayerProfile, Party, AiProfile, Skill, EnemyDef, CharacterDef, ComboDef,
   EquipmentInstance, MaterialStack, MaterialDef, DropResult, EquipmentSlot,
   GachaBannerDef, GachaPullResult, PlannedCharacterDef,
+  RebirthNodeDef, RebirthConfig, RebirthStatus,
 } from './types.js';
 
 /** 全レスポンスの共通封筒 */
@@ -26,6 +27,8 @@ export type ApiErrorCode =
   | 'PARTY_INVALID'
   | 'STAGE_LOCKED'
   | 'NOT_ENOUGH_CURRENCY'
+  | 'REBIRTH_LOCKED'
+  | 'NOT_ENOUGH_POINTS'
   | 'SLOT_MISMATCH'
   | 'ALREADY_EQUIPPED'
   | 'INTERNAL';
@@ -122,6 +125,10 @@ export interface MasterDataResponse {
   combos?: ComboDef[];
   /** 素材定義(図鑑・ドロップ表示用) */
   materials?: MaterialDef[];
+  /** 転生ノード定義(転生画面のツリー表示用) */
+  rebirthNodes?: RebirthNodeDef[];
+  /** 転生の基本設定 */
+  rebirthConfig?: RebirthConfig;
   /**
    * コンボ定義から参照されているが未実装のキャラ。
    * UIが「〇〇(実装予定)」と名前で表示できるようにするため。
@@ -141,6 +148,39 @@ export interface UpdatePartyResponse {
 /* ---------- PUT /api/characters/:uid/ai ---------- */
 export interface UpdateAiRequest {
   aiProfile: string;
+}
+
+/* ---------- 転生 (設計書§17〜§20) ---------- */
+
+/** GET /api/characters/:uid/rebirth */
+export interface RebirthStatusResponse {
+  character: CharacterView;
+  status: RebirthStatus;
+}
+
+/** POST /api/characters/:uid/rebirth — 転生を実行する */
+export interface RebirthResponse {
+  character: CharacterView;
+  status: RebirthStatus;
+  player: PlayerProfile;
+  /** 転生前後の比較(演出用) */
+  before: { level: number; rebirth: number; stats: Record<string, number> };
+  after: { level: number; rebirth: number; stats: Record<string, number> };
+  inventory?: InventoryResponse;
+}
+
+/** POST /api/characters/:uid/rebirth/allocate — 転生ポイントを振る */
+export interface AllocateRebirthRequest {
+  nodeId: string;
+  /** 振るランク数。省略時は1 */
+  ranks?: number;
+}
+
+/** POST /api/characters/:uid/rebirth/reset — 振り直す */
+export interface ResetRebirthResponse {
+  character: CharacterView;
+  status: RebirthStatus;
+  inventory?: InventoryResponse;
 }
 
 /* ---------- GET /api/dungeons ---------- */

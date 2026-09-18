@@ -20,6 +20,10 @@ const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   NOT_ENOUGH_CURRENCY: 400,
   SLOT_MISMATCH: 400,
   ALREADY_EQUIPPED: 400,
+  // 転生 (Phase 2): 条件未達・ポイント不足はいずれもクライアントの要求が
+  // 現在の状態と噛み合っていないケースなので、他のバリデーション系と揃えて 400
+  REBIRTH_LOCKED: 400,
+  NOT_ENOUGH_POINTS: 400,
   INTERNAL: 500,
 };
 

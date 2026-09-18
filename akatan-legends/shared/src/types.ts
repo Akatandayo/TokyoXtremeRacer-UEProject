@@ -295,8 +295,15 @@ export interface OwnedCharacter {
   exp: number;
   /** 転生回数 */
   rebirth: number;
-  /** 転生ポイント割り振り */
+  /**
+   * @deprecated 旧形式(ステータスへの素の加算)。系統ツリー方式へ移行したので
+   * 新規には使わない。既存セーブを壊さないため読み込みだけ残している。
+   */
   rebirthPoints?: Partial<Record<StatKey, number>>;
+  /** 転生ノードの取得状況。ノードID -> 取得ランク */
+  rebirthNodes?: Record<string, number>;
+  /** 未使用の転生ポイント */
+  rebirthPointsAvailable?: number;
   /** 限界突破 */
   limitBreak?: number;
   /** 装備 */
@@ -398,6 +405,96 @@ export interface Party {
   name: string;
   /** 長さ PARTY_SIZE。空き枠は null */
   members: (string | null)[];
+}
+
+/* ============================================================
+ * 転生 (設計書§17〜§20)
+ * ------------------------------------------------------------
+ * 転生は「長期的な育成」であり、戦闘中の特殊状態である覚醒とは役割を分ける(§20)。
+ *
+ * 設計上の肝は §19「同じキャラクターでも転生によって異なる方向へ育成できる」こと。
+ * これを成立させるため、転生ポイントは以下の制約を持つ系統ツリーへ割り振る:
+ *   - 総ポイントが限られているので全系統は取れない
+ *   - 上位ノードは「同系統への累計投資」を要求するので、散らすと強い効果に届かない
+ * 結果として、同じキャラでも攻撃型 / 速度型 / 耐久型 / 特殊型に分岐する。
+ * ========================================================== */
+
+export const REBIRTH_PATHS = ['ATTACK', 'SPEED', 'ENDURANCE', 'SPECIAL'] as const;
+export type RebirthPath = (typeof REBIRTH_PATHS)[number];
+
+export type RebirthEffectKind =
+  /** 最終ステータスへの加算 */
+  | 'STAT_FLAT'
+  /** 最終ステータスへの割合加算(%) */
+  | 'STAT_PERCENT'
+  /** 成長率(1レベルあたりの上昇量)への割合加算(%) */
+  | 'GROWTH_PERCENT'
+  /** スキル威力への割合加算(%) */
+  | 'SKILL_POWER'
+  /** 戦闘開始時の行動ゲージ(%) */
+  | 'GAUGE_START'
+  /** 戦闘開始時の必殺ゲージ(%) */
+  | 'ULT_GAUGE_START';
+
+export interface RebirthEffect {
+  kind: RebirthEffectKind;
+  /** STAT_FLAT / STAT_PERCENT / GROWTH_PERCENT で対象にするステータス */
+  stat?: StatKey;
+  /** 1ランクあたりの効果量 */
+  value: number;
+}
+
+export interface RebirthNodeDef {
+  id: string;
+  name: string;
+  description: string;
+  path: RebirthPath;
+  /** 1ランク取得するのに必要な転生ポイント */
+  cost: number;
+  /** 取得できる最大ランク */
+  maxRank: number;
+  /** 1ランクあたりの効果 */
+  effects: RebirthEffect[];
+  /**
+   * 解放条件: 同じ系統へ累計でこのポイント数を投資していること。
+   * これが §19 のビルド分岐を成立させる仕組み(散らすと上位に届かない)。
+   */
+  requiresPathPoints?: number;
+  /** 解放条件: 転生回数がこの値以上であること */
+  requiresRebirth?: number;
+}
+
+export interface RebirthConfig {
+  /** 転生可能になるレベル(通常は levelCap と同じ) */
+  requiredLevel: number;
+  /** 1回の転生で得られる転生ポイント */
+  pointsPerRebirth: number;
+  /** 転生1回ごとに基礎成長率が何%上がるか(設計書§18) */
+  growthBonusPercent: number;
+  /** 最大転生回数 */
+  maxRebirth: number;
+  /** 転生に必要な素材 */
+  cost?: { materialId: string; count: number }[];
+  /** 振り直しに必要な素材。省略時は振り直し不可 */
+  resetCost?: { materialId: string; count: number }[];
+}
+
+/** 転生画面の表示用(サーバが算出して返す) */
+export interface RebirthStatus {
+  /** 現在の転生回数 */
+  rebirth: number;
+  /** 転生できるか */
+  canRebirth: boolean;
+  /** できない場合の理由(日本語) */
+  reason?: string;
+  /** 未使用の転生ポイント */
+  pointsAvailable: number;
+  /** ノードID -> 取得ランク */
+  nodes: Record<string, number>;
+  /** 系統ごとの累計投資ポイント */
+  pathPoints: Record<RebirthPath, number>;
+  /** 転生によって上がっている成長率(%) */
+  growthBonusPercent: number;
 }
 
 /* ============================================================
