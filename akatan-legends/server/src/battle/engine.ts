@@ -1070,7 +1070,7 @@ class BattleRunner {
  *   - 落ちた情報は BattleEvent.critical / affinity / value にそのまま残っているので、
  *     UI側はテキストに出ていなくてもアイコン等で表示できる (テキストは1情報に絞るだけ)。
  */
-function damageText(
+export function damageText(
   actor: string, skillName: string, target: string,
   value: number, critical: boolean, affinity: number, absorbed: number,
 ): string {

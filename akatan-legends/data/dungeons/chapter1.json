@@ -12,39 +12,42 @@
         { "enemyId": "en_slime_green", "level": 1, "position": 1 },
         { "enemyId": "en_wisp_ember", "level": 1, "position": 2 }
       ],
-      "rewards": { "exp": 60, "gold": 40 },
+      "rewards": { "exp": 40, "gold": 40 },
       "description": "最初の戦闘。Lv1の5人編成でも確実に勝てるよう、敵は3体・総HP約900に抑えてある。数回周回するとLv3〜4に届く。"
     },
     {
       "id": "ch1-2",
       "name": "朽ちた獣道",
       "recommendedLevel": 3,
+      "unlockAfter": "ch1-1",
       "enemies": [
         { "enemyId": "en_slime_green", "level": 3, "position": 0 },
         { "enemyId": "en_wolf_gale", "level": 3, "position": 1 },
         { "enemyId": "en_bat_shadow", "level": 3, "position": 2 },
         { "enemyId": "en_bat_shadow", "level": 3, "position": 3 }
       ],
-      "rewards": { "exp": 110, "gold": 65 },
+      "rewards": { "exp": 75, "gold": 65 },
       "description": "速い敵が初登場。凛の足止めや漣のゲージ加速が効く、手番の取り合いを覚えるステージ。"
     },
     {
       "id": "ch1-3",
       "name": "胞子の窪地",
       "recommendedLevel": 5,
+      "unlockAfter": "ch1-2",
       "enemies": [
         { "enemyId": "en_mold_toxic", "level": 5, "position": 0 },
         { "enemyId": "en_mold_toxic", "level": 5, "position": 1 },
         { "enemyId": "en_slime_green", "level": 5, "position": 2 },
         { "enemyId": "en_bat_shadow", "level": 5, "position": 3 }
       ],
-      "rewards": { "exp": 180, "gold": 100 },
+      "rewards": { "exp": 125, "gold": 100 },
       "description": "全体毒を重ねてくる。雫のような解除役を入れると難易度が一段下がる、状態異常メタの導入。"
     },
     {
       "id": "ch1-4",
       "name": "風喰らいの尾根",
       "recommendedLevel": 7,
+      "unlockAfter": "ch1-3",
       "enemies": [
         { "enemyId": "en_wolf_gale", "level": 7, "position": 0 },
         { "enemyId": "en_wolf_gale", "level": 7, "position": 1 },
@@ -52,20 +55,21 @@
         { "enemyId": "en_specter_pale", "level": 7, "position": 3 },
         { "enemyId": "en_bat_shadow", "level": 7, "position": 4 }
       ],
-      "rewards": { "exp": 280, "gold": 150 },
+      "rewards": { "exp": 200, "gold": 150 },
       "description": "第1章の稼ぎ場。敵5体のため範囲攻撃が一気に強くなり、全体火力枠の価値を実感させる。"
     },
     {
       "id": "ch1-5",
       "name": "巨石兵の巣",
       "recommendedLevel": 9,
+      "unlockAfter": "ch1-4",
       "boss": true,
       "enemies": [
         { "enemyId": "boss_gigant_stone", "level": 9, "position": 0 },
         { "enemyId": "en_golem_stone", "level": 8, "position": 1 },
         { "enemyId": "en_golem_stone", "level": 8, "position": 2 }
       ],
-      "rewards": { "exp": 500, "gold": 320 },
+      "rewards": { "exp": 350, "gold": 320 },
       "description": "第1章ボス。Lv8〜10相当の編成が必要。防御バフを張り直す巨石兵に対し、DEF_DOWN・継続ダメージ・水属性のいずれかで固さを崩せるかを問う。"
     }
   ]

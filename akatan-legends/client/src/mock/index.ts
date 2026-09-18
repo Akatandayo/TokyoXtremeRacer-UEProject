@@ -6,7 +6,7 @@ import type {
   PlayerStateResponse, CharacterListResponse, MasterDataResponse,
   DungeonListResponse, UpdatePartyResponse, BattleStartResponse, StageDef,
 } from '@akatan/shared';
-import { MOCK_CHARACTERS, MOCK_ENEMIES, MOCK_SKILLS, MOCK_AI_PROFILES, MOCK_CHAPTERS } from './master';
+import { MOCK_CHARACTERS, MOCK_ENEMIES, MOCK_SKILLS, MOCK_AI_PROFILES, MOCK_CHAPTERS, MOCK_COMBOS } from './master';
 import { mockState, mockCharacterViews, expToNext } from './player';
 import { generateMockBattle } from './battle';
 
@@ -43,6 +43,7 @@ export const mockApi = {
       skills: MOCK_SKILLS,
       aiProfiles: MOCK_AI_PROFILES,
       chapters: MOCK_CHAPTERS,
+      combos: MOCK_COMBOS,
     };
   },
 

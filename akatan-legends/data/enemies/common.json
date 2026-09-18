@@ -7,9 +7,9 @@
       "TANK"
     ],
     "baseStats": {
-      "hp": 1088,
-      "attack": 206.4,
-      "defense": 53,
+      "hp": 816,
+      "attack": 187.2,
+      "defense": 51,
       "speed": 62,
       "critical": 2,
       "criticalDamage": 130,
@@ -17,9 +17,9 @@
       "healing": 100
     },
     "growth": {
-      "hp": 121.6,
-      "attack": 12.9,
-      "defense": 3.68,
+      "hp": 91.2,
+      "attack": 11.7,
+      "defense": 3.52,
       "speed": 0.4
     },
     "normalAttack": "na_slime_tackle",
@@ -47,9 +47,9 @@
       "ATTACKER"
     ],
     "baseStats": {
-      "hp": 800,
-      "attack": 249.4,
-      "defense": 37,
+      "hp": 525,
+      "attack": 197.2,
+      "defense": 34,
       "speed": 104,
       "critical": 8,
       "criticalDamage": 140,
@@ -57,9 +57,9 @@
       "healing": 100
     },
     "growth": {
-      "hp": 83.2,
-      "attack": 16.34,
-      "defense": 2.53,
+      "hp": 54.6,
+      "attack": 12.92,
+      "defense": 2.31,
       "speed": 1
     },
     "normalAttack": "na_bat_bite",
@@ -87,9 +87,9 @@
       "ATTACKER"
     ],
     "baseStats": {
-      "hp": 736,
-      "attack": 266.6,
-      "defense": 32,
+      "hp": 483,
+      "attack": 179.8,
+      "defense": 29,
       "speed": 96,
       "critical": 6,
       "criticalDamage": 140,
@@ -97,9 +97,9 @@
       "healing": 100
     },
     "growth": {
-      "hp": 76.8,
-      "attack": 17.2,
-      "defense": 2.3,
+      "hp": 50.4,
+      "attack": 11.6,
+      "defense": 2.1,
       "speed": 0.9
     },
     "normalAttack": "na_wisp_spark",
@@ -128,9 +128,9 @@
       "ATTACKER"
     ],
     "baseStats": {
-      "hp": 960,
-      "attack": 283.8,
-      "defense": 41,
+      "hp": 690,
+      "attack": 224.4,
+      "defense": 38,
       "speed": 112,
       "critical": 10,
       "criticalDamage": 145,
@@ -138,9 +138,9 @@
       "healing": 100
     },
     "growth": {
-      "hp": 96,
-      "attack": 18.06,
-      "defense": 2.76,
+      "hp": 69,
+      "attack": 14.28,
+      "defense": 2.52,
       "speed": 1.1
     },
     "normalAttack": "na_wolf_claw",
@@ -168,9 +168,9 @@
       "TANK"
     ],
     "baseStats": {
-      "hp": 1664,
-      "attack": 249.4,
-      "defense": 90,
+      "hp": 1352,
+      "attack": 156.6,
+      "defense": 86,
       "speed": 52,
       "critical": 2,
       "criticalDamage": 130,
@@ -178,9 +178,9 @@
       "healing": 100
     },
     "growth": {
-      "hp": 140.8,
-      "attack": 14.62,
-      "defense": 5.75,
+      "hp": 114.4,
+      "attack": 9.18,
+      "defense": 5.5,
       "speed": 0.3
     },
     "normalAttack": "na_golem_smash",
@@ -209,9 +209,9 @@
       "CONTROL"
     ],
     "baseStats": {
-      "hp": 896,
-      "attack": 223.6,
-      "defense": 46,
+      "hp": 644,
+      "attack": 156,
+      "defense": 42,
       "speed": 108,
       "critical": 5,
       "criticalDamage": 135,
@@ -219,9 +219,9 @@
       "healing": 100
     },
     "growth": {
-      "hp": 89.6,
-      "attack": 14.62,
-      "defense": 2.99,
+      "hp": 64.4,
+      "attack": 10.2,
+      "defense": 2.73,
       "speed": 1
     },
     "normalAttack": "na_drone_beam",
@@ -250,9 +250,9 @@
       "CONTROL"
     ],
     "baseStats": {
-      "hp": 1024,
-      "attack": 258,
-      "defense": 44,
+      "hp": 672,
+      "attack": 162,
+      "defense": 40,
       "speed": 98,
       "critical": 6,
       "criticalDamage": 140,
@@ -260,9 +260,9 @@
       "healing": 100
     },
     "growth": {
-      "hp": 102.4,
-      "attack": 16.77,
-      "defense": 2.88,
+      "hp": 67.2,
+      "attack": 10.53,
+      "defense": 2.63,
       "speed": 0.9
     },
     "normalAttack": "na_specter_touch",
@@ -291,9 +291,9 @@
       "ATTACKER"
     ],
     "baseStats": {
-      "hp": 1664,
-      "attack": 318.2,
-      "defense": 71,
+      "hp": 1248,
+      "attack": 251.6,
+      "defense": 68,
       "speed": 84,
       "critical": 8,
       "criticalDamage": 145,
@@ -301,9 +301,9 @@
       "healing": 100
     },
     "growth": {
-      "hp": 147.2,
-      "attack": 19.78,
-      "defense": 4.6,
+      "hp": 110.4,
+      "attack": 15.64,
+      "defense": 4.4,
       "speed": 0.7
     },
     "normalAttack": "na_knight_thrust",
@@ -331,9 +331,9 @@
       "SPECIALIST"
     ],
     "baseStats": {
-      "hp": 1152,
-      "attack": 189.2,
-      "defense": 51,
+      "hp": 792,
+      "attack": 158.4,
+      "defense": 48,
       "speed": 70,
       "critical": 2,
       "criticalDamage": 130,
@@ -341,9 +341,9 @@
       "healing": 100
     },
     "growth": {
-      "hp": 108.8,
-      "attack": 12.04,
-      "defense": 3.45,
+      "hp": 74.8,
+      "attack": 10.08,
+      "defense": 3.3,
       "speed": 0.5
     },
     "normalAttack": "na_mold_tap",
@@ -371,9 +371,9 @@
       "HEALER"
     ],
     "baseStats": {
-      "hp": 1088,
-      "attack": 197.8,
-      "defense": 48,
+      "hp": 714,
+      "attack": 115,
+      "defense": 44,
       "speed": 92,
       "critical": 3,
       "criticalDamage": 130,
@@ -381,9 +381,9 @@
       "healing": 120
     },
     "growth": {
-      "hp": 102.4,
-      "attack": 12.47,
-      "defense": 3.33,
+      "hp": 67.2,
+      "attack": 7.25,
+      "defense": 3.05,
       "speed": 0.8,
       "healing": 1
     },

@@ -62,9 +62,9 @@
       "boss": true,
       "enemies": [
         { "enemyId": "boss_null_daemon", "level": 20, "position": 0 },
-        { "enemyId": "en_drone_scan", "level": 19, "position": 1 },
-        { "enemyId": "en_drone_scan", "level": 19, "position": 2 },
-        { "enemyId": "en_specter_pale", "level": 19, "position": 3 }
+        { "enemyId": "en_drone_scan", "level": 14, "position": 1 },
+        { "enemyId": "en_drone_scan", "level": 14, "position": 2 },
+        { "enemyId": "en_specter_pale", "level": 14, "position": 3 }
       ],
       "rewards": { "exp": 2600, "gold": 1500 },
       "description": "第2章最終ボス。Lv20相当が必要。自己修復と状態異常解除を持つため、毒だけ・シールドだけといった単一戦術では落ちない。回復2枚で耐えるか、ファイアウォール再使用前に押し切るかを選ばせる。"

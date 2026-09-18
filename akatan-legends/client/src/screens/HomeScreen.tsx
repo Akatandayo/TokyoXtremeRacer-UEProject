@@ -1,8 +1,11 @@
 /** HOME: プレイヤー情報・導線・最近の戦闘結果 */
 import React, { useMemo } from 'react';
+import type { CharacterDef } from '@akatan/shared';
 import { useStore, type Screen } from '../state/store';
 import { Panel } from '../components/common';
-import { formatNumber, statPower } from '../utils/labels';
+import { CharacterArtView } from '../components/CharacterArt';
+import { formatNumber, statPower, averageLevel, levelReadiness } from '../utils/labels';
+import { combosOf, evaluateCombos } from '../utils/combo';
 
 const NAV_CARDS: { screen: Screen; icon: string; title: string; desc: string }[] = [
   { screen: 'CHARACTERS', icon: '⛩', title: 'キャラクター', desc: '所持探索者の確認と育成' },
@@ -16,13 +19,20 @@ export function HomeScreen(): JSX.Element {
   const store = useStore();
   const { player, characters, party, chapters, clearedStages, recent } = store;
 
-  const partyPower = useMemo(() => {
-    if (!party) return 0;
-    return party.members.reduce((sum, uid) => {
-      const c = characters.find((x) => x.owned.uid === uid);
-      return sum + (c ? statPower(c.stats) : 0);
-    }, 0);
-  }, [party, characters]);
+  const partySlots = useMemo(
+    () => (party?.members ?? []).map((uid) => (uid ? characters.find((x) => x.owned.uid === uid) : undefined)),
+    [party, characters],
+  );
+  const partyViews = useMemo(
+    () => partySlots.filter((c): c is NonNullable<typeof c> => !!c),
+    [partySlots],
+  );
+
+  const partyPower = useMemo(
+    () => partyViews.reduce((sum, c) => sum + statPower(c.stats), 0),
+    [partyViews],
+  );
+  const partyAvgLevel = useMemo(() => averageLevel(partyViews), [partyViews]);
 
   const totalStages = useMemo(
     () => chapters.reduce((n, c) => n + c.stages.length, 0),
@@ -37,6 +47,24 @@ export function HomeScreen(): JSX.Element {
     }
     return null;
   }, [chapters, clearedStages]);
+
+  const nextStageReadiness = nextStage
+    ? levelReadiness(partyAvgLevel, nextStage.stage.recommendedLevel)
+    : null;
+
+  // P0-4: 現在の編成で成立している/惜しいコンボ(HOMEでも研究状況が一目で分かるように)
+  const charDefById = useMemo(() => {
+    const m = new Map<string, CharacterDef>();
+    for (const d of store.master?.characters ?? []) m.set(d.id, d);
+    return m;
+  }, [store.master]);
+  const comboDefs = combosOf(store.master);
+  const comboMatches = useMemo(
+    () => evaluateCombos(comboDefs, partyViews.map((c) => c.def.id), charDefById),
+    [comboDefs, partyViews, charDefById],
+  );
+  const activeCombos = comboMatches.filter((m) => m.state === 'active');
+  const almostCombos = comboMatches.filter((m) => m.state === 'almost');
 
   return (
     <div className="stack" style={{ gap: 14 }}>
@@ -66,9 +94,14 @@ export function HomeScreen(): JSX.Element {
           </div>
         </div>
         {nextStage && (
-          <div className="row" style={{ marginTop: 14 }}>
+          <div className="row" style={{ marginTop: 14, flexWrap: 'wrap' }}>
             <span className="muted">次の目標:</span>
             <b>{nextStage.chapter.name} — {nextStage.stage.name}</b>
+            {nextStageReadiness && nextStageReadiness.label && (
+              <span className={nextStageReadiness.cls} style={{ fontSize: 12 }}>
+                (推奨Lv {nextStage.stage.recommendedLevel} ・ {nextStageReadiness.label})
+              </span>
+            )}
             <button className="btn btn-primary btn-sm" onClick={() => store.navigate('DUNGEON')}>
               挑戦する
             </button>
@@ -110,6 +143,69 @@ export function HomeScreen(): JSX.Element {
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+        </Panel>
+      </div>
+
+      <div className="home-grid">
+        <Panel
+          title="PARTY"
+          jp={`現在の編成 ー 平均Lv ${partyAvgLevel > 0 ? partyAvgLevel.toFixed(1) : '-'} / 戦力 ${formatNumber(partyPower)}`}
+          right={<button className="btn btn-sm btn-ghost" onClick={() => store.navigate('PARTY')}>編成を変更</button>}
+        >
+          <div className="home-party-preview">
+            {partySlots.map((c, i) => (
+              <div key={i} className="home-party-slot" title={c ? `${c.def.name} Lv${c.owned.level}` : '空き枠'}>
+                {c ? (
+                  <CharacterArtView
+                    art={c.def.art}
+                    name={c.def.name}
+                    element={c.def.element}
+                    rarity={c.def.rarity}
+                    ratio="square"
+                    sigilScale={0.6}
+                    hideBadges
+                  />
+                ) : (
+                  <span className="muted" style={{ fontSize: 10 }}>空き</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel
+          title="COMBO"
+          jp="発動コンボの研究状況"
+          right={<button className="btn btn-sm btn-ghost" onClick={() => store.navigate('PARTY')}>編成へ</button>}
+        >
+          {comboDefs.length === 0 ? (
+            <div className="muted" style={{ fontSize: 12 }}>コンボデータを準備中です。</div>
+          ) : (
+            <div className="stack" style={{ gap: 8 }}>
+              <div className="row" style={{ gap: 8 }}>
+                <span className="muted" style={{ fontSize: 11 }}>発動中のコンボ</span>
+                <b style={{ color: activeCombos.length > 0 ? 'var(--magenta)' : 'var(--text-mid)' }}>
+                  {activeCombos.length}
+                </b>
+              </div>
+              {activeCombos.length > 0 ? (
+                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                  {activeCombos.map((m) => (
+                    <span key={m.def.id} className="combo-member">{m.def.name}</span>
+                  ))}
+                </div>
+              ) : (
+                <div className="muted" style={{ fontSize: 11.5 }}>
+                  今の編成では発動していません。編成画面でキャラの組み合わせを見直しましょう。
+                </div>
+              )}
+              {almostCombos.length > 0 && (
+                <div className="muted" style={{ fontSize: 11 }}>
+                  もう少し: {almostCombos[0]!.def.name} — {almostCombos[0]!.missingNote}
+                </div>
+              )}
             </div>
           )}
         </Panel>

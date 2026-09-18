@@ -1,9 +1,10 @@
 /** 戦闘エンジン全体の検証 */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { BattleEvent, BattleLog } from '@akatan/shared';
+import type { AiProfile, BattleEvent, BattleLog, Skill } from '@akatan/shared';
+import { damageText } from './engine.js';
 import { runBattle } from './index.js';
-import { AWAKENING_TURN1, CONFIG, baseStats, makeContext, unit } from './testFixtures.js';
+import { AWAKENING_TURN1, CONFIG, aiMap, baseStats, makeContext, skillMap, unit } from './testFixtures.js';
 
 /** createdAt だけが実時刻依存なので、比較時は取り除く */
 function normalize(log: BattleLog): string {
@@ -382,4 +383,210 @@ test('engine: 開始時ユニット一覧は初期状態のまま (実行で書�
     assert.equal(u.alive, true);
     assert.equal(u.awakened, false);
   }
+});
+
+/* ---------- 10. P1-1: createdAt の決定論 ---------- */
+
+test('engine(P1-1): createdAt はエンジン内で生成せず ctx.now を入れる', () => {
+  const log1 = standardBattle(1);
+  assert.equal(log1.createdAt, '', 'ctx.now省略時は空文字であるべき (Date.now を呼ってはいけない)');
+
+  const a = unit({ id: 'a', slot: 0, side: 'ALLY' });
+  const b = unit({ id: 'b', slot: 0, side: 'ENEMY' });
+  const log2 = runBattle([a], [b], makeContext({ seed: 1, now: '2026-01-02T03:04:05.000Z' }));
+  assert.equal(log2.createdAt, '2026-01-02T03:04:05.000Z');
+});
+
+test('engine(P1-1): ctx.now が同じなら createdAt を含めてログ全体が完全一致する', () => {
+  const build = (): BattleLog => runBattle(
+    [unit({ id: 'a', slot: 0, side: 'ALLY', stats: { ...baseStats, attack: 300 } })],
+    [unit({ id: 'b', slot: 0, side: 'ENEMY' })],
+    makeContext({ seed: 999, now: '2026-09-17T00:00:00.000Z', config: { ...CONFIG, maxTicks: 500 } }),
+  );
+  const a = build();
+  const b = build();
+  // normalize() で createdAt を除外していた従来の比較ではなく、そのまま完全一致することを確認する。
+  assert.equal(JSON.stringify(a), JSON.stringify(b));
+});
+
+/* ---------- 11. P0-2: 値0のイベントを送出しない ---------- */
+
+test('engine(P0-2): REGENが満タンHPでは実際の回復が0になるため STATUS_TICK を出さない', () => {
+  const passiveRegen: Skill = {
+    id: 'passive_regen', name: '自然治癒', kind: 'PASSIVE', description: '', cooldown: 0,
+    target: { side: 'SELF', pattern: 'SELF' },
+    effects: [{ type: 'STATUS', status: 'REGEN', duration: 9999, potency: 10 }],
+  };
+  const hero = unit({
+    id: 'hero', slot: 0, side: 'ALLY', passives: ['passive_regen'],
+    stats: { ...baseStats, hp: 10000, speed: 100 },
+  });
+  const foe = unit({
+    id: 'foe', slot: 0, side: 'ENEMY',
+    stats: { ...baseStats, hp: 10000, speed: 0.001, attack: 0 },
+  });
+  const log = runBattle([hero], [foe], makeContext({
+    seed: 1, skills: skillMap([passiveRegen]), config: { ...CONFIG, maxTicks: 200 },
+  }));
+
+  // REGEN 自体は開幕から付与されている (テスト前提の確認 = スナップショットの整合も崩れていない)
+  const hasRegen = log.events.some((e) => e.snapshot?.some(
+    (s) => s.id === 'hero' && s.statuses.some((st) => st.type === 'REGEN'),
+  ));
+  assert.ok(hasRegen, 'REGENが付与されていない (テスト前提が崩れている)');
+
+  const regenTicks = log.events.filter((e) => e.type === 'STATUS_TICK' && e.status === 'REGEN');
+  assert.equal(regenTicks.length, 0, '満タンHPなのにREGENのSTATUS_TICKが出ている(0回復イベント抑止ができていない)');
+
+  const lastSnap = [...log.events].reverse().find((e) => e.snapshot)!.snapshot!;
+  assert.equal(lastSnap.find((s) => s.id === 'hero')!.hp, 10000, '満タンHPのままのはず (foeはほぼ動けない設定)');
+});
+
+test('engine(P0-2): 必殺ゲージが満タンならULT_GAUGE効果のGAUGE_CHANGEを出さない', () => {
+  const fillUlt: Skill = {
+    id: 'fill_ult', name: '過充填', kind: 'ACTIVE', description: '', cooldown: 0,
+    target: { side: 'SELF', pattern: 'SELF' },
+    effects: [{ type: 'ULT_GAUGE', amount: 50 }],
+  };
+  const ai: AiProfile = {
+    id: 'ai_fill_ult', name: 'x', rules: [{ priority: 1, condition: { type: 'ALWAYS' }, skill: 'fill_ult' }],
+  };
+  const hero = unit({
+    id: 'hero', slot: 0, side: 'ALLY', aiProfile: 'ai_fill_ult', skills: ['fill_ult'],
+    stats: { ...baseStats, hp: 10000, speed: 100 },
+  });
+  const foe = unit({ id: 'foe', slot: 0, side: 'ENEMY', stats: { ...baseStats, hp: 99999, speed: 0.001, attack: 0 } });
+  const log = runBattle([hero], [foe], makeContext({
+    seed: 1,
+    skills: skillMap([fillUlt]),
+    aiProfiles: aiMap([ai]),
+    // 行動による自動加算を切って、ULT_GAUGE効果の増減だけを見たい
+    config: { ...CONFIG, maxTicks: 100, ultGainOnAction: 0 },
+  }));
+
+  const gaugeEvents = log.events.filter((e) => e.type === 'GAUGE_CHANGE' && e.targetId === 'hero');
+  // 0->50 (1回目) -> 100 (2回目) で満タンになった後は増分0になり、以降は出ない
+  assert.equal(gaugeEvents.length, 2, `満タン後もGAUGE_CHANGEが出続けている: ${gaugeEvents.length}`);
+  const lastSnap = [...log.events].reverse().find((e) => e.snapshot)!.snapshot!;
+  assert.equal(lastSnap.find((s) => s.id === 'hero')!.ultGauge, 100);
+});
+
+test('engine(P0-2): 行動ゲージが既に0になった後の追加減少はGAUGE_CHANGEを出さない', () => {
+  const doubleDrain: Skill = {
+    id: 'double_drain', name: '二重減速', kind: 'ACTIVE', description: '', cooldown: 0,
+    target: { side: 'SELF', pattern: 'SELF' },
+    effects: [
+      { type: 'GAUGE', amount: -100 },
+      { type: 'GAUGE', amount: -100 },
+    ],
+  };
+  const ai: AiProfile = {
+    id: 'ai_drain', name: 'x', rules: [{ priority: 1, condition: { type: 'ALWAYS' }, skill: 'double_drain' }],
+  };
+  const hero = unit({
+    id: 'hero', slot: 0, side: 'ALLY', aiProfile: 'ai_drain', skills: ['double_drain'],
+    stats: { ...baseStats, hp: 10000, speed: 100 },
+  });
+  const foe = unit({ id: 'foe', slot: 0, side: 'ENEMY', stats: { ...baseStats, hp: 99999, speed: 0.001, attack: 0 } });
+  const log = runBattle([hero], [foe], makeContext({
+    seed: 1, skills: skillMap([doubleDrain]), aiProfiles: aiMap([ai]), config: { ...CONFIG, maxTicks: 50 },
+  }));
+
+  const gaugeEvents = log.events.filter((e) => e.type === 'GAUGE_CHANGE' && e.targetId === 'hero');
+  const heroActions = log.events.filter((e) => e.type === 'SKILL_USE' && e.sourceId === 'hero').length;
+  assert.ok(heroActions > 0, 'テスト前提: heroが一度も行動していない');
+  // 1つ目のGAUGE効果は毎回イベントを出すが、2つ目は「既に0への減少」で毎回抑止される
+  // -> heroの行動回数とGAUGE_CHANGE数が一致するはず
+  assert.equal(gaugeEvents.length, heroActions, '2つ目のGAUGE効果(実質変化なし)が抑止されていない');
+});
+
+/* ---------- 12. P0-3: 多対象イベントのグルーピング ---------- */
+
+test('engine(P0-3): 全体効果で2件目以降の対象に grouped:true が立つ', () => {
+  const buffAll: Skill = {
+    id: 'buff_all', name: '守護の号令', kind: 'ACTIVE', description: '', cooldown: 0,
+    target: { side: 'ALLY', pattern: 'ALL' },
+    effects: [{ type: 'STATUS', status: 'ATK_UP', duration: 3, potency: 10 }],
+  };
+  const ai: AiProfile = {
+    id: 'ai_buff_all', name: 'x', rules: [{ priority: 1, condition: { type: 'ALWAYS' }, skill: 'buff_all' }],
+  };
+  const allies = [
+    unit({ id: 'a1', slot: 0, side: 'ALLY', aiProfile: 'ai_buff_all', skills: ['buff_all'], stats: { ...baseStats, hp: 5000 } }),
+    unit({ id: 'a2', slot: 1, side: 'ALLY', aiProfile: 'ai_basic', stats: { ...baseStats, hp: 5000 } }),
+    unit({ id: 'a3', slot: 2, side: 'ALLY', aiProfile: 'ai_basic', stats: { ...baseStats, hp: 5000 } }),
+  ];
+  const foe = unit({ id: 'foe', slot: 0, side: 'ENEMY', stats: { ...baseStats, hp: 50000, attack: 0 } });
+  const log = runBattle(allies, [foe], makeContext({
+    seed: 1, skills: skillMap([buffAll]), aiProfiles: aiMap([ai]), config: { ...CONFIG, maxTicks: 15 },
+  }));
+
+  const applies = log.events.filter((e) => e.type === 'STATUS_APPLY' && e.skillId === 'buff_all');
+  assert.equal(applies.length, 3, `3体分のSTATUS_APPLYが出ていない: ${applies.length}`);
+  assert.equal(applies[0]!.grouped, undefined, '1件目にgroupedが付いている');
+  assert.equal(applies[1]!.grouped, true, '2件目にgroupedが付いていない');
+  assert.equal(applies[2]!.grouped, true, '3件目にgroupedが付いていない');
+
+  // snapshot は毎イベントに付いたまま (grouped でも状態整合は崩れない)
+  for (const e of applies) assert.ok(e.snapshot && e.snapshot.length === log.units.length);
+});
+
+test('engine(P0-3): 単体効果では grouped が立たない', () => {
+  const a = unit({ id: 'a1', slot: 0, side: 'ALLY', stats: { ...baseStats, hp: 5000, attack: 200 } });
+  const foe = unit({ id: 'foe', slot: 0, side: 'ENEMY', stats: { ...baseStats, hp: 50000 } });
+  const log = runBattle([a], [foe], makeContext({ seed: 1, config: { ...CONFIG, maxTicks: 50 } }));
+  const dmg = log.events.filter((e) => e.type === 'DAMAGE');
+  assert.ok(dmg.length > 0);
+  assert.ok(dmg.every((e) => e.grouped === undefined), '単体攻撃なのに grouped が立っている');
+});
+
+/* ---------- 13. P0-4: ログの括弧は最大1つ ---------- */
+
+test('engine(P0-4): 括弧は最大1つ、優先度は 会心 > 属性相性 > シールド肩代わり', () => {
+  const bracketCount = (s: string): number => (s.match(/\(/g) ?? []).length;
+
+  const critOnly = damageText('攻', '技', '的', 10, true, 1.0, 0);
+  assert.equal(bracketCount(critOnly), 1);
+  assert.match(critOnly, /\(会心\)/);
+
+  // 会心 + 属性相性 + シールド肩代わり が同時発生 -> 会心だけが出る
+  const all3 = damageText('攻', '技', '的', 10, true, 1.5, 5);
+  assert.equal(bracketCount(all3), 1, '括弧が複数付いている');
+  assert.match(all3, /\(会心\)/, '会心が最優先のはず');
+
+  // 属性相性 + シールド肩代わり -> 属性相性だけが出る
+  const affinityAndShield = damageText('攻', '技', '的', 10, false, 1.5, 5);
+  assert.equal(bracketCount(affinityAndShield), 1);
+  assert.match(affinityAndShield, /抜群/, '属性相性がシールドより優先のはず');
+
+  const shieldOnly = damageText('攻', '技', '的', 10, false, 1.0, 5);
+  assert.equal(bracketCount(shieldOnly), 1);
+  assert.match(shieldOnly, /肩代わり/);
+
+  const plain = damageText('攻', '技', '的', 10, false, 1.0, 0);
+  assert.equal(bracketCount(plain), 0, '何も無ければ括弧無しのはず');
+});
+
+/* ---------- 14. P1-2: TURN_START の頻度確認 (バグの有無を確認する回帰テスト) ---------- */
+
+test('engine(P1-2): TURN_START は「ラウンド開始時の全体生存数ぶんの行動」ごとに正しく発火する', () => {
+  // 5対3、誰も死なない設定 = ラウンド定員は常に8で固定される
+  const allies = Array.from({ length: 5 }, (_, i) => unit({
+    id: `a${i}`, slot: i, side: 'ALLY', aiProfile: 'ai_basic',
+    stats: { ...baseStats, hp: 999999, attack: 0, speed: 100 },
+  }));
+  const enemies = Array.from({ length: 3 }, (_, i) => unit({
+    id: `e${i}`, slot: i, side: 'ENEMY', aiProfile: 'ai_basic',
+    stats: { ...baseStats, hp: 999999, attack: 0, speed: 100 },
+  }));
+  const log = runBattle(allies, enemies, makeContext({ seed: 1, config: { ...CONFIG, maxTicks: 500 } }));
+
+  const turnStarts = log.events.filter((e) => e.type === 'TURN_START');
+  assert.ok(turnStarts.length >= 5, `ラウンドがほとんど進んでいない (実装のバグを疑う): ${turnStarts.length}`);
+
+  const actionStarts = log.events.filter((e) => e.type === 'ACTION_START');
+  turnStarts.forEach((ts, i) => {
+    const actionsBefore = actionStarts.filter((e) => e.seq < ts.seq).length;
+    assert.equal(actionsBefore, i * 8, `ターン${i + 1}開始までの行動数が想定(8の倍数)と違う: ${actionsBefore}`);
+  });
 });

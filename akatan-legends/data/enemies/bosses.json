@@ -7,9 +7,9 @@
       "TANK"
     ],
     "baseStats": {
-      "hp": 2050,
-      "attack": 98,
-      "defense": 96,
+      "hp": 1476,
+      "attack": 713.4,
+      "defense": 110,
       "speed": 74,
       "critical": 5,
       "criticalDamage": 150,
@@ -17,9 +17,9 @@
       "healing": 100
     },
     "growth": {
-      "hp": 162,
-      "attack": 6.2,
-      "defense": 6.4,
+      "hp": 116.6,
+      "attack": 45.14,
+      "defense": 7.36,
       "speed": 0.6,
       "resistance": 0.5
     },
@@ -53,9 +53,9 @@
       "ATTACKER"
     ],
     "baseStats": {
-      "hp": 1800,
-      "attack": 118,
-      "defense": 76,
+      "hp": 1404,
+      "attack": 640.6,
+      "defense": 87,
       "speed": 104,
       "critical": 15,
       "criticalDamage": 165,
@@ -63,10 +63,10 @@
       "healing": 100
     },
     "growth": {
-      "hp": 140,
-      "attack": 7.8,
-      "defense": 5.2,
-      "speed": 1.0,
+      "hp": 109.2,
+      "attack": 42.35,
+      "defense": 5.98,
+      "speed": 1,
       "resistance": 0.5
     },
     "normalAttack": "na_boss_rend",
@@ -99,9 +99,9 @@
       "SPECIALIST"
     ],
     "baseStats": {
-      "hp": 2100,
-      "attack": 126,
-      "defense": 84,
+      "hp": 1288,
+      "attack": 303.8,
+      "defense": 101,
       "speed": 118,
       "critical": 18,
       "criticalDamage": 170,
@@ -109,9 +109,9 @@
       "healing": 100
     },
     "growth": {
-      "hp": 160,
-      "attack": 8.4,
-      "defense": 5.6,
+      "hp": 98.1,
+      "attack": 20.26,
+      "defense": 6.72,
       "speed": 1.2,
       "resistance": 0.6
     },

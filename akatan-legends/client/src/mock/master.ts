@@ -5,7 +5,7 @@
  */
 import type {
   CharacterDef, EnemyDef, Skill, AiProfile, ChapterDef, Stats, Rarity,
-  Element, Role, CharacterArt,
+  Element, Role, CharacterArt, ComboDef,
 } from '@akatan/shared';
 
 function st(
@@ -399,3 +399,73 @@ export const MOCK_CHAPTERS: ChapterDef[] = [
 ];
 
 export const MOCK_SKILL_MAP = new Map(MOCK_SKILLS.map((s) => [s.id, s]));
+export const MOCK_CHARACTER_MAP = new Map(MOCK_CHARACTERS.map((c) => [c.id, c]));
+
+/* ---------------- コンボ (P0-4) ----------------
+ * `?mock=1` デモモード専用。サーバ無しで PARTY 画面の発動コンボ表示と
+ * BATTLE 画面の COMBO カットインを一通り確認できるようにするためのダミー定義。
+ * デフォルト編成(あかね/シキ/いのり/テツ/ノア)で PAIR が2件 ACTIVE、
+ * PAIR/TRIO/TAG がそれぞれ1件 ALMOST(あと1人)になるよう組んでいる。
+ */
+export const MOCK_COMBOS: ComboDef[] = [
+  {
+    id: 'cb_akane_shiki',
+    name: '紅刃連鎖',
+    kind: 'PAIR',
+    description: 'あかねが「灯火一閃」を放った直後、シキが影から追撃する。息が合った時だけ成立する連続攻撃。',
+    members: ['ch_akane', 'ch_shiki'],
+    trigger: { type: 'ON_SKILL_USE', actor: 'ch_akane', skill: 'sk_flame_edge' },
+    effects: [{ performer: 'ch_shiki', skill: 'sk_shadow_bind' }],
+    fx: 'combo_ember_shadow',
+  },
+  {
+    id: 'cb_akane_noa',
+    name: '祝祭の刃',
+    kind: 'PAIR',
+    description: 'ノアの歌に合わせて刃が輝く。バフの直後、あかねの攻撃力がさらに跳ね上がる。',
+    members: ['ch_akane', 'ch_noa'],
+    trigger: { type: 'ON_SKILL_USE', actor: 'ch_noa', skill: 'sk_aria_buff' },
+    effects: [{ performer: 'ch_akane', effect: { type: 'STATUS', status: 'ATK_UP', duration: 2, potency: 15 } }],
+    fx: 'combo_fanfare_blade',
+  },
+  {
+    id: 'cb_shiki_zero',
+    name: '断絶ハック',
+    kind: 'PAIR',
+    description: 'シキが意識を刈り取った隙に、ZER0が防御を書き換える。暗殺と電脳の連携。',
+    members: ['ch_shiki', 'ch_zero'],
+    trigger: { type: 'ON_SKILL_USE', actor: 'ch_shiki', skill: 'sk_shadow_bind' },
+    effects: [{ performer: 'ch_zero', skill: 'sk_null_hack' }],
+    fx: 'combo_void_glitch',
+  },
+  {
+    id: 'cb_trio_dawn',
+    name: '暁光三重奏',
+    kind: 'TRIO',
+    description: 'あかね・ノア・ZER0が揃うと、開戦と共に灯火の意思が同期する。',
+    members: ['ch_akane', 'ch_noa', 'ch_zero'],
+    trigger: { type: 'ON_BATTLE_START' },
+    effects: [{ effect: { type: 'STATUS', status: 'ATK_UP', duration: 2, potency: 10 } }],
+    fx: 'combo_dawn_trio',
+  },
+  {
+    id: 'cb_speed_tag',
+    name: '疾風連携',
+    kind: 'TAG',
+    description: '「高速」タグを持つキャラが2体以上揃うと、開戦時に全員の速度が上がる。',
+    requireTag: { tag: '高速', count: 2 },
+    trigger: { type: 'ON_BATTLE_START' },
+    effects: [{ effect: { type: 'STATUS', status: 'SPD_UP', duration: 3, potency: 15 } }],
+    fx: 'combo_speed_link',
+  },
+  {
+    id: 'cb_party_light',
+    name: '聖歌隊全開',
+    kind: 'PARTY',
+    description: '編成5人全員が光属性で揃うと、聖歌隊のフルコーラスが発動する。',
+    requireAllElement: 'LIGHT',
+    trigger: { type: 'ON_BATTLE_START' },
+    effects: [{ effect: { type: 'HEAL', power: 0.2, scaling: 'hp' } }],
+    fx: 'combo_choir_light',
+  },
+];

@@ -8,9 +8,9 @@
 import type {
   BattleEvent, BattleLog, BattleUnit, BattleUnitSnapshot, BattleUnitStat,
   BattleRewards, CharacterView, StageDef, Element, ActiveStatus, Skill,
-  LevelUpInfo, Stats, Awakening,
+  LevelUpInfo, Stats, Awakening, ComboDef,
 } from '@akatan/shared';
-import { MOCK_ENEMIES, MOCK_SKILL_MAP } from './master';
+import { MOCK_ENEMIES, MOCK_SKILL_MAP, MOCK_COMBOS, MOCK_CHARACTER_MAP } from './master';
 import { computeStats, expToNext } from './player';
 
 /* ---------- 乱数 (決定論) ---------- */
@@ -165,6 +165,25 @@ export function generateMockBattle(
   let tick = 0;
   let turn = 1;
 
+  // P0-4(b): 現在の編成(defId基準)で成立しているコンボを判定し、戦闘中に発火させる。
+  // 本番の戦闘エンジンの発動ロジックそのものではなく、演出レビュー用の簡易な代役。
+  const allyDefIds = A.map((a) => a.defId);
+  const activeMockCombos: ComboDef[] = MOCK_COMBOS.filter((def) => {
+    if (def.kind === 'PAIR' || def.kind === 'TRIO') {
+      return (def.members ?? []).every((m) => allyDefIds.includes(m));
+    }
+    if (def.kind === 'TAG' && def.requireTag) {
+      const owners = A.filter((a) => MOCK_CHARACTER_MAP.get(a.defId)?.tags?.includes(def.requireTag!.tag));
+      return owners.length >= def.requireTag.count;
+    }
+    if (def.kind === 'PARTY' && def.requireAllElement) {
+      return A.length === 5 && A.every((a) => a.element === def.requireAllElement);
+    }
+    return false;
+  });
+  let comboFires = 0;
+  const MAX_COMBO_FIRES = 3;
+
   const snap = (): BattleUnitSnapshot[] =>
     units.map((u) => ({
       id: u.id,
@@ -218,7 +237,7 @@ export function generateMockBattle(
     fx: 'battle_start',
   });
 
-  const applyDamage = (src: SimUnit, tgt: SimUnit, sk: Skill, power: number): void => {
+  const applyDamage = (src: SimUnit, tgt: SimUnit, sk: Skill, power: number, grouped = false): void => {
     const aff = affinityOf(src.element, tgt.element);
     const crit = rnd() * 100 < src.stats.critical;
     const atkStat = sk.effects[0]?.scaling === 'defense' ? src.stats.defense : src.stats.attack;
@@ -249,6 +268,7 @@ export function generateMockBattle(
       affinity: aff,
       element: src.element,
       fx: sk.fx,
+      grouped,
       text: `${src.name} → ${tgt.name} に ${dmg} ダメージ${crit ? '(会心!)' : ''}${aff > 1 ? '【弱点】' : aff < 1 ? '【耐性】' : ''}`,
     });
 
@@ -270,7 +290,7 @@ export function generateMockBattle(
     }
   };
 
-  const applyHeal = (src: SimUnit, tgt: SimUnit, sk: Skill, power: number): void => {
+  const applyHeal = (src: SimUnit, tgt: SimUnit, sk: Skill, power: number, grouped = false): void => {
     const amount = Math.max(
       1,
       Math.round(tgt.maxHp * power * (src.stats.healing / 100) * (0.95 + rnd() * 0.1)),
@@ -286,6 +306,7 @@ export function generateMockBattle(
       skillName: sk.name,
       value: real,
       fx: sk.fx ?? 'heal_wave',
+      grouped,
       text: `${tgt.name} のHPが ${real} 回復`,
     });
   };
@@ -365,18 +386,21 @@ export function generateMockBattle(
       const targets = eff.target
         ? pickTargets(u, { ...sk, target: eff.target })
         : pickTargets(u, sk);
-      for (const t of targets) {
-        if (!t.alive && eff.type !== 'HEAL') continue;
+      // grouped: 同じスキル・同じ効果が複数対象に連続適用される場合、2件目以降(ti>0)に
+      // true を立てる。UIはこれを見てログ行を1行にまとめる(P0-3)。
+      targets.forEach((t, ti) => {
+        if (!t.alive && eff.type !== 'HEAL') return;
+        const grouped = ti > 0;
         const hits = eff.hits ?? 1;
         switch (eff.type) {
           case 'DAMAGE':
             for (let h = 0; h < hits; h++) {
               if (!t.alive) break;
-              applyDamage(u, t, sk, eff.power ?? 1);
+              applyDamage(u, t, sk, eff.power ?? 1, grouped);
             }
             break;
           case 'HEAL':
-            if (t.alive) applyHeal(u, t, sk, eff.power ?? 0.2);
+            if (t.alive) applyHeal(u, t, sk, eff.power ?? 0.2, grouped);
             break;
           case 'STATUS': {
             if (!eff.status) break;
@@ -389,6 +413,7 @@ export function generateMockBattle(
                 targetId: t.id,
                 status: eff.status,
                 fx: 'resist',
+                grouped,
                 text: `${t.name} は効果を抵抗した`,
               });
             } else {
@@ -405,6 +430,7 @@ export function generateMockBattle(
                 status: eff.status,
                 duration: eff.duration ?? 2,
                 fx: 'status_apply',
+                grouped,
                 text: `${t.name} に ${eff.status} (${eff.duration ?? 2}ターン)`,
               });
             }
@@ -416,7 +442,9 @@ export function generateMockBattle(
                 ['POISON', 'BURN', 'FREEZE', 'STUN', 'SILENCE', 'BLEED', 'SLOW', 'DEF_DOWN', 'ATK_DOWN'].includes(s.type),
               );
               t.statuses = t.statuses.filter((s) => !removed.includes(s));
-              for (const r of removed) {
+              // CLEANSEは対象ごとに解除される状態異常の組み合わせがまちまちなので、
+              // ここでは grouped 化(行のまとめ)は行わない(誤ってまとめると意味が変わる)。
+              removed.forEach((r) => {
                 push({
                   type: 'STATUS_EXPIRE',
                   targetId: t.id,
@@ -424,7 +452,7 @@ export function generateMockBattle(
                   fx: 'cleanse_ring',
                   text: `${t.name} の ${r.type} が解除された`,
                 });
-              }
+              });
             }
             break;
           case 'GAUGE':
@@ -435,6 +463,7 @@ export function generateMockBattle(
               targetId: t.id,
               value: eff.amount ?? 20,
               fx: 'tempo_pulse',
+              grouped,
               text: `${t.name} の行動ゲージ +${eff.amount ?? 20}%`,
             });
             break;
@@ -446,11 +475,12 @@ export function generateMockBattle(
               targetId: t.id,
               value: eff.amount ?? 20,
               fx: 'ult_charge',
+              grouped,
               text: `${t.name} の必殺ゲージ +${eff.amount ?? 20}%`,
             });
             break;
         }
-      }
+      });
     }
 
     if (!isUlt) u.ultGauge = Math.min(100, u.ultGauge + 18);
@@ -464,18 +494,29 @@ export function generateMockBattle(
       });
     }
 
-    // コンボ演出 (Phase 4 の本実装が入るまでのデモ)
-    if (u.side === 'ALLY' && rnd() < 0.09) {
-      const partner = alive('ALLY').find((x) => x.id !== u.id);
-      if (partner) {
+    // コンボ演出: 編成が実際に満たしているコンボ定義(activeMockCombos)から、
+    // 今行動したユニットが参加者であるものを一定確率で発火させる。
+    if (u.side === 'ALLY' && comboFires < MAX_COMBO_FIRES) {
+      for (const def of activeMockCombos) {
+        const involved = def.kind === 'PAIR' || def.kind === 'TRIO'
+          ? (def.members ?? []).includes(u.defId)
+          : true;
+        if (!involved || rnd() >= 0.22) continue;
+        const pool = alive('ALLY').filter((x) => x.id !== u.id
+          && (def.members ? def.members.includes(x.defId) : true));
+        const partner = pool[Math.floor(rnd() * pool.length)] ?? alive('ALLY').find((x) => x.id !== u.id);
+        if (!partner) continue;
+        comboFires += 1;
         push({
           type: 'COMBO',
           sourceId: u.id,
           targetId: partner.id,
-          skillName: `${u.name} × ${partner.name}`,
-          fx: 'combo_link',
-          text: `コンボ発動! ${u.name} × ${partner.name}`,
+          comboId: def.id,
+          skillName: def.name,
+          fx: def.fx ?? 'combo_link',
+          text: `コンボ発動!「${def.name}」 ${u.name} × ${partner.name}`,
         });
+        break;
       }
     }
 

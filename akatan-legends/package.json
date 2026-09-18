@@ -8,7 +8,10 @@
     "dev": "concurrently -n server,client -c cyan,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
     "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client",
-    "test": "npm run test -w server"
+    "test": "npm run test -w server",
+    "validate:data": "node scripts/validate-data.mjs",
+    "build:standalone": "node tools/build-standalone.mjs",
+    "smoke": "node tools/smoke.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
