@@ -3,8 +3,11 @@
  * オフライン単体版を「1ファイルのHTML」にまとめるビルドスクリプト。
  *
  * Vite は JS と CSS を別ファイルで出すので、ビルド後にそれらを index.html へ
- * インライン展開して 1 ファイルにする。画像アセットは持たない(キャラ絵は
- * CharacterArt から SVG/CSS で生成している)ので、これで完全に自己完結する。
+ * インライン展開して 1 ファイルにする。
+ * キャラ絵は基本的に CharacterArt から SVG/CSS で生成しているが、立ち絵を持つ
+ * キャラ(client/public/portraits/*.webp)だけは画像が必要なので、それらも
+ * data URL にして window.__AKATAN_PORTRAITS__ へ注入する。
+ * 結果として外部ファイルを一切参照しない 1 ファイルになる。
  *
  * 使い方: node tools/build-standalone.mjs
  * 出力:   dist-standalone/akatan-legends.html

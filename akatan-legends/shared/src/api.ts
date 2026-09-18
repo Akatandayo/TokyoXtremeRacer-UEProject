@@ -64,6 +64,8 @@ export interface UnequipRequest {
   characterUid: string;
   slot: EquipmentSlot;
 }
+/** 取り外しのレスポンスは装着と同じ形(更新後のキャラ + 所持品) */
+export type UnequipResponse = EquipResponse;
 
 /* ---------- POST /api/equipment/sell ---------- */
 export interface SellEquipmentRequest {

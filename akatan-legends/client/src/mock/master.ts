@@ -48,8 +48,9 @@ export const MOCK_SKILLS: Skill[] = [
   { id: 'sk_overclock', name: 'オーバークロック', kind: 'ACTIVE', description: '自身の速度を35%上昇(3ターン)、必殺ゲージ+30%。', cooldown: 4, target: { side: 'SELF', pattern: 'SELF' }, effects: [{ type: 'STATUS', status: 'SPD_UP', duration: 3, potency: 35 }, { type: 'ULT_GAUGE', amount: 30 }], fx: 'circuit_surge', tags: ['self'] },
   { id: 'sk_null_hack', name: 'ヌルハック', kind: 'ACTIVE', description: '敵単体に攻撃力130%の虚ダメージ。55%で沈黙(2ターン)。', cooldown: 3, target: { side: 'ENEMY', pattern: 'SINGLE' }, effects: [{ type: 'DAMAGE', power: 1.3 }, { type: 'STATUS', status: 'SILENCE', duration: 2, chance: 55 }], fx: 'glitch', tags: ['void'] },
   { id: 'sk_first_aid', name: '応急手当', kind: 'ACTIVE', description: '味方単体のHPを18%回復。', cooldown: 2, target: { side: 'ALLY', pattern: 'LOWEST_HP' }, effects: [{ type: 'HEAL', power: 0.18, scaling: 'hp' }], fx: 'heal_wave', tags: ['heal'] },
-  { id: 'sk_kc_fold', name: '幽波紋・折り畳み', kind: 'ACTIVE', description: '敵単体に攻撃力165%の虚ダメージ。50%で沈黙(2ターン)。', cooldown: 3, target: { side: 'ENEMY', pattern: 'SINGLE' }, effects: [{ type: 'DAMAGE', power: 1.65 }, { type: 'STATUS', status: 'SILENCE', duration: 2, chance: 50 }], fx: 'void_fold', tags: ['void', 'control'] },
-  { id: 'sk_kc_paradox', name: '不可能図形', kind: 'ACTIVE', description: '敵全体の防御と速度を20%低下(3ターン)。', cooldown: 4, target: { side: 'ENEMY', pattern: 'ALL' }, effects: [{ type: 'STATUS', status: 'DEF_DOWN', duration: 3, potency: 20 }, { type: 'STATUS', status: 'SLOW', duration: 3, potency: 20 }], fx: 'void_bolt', tags: ['debuff', 'void'] },
+  { id: 'sk_kc_normal', name: '刻の乱撃', kind: 'NORMAL', description: '敵単体に攻撃力60%の虚ダメージを3回。', cooldown: 0, target: { side: 'ENEMY', pattern: 'SINGLE' }, effects: [{ type: 'DAMAGE', power: 0.6, hits: 3 }], fx: 'void_bolt', tags: ['void'] },
+  { id: 'sk_kc_fold', name: '時飛ばし', kind: 'ACTIVE', description: '敵単体に攻撃力78%の虚ダメージ。相手の行動ゲージを50%削り、35%で気絶(1ターン)を付与して手番そのものを奪う。', cooldown: 4, target: { side: 'ENEMY', pattern: 'SINGLE' }, effects: [{ type: 'DAMAGE', power: 0.78 }, { type: 'GAUGE', amount: -50 }, { type: 'STATUS', status: 'STUN', duration: 1, chance: 35 }], fx: 'void_fold', tags: ['void', 'control'] },
+  { id: 'sk_kc_paradox', name: 'エピタフ', kind: 'ACTIVE', description: '数秒先を視て、自身に障壁(最大HP34%, 3ターン)を張る。', cooldown: 4, target: { side: 'SELF', pattern: 'SELF' }, effects: [{ type: 'STATUS', status: 'SHIELD', duration: 3, potency: 34 }], fx: 'void_bolt', tags: ['void', 'shield'] },
 
   // 必殺技
   { id: 'ult_hinomoto', name: '炎天焦土・緋ノ大灯', kind: 'ULTIMATE', description: '敵全体に攻撃力260%の炎ダメージ。火傷(3ターン)を必ず付与。', cooldown: 0, ultCost: 100, target: { side: 'ENEMY', pattern: 'ALL' }, effects: [{ type: 'DAMAGE', power: 2.6 }, { type: 'STATUS', status: 'BURN', duration: 3 }], fx: 'ult_flame', tags: ['ult'] },
@@ -295,11 +296,11 @@ export const MOCK_CHARACTERS: CharacterDef[] = [
     art: art('#7bd67a', '#10240f', '#d6ffcf', '森', 'petal'),
   },
   {
-    id: 'ch_momiji_kc', name: '孤月 紅葉(幽波紋)', title: 'Momiji / 幽波紋の探索者', rarity: 'UR',
+    id: 'ch_momiji_kc', name: '孤月 紅葉', title: 'Momiji / 幽波紋の探索者', rarity: 'UR',
     element: 'VOID', roles: ['CONTROL', 'SPECIALIST'],
     baseStats: st(1080, 150, 82, 116, 14, 178, 22, 100),
     growth: { hp: 56, attack: 11.8, defense: 4.6, speed: 1.3, critical: 0.16 },
-    normalAttack: 'sk_ping', skills: ['sk_kc_fold', 'sk_kc_paradox'], ultimate: 'ult_kc_collapse',
+    normalAttack: 'sk_kc_normal', skills: ['sk_kc_fold', 'sk_kc_paradox'], ultimate: 'ult_kc_collapse',
     awakening: {
       id: 'aw_momiji_kc', name: '幽波紋・臨界',
       condition: { turnAtLeast: 5 },

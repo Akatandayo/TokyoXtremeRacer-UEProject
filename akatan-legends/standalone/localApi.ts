@@ -17,8 +17,8 @@ import type {
   DropTableDef, DungeonListResponse, EnemyDef, EquipmentInstance, EquipmentSlot, EquipResponse,
   GachaBannerDef, GachaListResponse, GachaPullResponse, GachaPullResult, InventoryResponse,
   ItemBaseDef, ItemRarity, LevelUpInfo, MasterDataResponse, MaterialDef, MaterialStack,
-  OwnedCharacter, Party, PlayerProfile, PlayerStateResponse, ProgressionConfig, Rarity,
-  SellEquipmentResponse, Skill, StageDef, UpdatePartyResponse,
+  OwnedCharacter, Party, PlannedCharacterDef, PlayerProfile, PlayerStateResponse,
+  ProgressionConfig, Rarity, SellEquipmentResponse, Skill, StageDef, UpdatePartyResponse,
 } from '@akatan/shared';
 import { runBattle } from '../server/src/battle/index.js';
 import type { CombatantInput } from '../server/src/battle/contract.js';
@@ -85,6 +85,14 @@ const materials: MaterialDef[] = (() => {
     if (file.endsWith('/data/items/materials.json')) return asArray<MaterialDef>(content);
   }
   return [];
+})();
+const plannedCharacters = (() => {
+  for (const [file, content] of Object.entries(jsonFiles)) {
+    if (file.endsWith('/data/system/planned-characters.json')) {
+      return asArray<PlannedCharacterDef>(content);
+    }
+  }
+  return [] as PlannedCharacterDef[];
 })();
 const affinity = single<AffinityTable>('affinity.json') ?? {};
 const progression: ProgressionConfig = {
@@ -583,6 +591,7 @@ export const mockApi = {
       player: { ...state.player },
       characters: views(),
       party: { ...state.party, members: [...state.party.members] },
+      inventory: inventory(),
     };
   },
 
@@ -593,7 +602,7 @@ export const mockApi = {
 
   async getMaster(): Promise<MasterDataResponse> {
     await delay(20);
-    return { characters, enemies, skills, aiProfiles, chapters, combos };
+    return { characters, enemies, skills, aiProfiles, chapters, combos, materials, plannedCharacters };
   },
 
   async getDungeons(): Promise<DungeonListResponse> {

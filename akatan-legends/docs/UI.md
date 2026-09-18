@@ -21,39 +21,47 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
                         │            HOME              │
                         │  名前 / 所持金 / 進行状況     │
                         │  各画面への導線 / 最近の戦闘  │
-                        └──┬───┬───┬───┬───┬──────────┘
-                           │   │   │   │   │
-        ┌──────────────────┘   │   │   │   └──────────────┐
-        ▼                      ▼   │   ▼                  ▼
-  ┌───────────┐          ┌─────────┴─┐  ┌────────────┐  ┌──────────┐
-  │CHARACTERS │          │   PARTY    │  │ COLLECTION │  │ SETTINGS │
-  │ カード一覧 │          │  5枠編成   │  │   図鑑     │  │  設定    │
-  └─────┬─────┘          └─────┬──────┘  └────────────┘  └──────────┘
-        │ カードをクリック        │ 「編成を変更」/「編成へ」
-        ▼                       ▼
-  ┌──────────────────┐    ┌───────────┐
-  │ CHARACTER DETAIL │◄───│  DUNGEON  │
-  │  §39 の詳細画面   │    │ 章/ステージ│
-  └──────────────────┘    └─────┬─────┘
-                                │ 「戦闘開始」 POST /api/battle/start
-                                ▼
-                          ┌───────────┐
-                          │  BATTLE   │  ← ヘッダの「戦闘中」タブでも復帰できる
-                          │  ログ再生  │
-                          └─────┬─────┘
-                                │ 終了 → リザルト
-                                ├── 「ダンジョンへ戻る」 → DUNGEON
-                                └── 「もう一度戦う」 → 同ステージで再度 start
+                        └─┬──┬──┬──┬──┬──┬──┬──────────┘
+                          │  │  │  │  │  │  │
+      ┌───────────────────┘  │  │  │  │  │  └────────────┐
+      ▼                      ▼  │  ▼  │  ▼               ▼
+┌───────────┐        ┌─────────┴┐┌───┴──────┐    ┌────────────┐ ┌──────────┐
+│CHARACTERS │        │  PARTY   ││ EQUIPMENT │    │ COLLECTION │ │ SETTINGS │
+│ カード一覧 │        │ 5枠編成  ││ 装備一覧  │    │   図鑑     │ │  設定    │
+└─────┬─────┘        └────┬─────┘└─────┬─────┘    └────────────┘ └──────────┘
+      │ カードをクリック     │「編成へ」   ▲ 「装備を変更→」
+      ▼                    ▼            │
+┌──────────────────┐  ┌───────────┐      │
+│ CHARACTER DETAIL │◄─│  DUNGEON  │      │
+│  §39 の詳細画面   │  │ 章/ステージ│      │
+│  (装備スロット3つ) │  └─────┬─────┘      │
+└─────────┬────────┘        │「戦闘開始」  │
+          └───────────────────────────────┘ POST /api/battle/start
+                             ▼
+                       ┌───────────┐
+                       │  BATTLE   │  ← ヘッダの「戦闘中」タブでも復帰できる
+                       │  ログ再生  │
+                       └─────┬─────┘
+                             │ 終了 → リザルト(EXP/ゴールド→レベルアップ→ドロップ→MVP)
+                             ├── 「ダンジョンへ戻る」 → DUNGEON
+                             └── 「もう一度戦う」 → 同ステージで再度 start
+
+┌───────────┐   GET /api/gacha       ┌──────────────────────────┐
+│   HOME    │──────────────────────► │          SUMMON           │
+│ / 各画面   │   POST /api/gacha/pull │ バナー選択→単発/10連→演出 │
+└───────────┘                        └──────────────────────────┘
 ```
 
 | 画面 | 役割 | 主なAPI |
 |---|---|---|
 | HOME | プレイヤー名 / 所持金 / 編成戦力 / クリア数、次の目標、最近の戦闘6件(localStorage) | `GET /api/player` |
 | CHARACTERS | 所持キャラのカードグリッド。属性・ロール・レアリティで絞り込み、4種のソート | `GET /api/player` |
-| CHARACTER DETAIL | 仮キャラ画像 / レアリティ / Lv / 転生回数 / 全ステータス / 通常攻撃・スキル・必殺技 / 覚醒条件 / コンボ / TRPG設定 / AI戦術の変更 | `PUT /api/characters/:uid/ai` |
-| PARTY | 5枠の編成。D&D + クリック選択。属性・ロール構成と合計戦力をリアルタイム表示 | `PUT /api/party` |
+| CHARACTER DETAIL | 立ち絵(またはプロシージャル画像) / レアリティ / Lv / 転生回数 / 全ステータス / 通常攻撃・スキル・必殺技 / 覚醒条件 / **装備スロット3つ(WEAPON/ARMOR/ACCESSORY)** / コンボ(未実装キャラは「名前(実装予定)」表示) / TRPG設定 / AI戦術の変更 | `PUT /api/characters/:uid/ai` |
+| PARTY | 5枠の編成。D&D + クリック選択。属性・ロール構成と合計戦力をリアルタイム表示。発動コンボ欄も未実装キャラを名前で表示 | `PUT /api/party` |
+| **EQUIPMENT** | 所持装備一覧(スロット/レアリティ/アイテムLvで絞り込み・ソート)、装着前後の比較、売却(装着中は不可) | `GET /api/inventory`, `POST /api/equipment/{equip,unequip,sell}` |
+| **SUMMON** | ガチャ。バナー選択、排出率の常時公開、単発/10連、天井・重複変換演出 | `GET /api/gacha`, `POST /api/gacha/pull` |
 | DUNGEON | 章タブ、ステージカード(クリア済み✓ / 推奨戦力比較 / 敵サムネ / 報酬 / BOSS) | `GET /api/dungeons`, `POST /api/battle/start` |
-| BATTLE | `BattleLog` のタイムライン再生。倍速 / 一時停止 / スキップ / 再生し直し | (再生のみ。計算しない) |
+| BATTLE | `BattleLog` のタイムライン再生 + ドロップ表示。倍速 / 一時停止 / スキップ / 再生し直し | (再生のみ。計算しない) |
 | COLLECTION | `GET /api/master` のキャラ・敵一覧。未入手はシルエット | `GET /api/master` |
 | SETTINGS | 既定倍速、軽量モード、ダメージ数値、カットイン、画面揺れ、ログ行数、自動リザルト、モックモード | — |
 
@@ -106,6 +114,33 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
 | UR | 虹色コニックグラデ枠(回転) + マゼンタの強発光 | スパークル10粒 + プリズム掃引 |
 
 図鑑の未入手は `silhouette` で彩度0・輝度28%、紋章は `?` に置換する。
+
+### 立ち絵 (portrait) 対応
+
+`CharacterArt.portrait` にアセットキー(例 `"momiji_kc"`)が入っている場合、`CharacterArtView`
+はプロシージャル描画の代わりに実画像を敷く。**解決順は1箇所(`CharacterArt.tsx` の
+`resolvePortraitSrc`)にまとめてある**:
+
+1. `window.__AKATAN_PORTRAITS__[key]` — オフライン単体版にビルド時埋め込まれる data URL。
+   `file://` では相対パスが解決できないため、単体版のビルドスクリプトがこのオブジェクトへ
+   立ち絵を data URL として注入する。存在すれば最優先で使う。
+2. `${import.meta.env.BASE_URL}portraits/<key>.webp` — 通常のWeb版(`client/public/portraits/`)。
+3. 上記どちらも失敗した場合(`<img onError>`) — 従来のプロシージャル描画(pattern 6種)へ
+   フォールバックする。画像アセットを持たないキャラも、画像読み込みに失敗した環境でも、
+   画面は崩れない。
+
+その他の挙動:
+
+- **未入手(シルエット)表示中は立ち絵を出さない。** `silhouette` が true のときは
+  `portrait` の有無に関わらず常にプロシージャル描画(彩度0・`?`)を使う。図鑑で
+  未入手キャラの正体が見えてしまわないようにするため。
+- レアリティ枠(SSR金のコニックグラデ回転枠 / URの虹コニックグラデ回転枠 + スパークル +
+  プリズム掃引)は立ち絵使用時も**そのまま維持**する。`.cart-portrait-img` は
+  `object-fit: cover` で敷き、`.cart-ratio-square`(カード・戦闘ユニット・ガチャ演出)は
+  `object-position: 50% 10%`、`.cart-ratio-portrait`(キャラ詳細・図鑑)は `50% 14%` を
+  基準に頭部が切れないようにしている。
+- 立ち絵はキャラカード・キャラ詳細・戦闘画面・図鑑・ガチャ演出のすべてで
+  `CharacterArtView` 経由で共通に使われる(呼び出し側の追加対応は不要)。
 
 ---
 
@@ -193,7 +228,14 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
 | `awaken` | `awaken_*` | 金の光柱が立ち上る + 特大フラッシュ |
 | `combo` | `combo_*`, `*_link` | 二重リング + 光球の拡散 |
 | `defeat` / `resist` / `stun` | `defeat`, `resist`, `stun` | 撃破破片 / 二重の盾リング / 星がぐるぐる |
+| `equip` | `equip:*`(例 `equip:burn_on_hit`) | 小さな光沢グリント(控えめ。スキルより地味・コンボより地味) |
 | `generic` | 未知のキーすべて | リング + コア + 放射する破片(属性色) |
+
+**装備の特殊効果(`ItemSpecialEffect`)は `fx` が `"equip:"` で始まることで判別する**
+(戦闘エンジン側の規約)。`skillId` は未設定、`skillName` に特殊効果名が入る(`COMBO` と同じ
+流儀)。イベント種別は既存の `DAMAGE` / `STATUS_APPLY` / `STATUS_RESIST` を再利用するため、
+専用のイベント種別追加は無い。`equip` ファミリーは尺380msと短く、画面揺れも無し
+(`screen: 'none'`)で、「装備が光った」と分かる程度に抑えている。
 
 **未知の `fx` は必ず `generic` にフォールバックする**ので、データ側が新しいキーを
 足しても画面は壊れない(色は `event.element` から取る)。
@@ -212,12 +254,134 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
 
 勝敗タイトル(拡大→収束) → 獲得EXP / ゴールド → **レベルアップ演出**
 (`BattleRewards.levelUps` の `fromLevel ▶ toLevel` と `statGain` を順番にスライドイン)
+→ **ドロップ表示**(`BattleStartResponse.drops`。敗北時は `null` でこの区画ごと非表示)
 → **MVP**(味方の `damageDealt` 最大)→ 全ユニット戦績テーブル(折りたたみ)
 → 「ダンジョンへ戻る」/「もう一度戦う」。
 
+#### ドロップ表示 (`DropsSection`, `client/src/battle/BattleScreen.tsx`)
+
+- `DropResult` の `gold` / `equipment` / `materials` / `tickets` / `characters` をそれぞれ
+  チップ(`drop-chip`)として並べる。入場アニメーション(`drop-in`)付き。
+- **装備は `ItemRarity`(6段階)の色で左ボーダーを塗り分ける**(`irar-COMMON`〜`irar-MYTHIC`)。
+  高レアほど目立つ配色にし、演出の格を変える。
+- **キャラクタードロップ**: `CharacterDropResult.duplicate` で分岐する。
+  - 新規入手 → 立ち絵/プロシージャル画像 + 「新規入手!」(緑)
+  - 重複 → 「重複 → 素材変換(素材名×個数)」(灰)。**「ハズレ」に見えない文言にする**
+    (設計書§27)。
+- 何もドロップしなかった場合(`gold<=0` かつ全配列が空)は「今回のドロップはありませんでした。」
+  の1行のみ表示し、空のグリッドやレイアウト崩れを起こさない。
+- `drops` が `null`/`undefined`(敗北時 or 未対応バックエンド)の場合は区画自体を描画しない
+  (勝敗以外の要素が減っても違和感なく流れる)。
+
 ---
 
-## 4. モックモード(デモモード)
+## 4. SUMMON (ガチャ) 画面
+
+`client/src/screens/GachaScreen.tsx`。`GET /api/gacha` でバナー一覧・天井カウント・
+所持チケットを取得し、`POST /api/gacha/pull` で抽選する。**抽選は100%サーバ権威**
+(設計書§37)。クライアントは結果を受け取って演出するだけで、確率計算は一切行わない。
+
+### 画面構成
+
+- バナータブ(`gacha-banner-tab`)。ピックアップバナーには `PICKUP` バッジ。
+- 選択中バナーの詳細: 名前・説明・ピックアップ対象(名前解決は `store.master.characters`
+  から動的に行う。ID直書きはしない)・天井(`pity.count` と残り連数)・10連最低保証
+  (`guarantee10`)・**排出率テーブル**(`GachaRates.rarity` を全件バーで表示。隠さない)。
+- 単発/10連ボタン。`cost`/`cost10` の `currency`(`GOLD` or `TICKET`)を見て所持量と比較し、
+  不足時はボタンを無効化 + 理由(「GOLDが足りません(必要n/所持m)」等)を表示する。
+- 装備バナーの排出率テーブルは `Rarity`(N〜UR)の「格」を示す。実際に生成される装備の
+  `ItemRarity`(COMMON〜MYTHIC)は結果カードで別途確定表示する(バナー欄にその旨を注記)。
+
+### 演出の3段階
+
+1. **ためる (`charging`)**: 召喚アイコンが明滅する円環アニメーション(`gacha-charge`)。
+   尺は結果内の最高レアリティ格(`anyRarityTier`)に応じて 500〜1380ms に伸びる
+   (高レアほど「溜め」が長い = 期待感を煽る)。
+2. **レアリティ確定 (`revealing`)**: 10連は1件ずつ `GachaResultCard` を開示する。
+   1件あたりの尺もレアリティ格で変える(`TIER_REVEAL_MS`: N/COMMON域 420ms 〜
+   UR/MYTHIC域 1500ms)。「一括表示」でいつでも残りをスキップしサマリーへ、
+   「次へ ▶」で任意のタイミングで手動送りできる。
+3. **結果表示 (`summary`)**: 全件をグリッドで一覧表示。天井到達分があれば
+   「天井到達あり」バッジ。「閉じる」/「同じ条件でもう一度」。
+
+### レアリティ別の演出差
+
+`anyRarityTier()`(`utils/labels.ts`)が `Rarity`/`ItemRarity` のどちらでも 0〜4 の
+5段階に正規化する(装備の6段階は EPIC以上をSSR格・MYTHICをUR格に寄せて圧縮)。
+
+| tier | 対応 | 見た目 |
+|---|---|---|
+| 0 | N / COMMON・UNCOMMON | 灰枠、演出無し |
+| 1 | R | 青枠 + 弱いグロー |
+| 2 | SR | 紫枠 + グロー |
+| 3 | SSR / EPIC・LEGENDARY | 金枠 + 内外グロー + 回転する光条バースト(`result-burst`) |
+| 4 | UR / MYTHIC | 虹コニックグラデ回転枠 + 強グロー + 大型バースト。charging 段階のオーブも虹色・高速回転になる |
+
+`GachaPullResult.byPity` が true の枠には「天井到達」バッジ(マゼンタ)を付け、
+天井による確定であることを隠さない。
+
+### キャラ / 装備 / 重複の表示
+
+- **キャラクター**: `CharacterArtView`(立ち絵 or プロシージャル)+ 名前。
+  - 新規入手 → 「NEW」(緑)。
+  - 重複(`duplicate: true`) → **「重複 → 素材に変換(素材名×個数)」** と表示する。
+    「ハズレ」の見た目(暗転・×印など)には絶対にしない(設計書§27)。素材名は
+    `store.master.materials` から解決し、無ければ素材IDをそのまま出す(フェイルセーフ)。
+- **装備**: スロットアイコン・名前・スロット/アイテムLv/レアリティ。単発結果や10連の
+  個別開示時(`big`)はステータス内訳と特殊効果名も表示する。
+
+### 軽量モード / reduced-motion
+
+`effectPolicy(settings).cutIn` が false(軽量モード or `prefers-reduced-motion: reduce`)
+のときは、ためる/1件ずつ開示の演出を丸ごとスキップし、抽選結果を即座にサマリー表示する。
+結果自体(排出率・天井・重複表示)は変わらず、演出の尺だけを削る。
+
+### 既知の注意点(オーバーレイのレイアウト)
+
+`.gacha-overlay` は固定オーバーレイに `overflow-y: auto` を付け、`.gacha-stage` は
+`display: flex; flex-direction: column; align-items: stretch;` にしてある。
+**`display:grid; place-items:center` に戻すと、10連サマリーグリッドが shrink-to-fit で
+横幅を持てず1カラム縦積みに壊れる**ので、このレイアウト方式を変更する場合は必ず
+10連の一括表示を実機で確認すること。
+
+---
+
+## 5. EQUIPMENT (装備) 画面
+
+`client/src/screens/EquipmentScreen.tsx`。`GET /api/inventory` で装備/素材/チケットを
+取得し、`POST /api/equipment/{equip,unequip,sell}` で操作する。
+
+### 情報設計
+
+- **一覧**: スロット(全部/武器/防具/装飾品)・レアリティ(6段階チップ)・
+  アイテムLv(下限セレクト)で絞り込み、アイテムLv順/レアリティ順/スロット順/名前順で
+  ソート。カードは Prefix+ベース+Suffix の合成名(`EquipmentInstance.name`)、
+  `stats`(フラット)、`statsPercent`(%)、`special`(特殊効果名)、装着中バッジを表示する。
+- **レアリティ枠**: `ItemRarity` 6段階(`irar-COMMON`〜`irar-MYTHIC`)。COMMON〜LEGENDARY
+  は色付きボーダー+グローを段階的に強め、**MYTHICだけ虹コニックグラデーションの回転枠**
+  (キャラのURと同格の特別感)にして明確に差別化する。
+- **装着前後の比較(ハクスラの核)**: カードを選ぶと DETAIL 区画が開き、装着先キャラを
+  選択すると `装着前後の変化` が即座に出る。「既存の武器と入れ替わります」の注記に続けて、
+  各ステータスを `現在値 ▶ 装着後の値 (+n / -n)` の行で並べる(`combinedDelta`:
+  新装備の加算 − 既存装備の加算、を1つのdeltaマップにまとめて計算)。増加は緑、
+  減少は赤で色分けする。**確定値ではなくクライアント側の概算プレビュー**であることを
+  踏まえ、最終値は装着実行後のサーバ応答(`EquipResponse.character`)で必ず上書きする。
+- **売却**: 「選択して売却」でチェックボックス選択モードに切り替え、複数選択して
+  一括売却する。**装着中の装備はチェックボックスを無効化し「装着中(売却不可)」と明示**
+  する(誤操作防止。サーバ側の `BAD_REQUEST` にも保険で当たる)。
+- **EQUIPPED 区画**: 装備を1つ以上装着しているキャラを一覧し、スロットごとに
+  「外す」ボタンを置く。キャラ詳細画面からもこの画面へ遷移でき(`装備を変更→`)、
+  遷移先は `route.equipCharUid` でそのキャラを装着候補として初期選択する。
+
+### エラー表示
+
+`describeError()`(`api/client.ts`)が `NOT_ENOUGH_CURRENCY` / `SLOT_MISMATCH` /
+`ALREADY_EQUIPPED` を含む全エラーコードを日本語文に変換する。EQUIPMENT / SUMMON 画面は
+これをそのままエラーボックスまたはボタン直下の理由文として表示する。
+
+---
+
+## 6. モックモード(デモモード)
 
 バックエンドが無くても **全画面と戦闘演出をレビューできる**モード。
 
@@ -228,30 +392,41 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
    - もしくは SETTINGS 画面の「モックモードで再読み込み」ボタン(localStorageに保存)
 3. 画面上部にピンクの `DEMO MODE` 帯が出れば有効
 4. DUNGEON → 任意のステージ → 「戦闘開始」で、その場で生成したログを再生する
-5. 解除は `?mock=1` を外してリロード、または SETTINGS の「モックモードを終了」
+   (ボス戦は装備ドロップが出やすい)
+5. **SUMMON → 「召喚: 孤月 紅葉(幽波紋)」バナー** で、ユーザー本人の探索者
+   `momiji_kc` の立ち絵を使ったガチャ演出(UR確定の天井は50連)を確認できる
+6. **装備** で所持装備8点の一覧・装着前後の比較・売却を確認できる
+7. 解除は `?mock=1` を外してリロード、または SETTINGS の「モックモードを終了」
 
 ### 中身
 
 | ファイル | 内容 |
 |---|---|
 | `client/src/api/mode.ts` | `?mock=1` / localStorage の判定 |
-| `client/src/mock/master.ts` | ダミーのキャラ10体・敵7体・スキル約30・AI 5種・2章8ステージ |
-| `client/src/mock/player.ts` | 所持キャラ8体・パーティ・所持金。一部キャラは次Lvまで残りEXPを少なく設定し、**1戦でレベルアップ演出が必ず出る** |
-| `client/src/mock/battle.ts` | 決定論的(シード固定)な簡易シミュレータ。`BattleLog` を生成する |
-| `client/src/mock/index.ts` | `GameApi` と同じ形の `mockApi`。`api()` が実装を切り替える |
+| `client/src/mock/master.ts` | ダミーのキャラ11体(**`ch_momiji_kc` = 孤月 紅葉、UR/VOID/CONTROL・SPECIALIST、`art.portrait: 'momiji_kc'`** を含む)・敵7体・スキル約35・AI 5種・2章8ステージ・コンボ7種(未実装キャラ参加の1種を含む)・`MOCK_PLANNED_CHARACTERS`(`ch_hitori` = 電子 独(幽波紋)、`ch_mikoto`)・素材7種 |
+| `client/src/mock/player.ts` | 所持キャラ8体・パーティ・所持金・**初期所持装備(`mockState.inventory`)**。一部キャラは次Lvまで残りEXPを少なく設定し、**1戦でレベルアップ演出が必ず出る**。`applyEquipmentStats` が装着中装備のステータスを `CharacterView.stats` に反映する |
+| `client/src/mock/equipment.ts` | 装備生成(ベース9種×Prefix6×Suffix6×特殊効果5、レアリティ別倍率)、ドロップ抽選(`rollMockDrops`)、初期所持品(`buildStarterInventory`) |
+| `client/src/mock/gacha.ts` | バナー定義3種(常設 / `momiji_kc` ピックアップ / 装備)、天井・10連保証・ピックアップ抽選を行う `pullBanner` |
+| `client/src/mock/battle.ts` | 決定論的(シード固定)な簡易シミュレータ。`BattleLog` を生成する(装備ドロップ・ガチャとは独立) |
+| `client/src/mock/index.ts` | `GameApi` と同じ形の `mockApi`(`inventory` / `equip` / `unequip` / `sellEquipment` / `getGacha` / `gachaPull` を含む)。`api()` が実装を切り替える |
 
 モックログには `BATTLE_START` / `TURN_START` / `ACTION_START` / `SKILL_USE` / `DAMAGE` /
 `HEAL` / `STATUS_APPLY` / `STATUS_TICK` / `STATUS_EXPIRE` / `STATUS_RESIST` /
 `GAUGE_CHANGE` / `ULT_READY` / `AWAKEN` / `COMBO` / `DEFEAT` / `ACTION_END` /
 `BATTLE_END` がすべて含まれる(覚醒条件は hpBelow / turnAtLeast / enemyDefeated /
-allyDefeated / skillUsed をモック側でも実装済み)。
+allyDefeated / skillUsed をモック側でも実装済み)。**装備の特殊効果(`fx: "equip:*"`)は
+モックの戦闘シミュレータでは未実装**(ドロップ/装着/ガチャの演出レビューが目的のため)。
 
-> モックのシミュレータは **演出レビュー専用の代役**であり、本番の戦闘計算とは無関係。
-> BATTLE 画面自体は本番でもモックでも「再生するだけ」で、同じコードを通る。
+> モックのシミュレータ・ガチャ・装備生成は **演出レビュー専用の代役**であり、本番の
+> 数値・排出率・バランス(スキル名や効果を含む)とは無関係。BATTLE / SUMMON / EQUIPMENT
+> 画面自体は本番でもモックでも「サーバ(またはモック)の応答をそのまま表示するだけ」で、
+> 同じコードを通る。UIコンポーネント側にキャラ固有のスキル名・効果・数値を
+> ハードコードしている箇所は無い(すべて `CharacterDef`/`Skill`/`EquipmentInstance` 等の
+> API応答から動的に描画する)。
 
 ---
 
-## 5. デザイン / アクセシビリティ
+## 7. デザイン / アクセシビリティ
 
 - ダークな近未来ネオン(シアン / マゼンタ / バイオレット)+ 和のアクセント(朱・金・青海波・桜)。
 - デザイントークンは `client/src/styles/base.css` の `:root` に集約。属性色は `--el-*`、
@@ -268,28 +443,33 @@ allyDefeated / skillUsed をモック側でも実装済み)。
 
 ---
 
-## 6. ディレクトリ
+## 8. ディレクトリ
 
 ```
 client/src/
   main.tsx                     エントリ (StrictMode は使わない: 演出の二重適用を避ける)
-  App.tsx                      ヘッダ + 画面切り替え
+  App.tsx                      ヘッダ + 画面切り替え (EQUIPMENT / GACHA を含む)
   api/
     client.ts                  API集約 / ApiResponse 封筒の剥がし / ApiClientError
     mode.ts                    モックモード判定
   state/
-    store.tsx                  Context + useState のみの状態管理
+    store.tsx                  Context + useState のみの状態管理 (inventory 含む)
     settings.ts                設定の永続化 / effectPolicy()
   components/
-    CharacterArt.tsx           プロシージャル キャラ画像 (pattern 6種)
+    CharacterArt.tsx           立ち絵(実画像) + プロシージャル キャラ画像 (pattern 6種) の合成描画。
+                                resolvePortraitSrc() が立ち絵の解決順を一元管理する
     common.tsx                 Loading / ErrorView / CharacterCard / StatRow / Panel
   battle/
-    fx.ts                      fxキー → 演出ファミリーの解決
+    fx.ts                      fxキー → 演出ファミリーの解決 (装備の `equip:` 接頭辞を含む)
     playback.ts                タイムライン再生エンジン (applyEvent / useBattlePlayback)
-    BattleScreen.tsx           BATTLE画面 + カットイン + リザルト
-  screens/                     HOME / CHARACTERS / CHARACTER_DETAIL / PARTY /
-                               DUNGEON / COLLECTION / SETTINGS
-  mock/                        デモモード用データ + 簡易シミュレータ
-  styles/                      base.css (トークン) / ui.css (カード) / battle.css (演出)
-  utils/labels.ts              日本語ラベル・戦力計算
+    BattleScreen.tsx           BATTLE画面 + カットイン + リザルト + ドロップ表示 (DropsSection)
+  screens/                     HOME / CHARACTERS / CHARACTER_DETAIL / PARTY / EQUIPMENT /
+                               GACHA / DUNGEON / COLLECTION / SETTINGS
+  mock/                        デモモード用データ + 簡易シミュレータ + ガチャ/装備/ドロップ
+  styles/                      base.css (トークン) / ui.css (カード) / battle.css (演出) /
+                               gacha.css (SUMMON画面 / EQUIPMENT画面 / ドロップ表示)
+  utils/
+    labels.ts                  日本語ラベル・戦力計算・ItemRarity/Rarity 共通のレアリティ解決
+    combo.ts                   コンボ判定 + 未実装キャラの名前解決 (comboMemberName)
+    equipment.ts                装備ステータス差分の計算 (装着前後の比較プレビュー)
 ```
