@@ -277,6 +277,13 @@ export interface CharacterArt {
   sigil: string;
   /** 背景パターン */
   pattern?: 'grid' | 'wave' | 'burst' | 'circuit' | 'petal' | 'void';
+  /**
+   * 立ち絵のアセットキー。実ファイルは client/public/portraits/<key>.webp に置く。
+   * 未指定のキャラは従来どおり primary/secondary/accent/sigil/pattern から
+   * プロシージャルに描画する(画像アセットを持たないキャラも成立させるため)。
+   * オフライン単体版では window.__AKATAN_PORTRAITS__[key] に data URL が注入される。
+   */
+  portrait?: string;
 }
 
 /** プレイヤー所持キャラ(DB行に対応) */
@@ -394,6 +401,221 @@ export interface Party {
 }
 
 /* ============================================================
+ * 装備 / ハクスラ (設計書§21〜§23)
+ * ------------------------------------------------------------
+ * 装備は「ベース + Prefix + Suffix + ランダムオプション + 特殊効果」で生成する。
+ * 同じ名前でも性能が違う、を成立させるため、生成結果は必ずサーバで確定し、
+ * 生成に使ったシードを保存してリプレイ/検証できるようにする。
+ * ========================================================== */
+
+/** ベースアイテム定義 (data/items/bases/*.json) */
+export interface ItemBaseDef {
+  id: string;
+  name: string;
+  slot: EquipmentSlot;
+  /** 出現しうる最低レアリティ */
+  minRarity?: ItemRarity;
+  /** このベースが伸ばす主ステータスと、Lv1相当の基準値 */
+  mainStat: StatKey;
+  mainValue: number;
+  /** 敵レベル1あたりの主ステータス上昇量 */
+  mainPerLevel?: number;
+  /** 出現条件のタグ(ドロップテーブルから参照) */
+  tags?: string[];
+  description?: string;
+}
+
+/** Prefix / Suffix 定義 (data/items/affixes/*.json) */
+export interface AffixDef {
+  id: string;
+  /** 「灼熱の」「〜の守り」など。名前生成に使う */
+  name: string;
+  kind: 'PREFIX' | 'SUFFIX';
+  /** このアフィックスが付きうる最低レアリティ */
+  minRarity?: ItemRarity;
+  /** 付与するステータスの範囲。生成時にこの範囲から乱数で決まる */
+  stats: AffixStatRange[];
+  /** 特殊効果(攻撃時に状態異常を付与するなど) */
+  special?: ItemSpecialEffect;
+  /** 対象スロット。省略時は全スロット */
+  slots?: EquipmentSlot[];
+}
+
+export interface AffixStatRange {
+  stat: StatKey;
+  min: number;
+  max: number;
+  /** true なら「%」として扱う(最終ステータスに対する割合加算) */
+  percent?: boolean;
+}
+
+/** 装備の特殊効果。戦闘エンジンが解釈する */
+export interface ItemSpecialEffect {
+  id: string;
+  name: string;
+  description: string;
+  /** 発動タイミング */
+  trigger: 'ON_ATTACK' | 'ON_HIT_TAKEN' | 'ON_BATTLE_START' | 'ON_KILL';
+  /** 発動確率(%) */
+  chance?: number;
+  /** 付与する状態異常 */
+  status?: StatusType;
+  duration?: number;
+  potency?: number;
+  /** 追加ダメージ倍率(ON_ATTACK 時) */
+  bonusDamage?: number;
+}
+
+/** 生成された装備インスタンス(DB行に対応) */
+export interface EquipmentInstance {
+  /** 所持インスタンスID */
+  uid: string;
+  baseId: string;
+  slot: EquipmentSlot;
+  rarity: ItemRarity;
+  /** 生成時に確定した表示名(例「灼熱の古びた剣・護り」) */
+  name: string;
+  /** アイテムレベル。ドロップ元ステージの敵レベルで決まる */
+  itemLevel: number;
+  prefixId?: string;
+  suffixId?: string;
+  /** 確定済みのステータス(フラット) */
+  stats: Partial<Record<StatKey, number>>;
+  /** 確定済みのステータス(%) */
+  statsPercent?: Partial<Record<StatKey, number>>;
+  special?: ItemSpecialEffect;
+  /** 強化レベル */
+  enhanceLevel?: number;
+  /** 生成に使ったシード(再現・検証用) */
+  seed?: number;
+  /** 装備しているキャラのuid。未装備なら undefined */
+  equippedBy?: string;
+  obtainedAt?: string;
+}
+
+/* ============================================================
+ * ドロップ / 素材 (設計書§24)
+ * ========================================================== */
+
+export type DropKind = 'GOLD' | 'EQUIPMENT' | 'MATERIAL' | 'CHARACTER' | 'SUMMON_TICKET';
+
+export interface DropEntry {
+  kind: DropKind;
+  /** MATERIAL/CHARACTER/SUMMON_TICKET のID */
+  id?: string;
+  /** 抽選重み(同じテーブル内の相対値) */
+  weight: number;
+  /** 個数の範囲 */
+  min?: number;
+  max?: number;
+  /** EQUIPMENT: 出現するスロットを限定する */
+  slot?: EquipmentSlot;
+  /** EQUIPMENT: レアリティの重み。省略時はテーブル既定 */
+  rarityWeights?: Partial<Record<ItemRarity, number>>;
+}
+
+export interface DropTableDef {
+  id: string;
+  /** 1回の戦闘で行う抽選回数 */
+  rolls: number;
+  /** 何も出ない枠を作るための重み */
+  nothingWeight?: number;
+  entries: DropEntry[];
+}
+
+/** 素材定義 (data/items/materials.json) */
+export interface MaterialDef {
+  id: string;
+  name: string;
+  rarity: ItemRarity;
+  description: string;
+  /** 用途の表示用 */
+  usage?: string;
+  icon?: string;
+}
+
+/** プレイヤーの所持素材 */
+export interface MaterialStack {
+  id: string;
+  count: number;
+}
+
+/** 1戦闘のドロップ結果(演出に使う) */
+export interface DropResult {
+  gold: number;
+  equipment: EquipmentInstance[];
+  materials: MaterialStack[];
+  /** 入手したキャラ(重複は変換される) */
+  characters: CharacterDropResult[];
+  tickets: MaterialStack[];
+}
+
+export interface CharacterDropResult {
+  defId: string;
+  name: string;
+  rarity: Rarity;
+  /** 既に所持していて変換された場合 true */
+  duplicate: boolean;
+  /** 重複時に得た素材 */
+  converted?: MaterialStack;
+  /** 新規入手時の所持インスタンスID */
+  uid?: string;
+}
+
+/* ============================================================
+ * ガチャ / 召喚 (設計書§26〜§27)
+ * ------------------------------------------------------------
+ * 排出率は data/gacha/*.json で管理する。抽選は必ずサーバ側で行い、
+ * クライアントは結果を受け取って演出するだけ(設計書§37)。
+ * ========================================================== */
+
+export interface GachaRates {
+  /** レアリティ -> 排出率(%)。合計100になること */
+  rarity: Partial<Record<Rarity, number>>;
+}
+
+export interface GachaPity {
+  /** この回数ハズレ続けたら確定させる */
+  count: number;
+  /** 確定させるレアリティ */
+  rarity: Rarity;
+}
+
+export interface GachaBannerDef {
+  id: string;
+  name: string;
+  description: string;
+  /** 召喚1回のコスト */
+  cost: { currency: 'GOLD' | 'TICKET'; amount: number; ticketId?: string };
+  /** 10連の割引コスト。省略時は単発x10 */
+  cost10?: { currency: 'GOLD' | 'TICKET'; amount: number; ticketId?: string };
+  rates: GachaRates;
+  /** 排出対象のキャラID。省略時は全キャラから該当レアリティを抽選 */
+  pool?: string[];
+  /** ピックアップ(同レアリティ内での優遇率%) */
+  pickup?: { defId: string; rate: number }[];
+  /** 天井 */
+  pity?: GachaPity;
+  /** 10連時の最低保証 */
+  guarantee10?: Rarity;
+  /** 装備を排出するバナーの場合 */
+  equipment?: { dropTable: string; itemLevel: number };
+  art?: { primary: string; accent: string };
+}
+
+/** 召喚1回の結果 */
+export interface GachaPullResult {
+  /** キャラ召喚の結果 */
+  character?: CharacterDropResult;
+  /** 装備召喚の結果 */
+  equipment?: EquipmentInstance;
+  /** この排出が天井によるものか */
+  byPity?: boolean;
+  /** 演出用: レアリティ */
+  rarity: Rarity | ItemRarity;
+}
+
+/* ============================================================
  * キャラクターコンボ (設計書§13〜§15)
  * ------------------------------------------------------------
  * 本作の看板システム。「誰と組ませるか」を性能に反映させるための仕組み。
@@ -456,6 +678,20 @@ export interface ComboDef {
   effects: ComboEffect[];
   /** 演出キー */
   fx?: string;
+}
+
+/**
+ * まだ実装されていないが、コンボ定義から参照されるキャラ。
+ * (data/system/planned-characters.json)
+ *
+ * 「相方が未実装のコンボ」を先に定義できるようにするための仕組み。
+ * これが無いと、参照切れ扱いでバリデータが落ちるか、UIがIDを生で出してしまう。
+ */
+export interface PlannedCharacterDef {
+  id: string;
+  name: string;
+  /** 実装予定であることの補足 */
+  note?: string;
 }
 
 /** 編成画面で「今この編成で発動するコンボ」を返すための表示用型 */

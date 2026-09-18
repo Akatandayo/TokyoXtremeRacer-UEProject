@@ -6,6 +6,8 @@
 import type {
   CharacterView, ChapterDef, StageDef, BattleLog, BattleRewards,
   PlayerProfile, Party, AiProfile, Skill, EnemyDef, CharacterDef, ComboDef,
+  EquipmentInstance, MaterialStack, MaterialDef, DropResult, EquipmentSlot,
+  GachaBannerDef, GachaPullResult, PlannedCharacterDef,
 } from './types.js';
 
 /** 全レスポンスの共通封筒 */
@@ -23,6 +25,9 @@ export type ApiErrorCode =
   | 'PARTY_EMPTY'
   | 'PARTY_INVALID'
   | 'STAGE_LOCKED'
+  | 'NOT_ENOUGH_CURRENCY'
+  | 'SLOT_MISMATCH'
+  | 'ALREADY_EQUIPPED'
   | 'INTERNAL';
 
 /* ---------- GET /api/player ---------- */
@@ -30,6 +35,68 @@ export interface PlayerStateResponse {
   player: PlayerProfile;
   characters: CharacterView[];
   party: Party;
+  /** 所持している装備・素材・召喚チケット */
+  inventory?: InventoryResponse;
+}
+
+/* ---------- GET /api/inventory ---------- */
+export interface InventoryResponse {
+  equipment: EquipmentInstance[];
+  materials: MaterialStack[];
+  tickets: MaterialStack[];
+}
+
+/* ---------- POST /api/equipment/equip ---------- */
+export interface EquipRequest {
+  /** 装備インスタンスID */
+  equipmentUid: string;
+  /** 装備させるキャラの所持インスタンスID */
+  characterUid: string;
+}
+export interface EquipResponse {
+  /** 装備後のキャラ */
+  character: CharacterView;
+  inventory: InventoryResponse;
+}
+
+/* ---------- POST /api/equipment/unequip ---------- */
+export interface UnequipRequest {
+  characterUid: string;
+  slot: EquipmentSlot;
+}
+
+/* ---------- POST /api/equipment/sell ---------- */
+export interface SellEquipmentRequest {
+  equipmentUids: string[];
+}
+export interface SellEquipmentResponse {
+  gold: number;
+  player: PlayerProfile;
+  inventory: InventoryResponse;
+}
+
+/* ---------- GET /api/gacha ---------- */
+export interface GachaListResponse {
+  banners: GachaBannerDef[];
+  player: PlayerProfile;
+  /** バナーID -> 現在の天井カウント */
+  pityCounters: Record<string, number>;
+  tickets: MaterialStack[];
+}
+
+/* ---------- POST /api/gacha/pull ---------- */
+export interface GachaPullRequest {
+  bannerId: string;
+  /** 1 または 10 */
+  count: number;
+}
+export interface GachaPullResponse {
+  results: GachaPullResult[];
+  player: PlayerProfile;
+  characters: CharacterView[];
+  inventory: InventoryResponse;
+  /** 引いた後の天井カウント */
+  pityCounter: number;
 }
 
 /* ---------- GET /api/characters ---------- */
@@ -51,6 +118,13 @@ export interface MasterDataResponse {
    * サーバの戦闘エンジンが行うので、これを配ってもサーバ権威は崩れない)。
    */
   combos?: ComboDef[];
+  /** 素材定義(図鑑・ドロップ表示用) */
+  materials?: MaterialDef[];
+  /**
+   * コンボ定義から参照されているが未実装のキャラ。
+   * UIが「〇〇(実装予定)」と名前で表示できるようにするため。
+   */
+  plannedCharacters?: PlannedCharacterDef[];
 }
 
 /* ---------- PUT /api/party ---------- */
@@ -88,6 +162,10 @@ export interface BattleStartResponse {
   /** 戦闘後の最新キャラ状態 */
   characters: CharacterView[];
   stage: StageDef;
+  /** 勝利時のドロップ(装備・素材・キャラ・チケット)。敗北時は null */
+  drops?: DropResult | null;
+  /** ドロップ後の所持品 */
+  inventory?: InventoryResponse;
 }
 
 export const API_BASE = '/api';

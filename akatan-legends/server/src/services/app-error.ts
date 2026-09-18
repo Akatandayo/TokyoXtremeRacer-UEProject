@@ -15,6 +15,11 @@ const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   // P0-1 (第2ラウンド差し戻し): 統括の指示で 403 ではなく 400 に統一。
   // (他のバリデーション系エラー PARTY_INVALID 等も 400 なので揃える)
   STAGE_LOCKED: 400,
+  // ガチャ/装備 (Phase 3/5): いずれもクライアントの要求が現在の所持状況と
+  // 噛み合っていないケースなので、他のバリデーション系と揃えて 400 にする。
+  NOT_ENOUGH_CURRENCY: 400,
+  SLOT_MISMATCH: 400,
+  ALREADY_EQUIPPED: 400,
   INTERNAL: 500,
 };
 
