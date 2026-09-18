@@ -6,6 +6,7 @@ import './styles/base.css';
 import './styles/ui.css';
 import './styles/battle.css';
 import './styles/gacha.css';
+import './styles/rebirth.css';
 
 const el = document.getElementById('root');
 if (!el) {

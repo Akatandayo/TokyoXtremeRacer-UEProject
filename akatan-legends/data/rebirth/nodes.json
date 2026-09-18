@@ -5,8 +5,14 @@
     "description": "何度生まれ変わっても、同じ得物を振り続けた実感だけは刃筋に残る。攻撃力を高める、攻撃型のもっとも素朴な鍛錬。",
     "path": "ATTACK",
     "cost": 1,
-    "maxRank": 5,
-    "effects": [{ "kind": "STAT_PERCENT", "stat": "attack", "value": 3 }]
+    "maxRank": 3,
+    "effects": [
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "attack",
+        "value": 3
+      }
+    ]
   },
   {
     "id": "rb_atk_eye",
@@ -14,8 +20,14 @@
     "description": "生まれ変わるたびに、相手の隙が前よりも長く見えるようになる。クリティカル率を高める。",
     "path": "ATTACK",
     "cost": 1,
-    "maxRank": 5,
-    "effects": [{ "kind": "STAT_PERCENT", "stat": "critical", "value": 2 }]
+    "maxRank": 3,
+    "effects": [
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "critical",
+        "value": 2
+      }
+    ]
   },
   {
     "id": "rb_atk_finish",
@@ -25,7 +37,13 @@
     "cost": 2,
     "maxRank": 4,
     "requiresPathPoints": 6,
-    "effects": [{ "kind": "STAT_PERCENT", "stat": "criticalDamage", "value": 5 }]
+    "effects": [
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "criticalDamage",
+        "value": 8.0
+      }
+    ]
   },
   {
     "id": "rb_atk_flow",
@@ -35,7 +53,12 @@
     "cost": 2,
     "maxRank": 4,
     "requiresPathPoints": 6,
-    "effects": [{ "kind": "SKILL_POWER", "value": 4 }]
+    "effects": [
+      {
+        "kind": "SKILL_POWER",
+        "value": 6.4
+      }
+    ]
   },
   {
     "id": "rb_atk_philosophy",
@@ -46,7 +69,13 @@
     "maxRank": 3,
     "requiresPathPoints": 16,
     "requiresRebirth": 2,
-    "effects": [{ "kind": "GROWTH_PERCENT", "stat": "attack", "value": 4 }]
+    "effects": [
+      {
+        "kind": "GROWTH_PERCENT",
+        "stat": "attack",
+        "value": 8.8
+      }
+    ]
   },
   {
     "id": "rb_atk_zenith",
@@ -58,8 +87,15 @@
     "requiresPathPoints": 28,
     "requiresRebirth": 4,
     "effects": [
-      { "kind": "STAT_PERCENT", "stat": "attack", "value": 15 },
-      { "kind": "SKILL_POWER", "value": 15 }
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "attack",
+        "value": 36.0
+      },
+      {
+        "kind": "SKILL_POWER",
+        "value": 36.0
+      }
     ]
   },
   {
@@ -68,8 +104,14 @@
     "description": "生まれ変わるたびに、一歩目が速くなる。速度を高める、速度型のもっとも素朴な心得。",
     "path": "SPEED",
     "cost": 1,
-    "maxRank": 5,
-    "effects": [{ "kind": "STAT_PERCENT", "stat": "speed", "value": 3 }]
+    "maxRank": 3,
+    "effects": [
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "speed",
+        "value": 3
+      }
+    ]
   },
   {
     "id": "rb_spd_ready",
@@ -77,8 +119,13 @@
     "description": "戦いの始まりにはもう慣れている。戦闘開始時の行動ゲージを高める。",
     "path": "SPEED",
     "cost": 1,
-    "maxRank": 5,
-    "effects": [{ "kind": "GAUGE_START", "value": 4 }]
+    "maxRank": 3,
+    "effects": [
+      {
+        "kind": "GAUGE_START",
+        "value": 4
+      }
+    ]
   },
   {
     "id": "rb_spd_instinct",
@@ -88,7 +135,12 @@
     "cost": 2,
     "maxRank": 4,
     "requiresPathPoints": 6,
-    "effects": [{ "kind": "ULT_GAUGE_START", "value": 5 }]
+    "effects": [
+      {
+        "kind": "ULT_GAUGE_START",
+        "value": 8.0
+      }
+    ]
   },
   {
     "id": "rb_spd_accel",
@@ -98,7 +150,13 @@
     "cost": 2,
     "maxRank": 4,
     "requiresPathPoints": 6,
-    "effects": [{ "kind": "STAT_PERCENT", "stat": "speed", "value": 3 }]
+    "effects": [
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "speed",
+        "value": 4.8
+      }
+    ]
   },
   {
     "id": "rb_spd_chaser",
@@ -109,7 +167,13 @@
     "maxRank": 3,
     "requiresPathPoints": 16,
     "requiresRebirth": 2,
-    "effects": [{ "kind": "GROWTH_PERCENT", "stat": "speed", "value": 5 }]
+    "effects": [
+      {
+        "kind": "GROWTH_PERCENT",
+        "stat": "speed",
+        "value": 11.0
+      }
+    ]
   },
   {
     "id": "rb_spd_instant",
@@ -121,8 +185,15 @@
     "requiresPathPoints": 28,
     "requiresRebirth": 4,
     "effects": [
-      { "kind": "STAT_PERCENT", "stat": "speed", "value": 10 },
-      { "kind": "ULT_GAUGE_START", "value": 20 }
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "speed",
+        "value": 24.0
+      },
+      {
+        "kind": "ULT_GAUGE_START",
+        "value": 48.0
+      }
     ]
   },
   {
@@ -131,8 +202,14 @@
     "description": "何度倒れても、また立ち上がる構えだけは覚えている。HPを高める、耐久型のもっとも素朴な心得。",
     "path": "ENDURANCE",
     "cost": 1,
-    "maxRank": 5,
-    "effects": [{ "kind": "STAT_PERCENT", "stat": "hp", "value": 3 }]
+    "maxRank": 3,
+    "effects": [
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "hp",
+        "value": 3
+      }
+    ]
   },
   {
     "id": "rb_end_wall",
@@ -140,8 +217,14 @@
     "description": "受け止め方を繰り返し学んだ者の防御。防御力を高める。",
     "path": "ENDURANCE",
     "cost": 1,
-    "maxRank": 5,
-    "effects": [{ "kind": "STAT_PERCENT", "stat": "defense", "value": 3 }]
+    "maxRank": 3,
+    "effects": [
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "defense",
+        "value": 3
+      }
+    ]
   },
   {
     "id": "rb_end_grit",
@@ -151,7 +234,13 @@
     "cost": 2,
     "maxRank": 4,
     "requiresPathPoints": 6,
-    "effects": [{ "kind": "STAT_FLAT", "stat": "resistance", "value": 3 }]
+    "effects": [
+      {
+        "kind": "STAT_FLAT",
+        "stat": "resistance",
+        "value": 4.8
+      }
+    ]
   },
   {
     "id": "rb_end_foundation",
@@ -161,7 +250,13 @@
     "cost": 2,
     "maxRank": 4,
     "requiresPathPoints": 6,
-    "effects": [{ "kind": "STAT_PERCENT", "stat": "defense", "value": 4 }]
+    "effects": [
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "defense",
+        "value": 6.4
+      }
+    ]
   },
   {
     "id": "rb_end_bloodline",
@@ -172,7 +267,13 @@
     "maxRank": 3,
     "requiresPathPoints": 16,
     "requiresRebirth": 2,
-    "effects": [{ "kind": "GROWTH_PERCENT", "stat": "hp", "value": 5 }]
+    "effects": [
+      {
+        "kind": "GROWTH_PERCENT",
+        "stat": "hp",
+        "value": 11.0
+      }
+    ]
   },
   {
     "id": "rb_end_bastion",
@@ -184,8 +285,16 @@
     "requiresPathPoints": 28,
     "requiresRebirth": 4,
     "effects": [
-      { "kind": "STAT_PERCENT", "stat": "defense", "value": 15 },
-      { "kind": "STAT_FLAT", "stat": "resistance", "value": 15 }
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "defense",
+        "value": 36.0
+      },
+      {
+        "kind": "STAT_FLAT",
+        "stat": "resistance",
+        "value": 36.0
+      }
     ]
   },
   {
@@ -194,8 +303,14 @@
     "description": "何度も誰かを救い直してきた手が覚えている技。回復力を高める、特殊型のもっとも素朴な心得。",
     "path": "SPECIAL",
     "cost": 1,
-    "maxRank": 5,
-    "effects": [{ "kind": "STAT_PERCENT", "stat": "healing", "value": 4 }]
+    "maxRank": 3,
+    "effects": [
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "healing",
+        "value": 4
+      }
+    ]
   },
   {
     "id": "rb_spc_insight",
@@ -203,8 +318,13 @@
     "description": "生まれ変わるたびに、技の冴えが少しずつ増していく。スキル威力を高める。",
     "path": "SPECIAL",
     "cost": 1,
-    "maxRank": 5,
-    "effects": [{ "kind": "SKILL_POWER", "value": 3 }]
+    "maxRank": 3,
+    "effects": [
+      {
+        "kind": "SKILL_POWER",
+        "value": 3
+      }
+    ]
   },
   {
     "id": "rb_spc_duality",
@@ -215,8 +335,16 @@
     "maxRank": 4,
     "requiresPathPoints": 6,
     "effects": [
-      { "kind": "STAT_PERCENT", "stat": "attack", "value": 2 },
-      { "kind": "STAT_PERCENT", "stat": "defense", "value": 2 }
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "attack",
+        "value": 3.2
+      },
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "defense",
+        "value": 3.2
+      }
     ]
   },
   {
@@ -228,8 +356,14 @@
     "maxRank": 4,
     "requiresPathPoints": 6,
     "effects": [
-      { "kind": "GAUGE_START", "value": 3 },
-      { "kind": "ULT_GAUGE_START", "value": 3 }
+      {
+        "kind": "GAUGE_START",
+        "value": 4.8
+      },
+      {
+        "kind": "ULT_GAUGE_START",
+        "value": 4.8
+      }
     ]
   },
   {
@@ -241,7 +375,13 @@
     "maxRank": 3,
     "requiresPathPoints": 16,
     "requiresRebirth": 2,
-    "effects": [{ "kind": "GROWTH_PERCENT", "stat": "healing", "value": 5 }]
+    "effects": [
+      {
+        "kind": "GROWTH_PERCENT",
+        "stat": "healing",
+        "value": 11.0
+      }
+    ]
   },
   {
     "id": "rb_spc_axiom",
@@ -253,8 +393,15 @@
     "requiresPathPoints": 28,
     "requiresRebirth": 4,
     "effects": [
-      { "kind": "SKILL_POWER", "value": 15 },
-      { "kind": "STAT_PERCENT", "stat": "healing", "value": 15 }
+      {
+        "kind": "SKILL_POWER",
+        "value": 36.0
+      },
+      {
+        "kind": "STAT_PERCENT",
+        "stat": "healing",
+        "value": 36.0
+      }
     ]
   }
 ]

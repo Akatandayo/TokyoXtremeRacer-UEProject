@@ -3,9 +3,11 @@ import React, { useMemo, useState } from 'react';
 import type { Element, Role, Rarity } from '@akatan/shared';
 import { useStore } from '../state/store';
 import { CharacterCard, Panel } from '../components/common';
+import { RebirthPathBadge } from '../components/RebirthPath';
 import {
   ELEMENT_LABEL, ROLE_FULL, RARITY_ORDER, statPower, formatNumber,
 } from '../utils/labels';
+import { primaryRebirthPath } from '../utils/rebirth';
 
 const ELEMENTS: Element[] = ['FIRE', 'WATER', 'EARTH', 'WIND', 'LIGHT', 'DARK', 'VOID'];
 const ROLES: Role[] = ['TANK', 'ATTACKER', 'SUPPORT', 'HEALER', 'CONTROL', 'SPECIALIST'];
@@ -100,13 +102,19 @@ export function CharactersScreen(): JSX.Element {
         </div>
       ) : (
         <div className="grid-auto">
-          {list.map((c) => (
-            <CharacterCard
-              key={c.owned.uid}
-              view={c}
-              onClick={() => store.navigate('CHARACTER_DETAIL', c.owned.uid)}
-            />
-          ))}
+          {list.map((c) => {
+            // P4-1(§19): 転生ビルドが違えば同じキャラでも性能が違うので、
+            // 一覧でも主系統(最も投資している系統)が分かるようにする。未転生/未投資は非表示。
+            const path = primaryRebirthPath(c.owned.rebirthNodes, store.master?.rebirthNodes);
+            return (
+              <CharacterCard
+                key={c.owned.uid}
+                view={c}
+                onClick={() => store.navigate('CHARACTER_DETAIL', c.owned.uid)}
+                footer={path ? <RebirthPathBadge path={path} /> : undefined}
+              />
+            );
+          })}
         </div>
       )}
     </Panel>

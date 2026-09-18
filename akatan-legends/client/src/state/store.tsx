@@ -15,7 +15,7 @@ import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './s
 export type Screen =
   | 'HOME' | 'CHARACTERS' | 'CHARACTER_DETAIL' | 'PARTY'
   | 'DUNGEON' | 'BATTLE' | 'COLLECTION' | 'SETTINGS'
-  | 'EQUIPMENT' | 'GACHA';
+  | 'EQUIPMENT' | 'GACHA' | 'REBIRTH';
 
 export interface Route {
   screen: Screen;

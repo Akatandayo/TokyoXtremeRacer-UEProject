@@ -18,12 +18,14 @@ import type {
   GachaBannerDef, GachaListResponse, GachaPullResponse, GachaPullResult, InventoryResponse,
   ItemBaseDef, ItemRarity, LevelUpInfo, MasterDataResponse, MaterialDef, MaterialStack,
   OwnedCharacter, Party, PlannedCharacterDef, PlayerProfile, PlayerStateResponse,
-  ProgressionConfig, Rarity, SellEquipmentResponse, Skill, StageDef, UpdatePartyResponse,
+  ProgressionConfig, Rarity, RebirthConfig, RebirthNodeDef, RebirthPath, RebirthResponse,
+  RebirthStatus, RebirthStatusResponse, ResetRebirthResponse, SellEquipmentResponse,
+  Skill, StageDef, UpdatePartyResponse,
 } from '@akatan/shared';
 import { runBattle } from '../server/src/battle/index.js';
 import type { CombatantInput } from '../server/src/battle/contract.js';
 import {
-  computeEnemyStats, computeOwnedStats, diffStats, expToNext,
+  computeEnemyStats, computeOwnedStats, diffStats, expToNext, resolveRebirthCombatMods,
 } from '../server/src/services/progression.js';
 import {
   contextFromGameData, rollEquipment, DEFAULT_ITEM_RARITY_WEIGHTS,
@@ -94,6 +96,16 @@ const plannedCharacters = (() => {
   }
   return [] as PlannedCharacterDef[];
 })();
+const rebirthNodes = (() => {
+  for (const [file, content] of Object.entries(jsonFiles)) {
+    if (file.includes('/data/rebirth/')) return asArray<RebirthNodeDef>(content);
+  }
+  return [] as RebirthNodeDef[];
+})();
+const rebirthConfig: RebirthConfig = {
+  requiredLevel: 60, pointsPerRebirth: 5, growthBonusPercent: 3, maxRebirth: 10,
+  ...(single<RebirthConfig>('rebirth.json') ?? {}),
+};
 const affinity = single<AffinityTable>('affinity.json') ?? {};
 const progression: ProgressionConfig = {
   levelCap: 60,
@@ -112,6 +124,7 @@ for (const ch of chapters) for (const st of ch.stages ?? []) stageById.set(st.id
 const dropTableById = new Map(dropTables.map((d) => [d.id, d]));
 const bannerById = new Map(gachaBanners.map((b) => [b.id, b]));
 const materialById = new Map(materials.map((m) => [m.id, m]));
+const rebirthNodeById = new Map(rebirthNodes.map((n) => [n.id, n]));
 
 /** 装備生成はサーバと同じモジュール(item-generator)を共有する */
 const itemCtx: ItemGeneratorContext = contextFromGameData({
@@ -278,8 +291,10 @@ function toView(owned: OwnedCharacter): CharacterView | null {
   return {
     owned,
     def,
-    // 装備込みで再計算する(サーバと同じ progression モジュールを共有)
-    stats: computeOwnedStats(def, owned, equipmentByUid()),
+    // 装備・転生込みで再計算する(サーバと同じ progression モジュールを共有)
+    stats: computeOwnedStats(
+      def, owned, equipmentByUid(), rebirthNodeById, rebirthConfig.growthBonusPercent,
+    ),
     expToNext: expToNext(owned.level, progression),
     skills: (def.skills ?? []).map(resolveSkill),
     normalAttack: resolveSkill(def.normalAttack),
@@ -326,6 +341,10 @@ function toAlly(view: CharacterView, slot: number): CombatantInput {
     rarity: view.def.rarity,
     tags: view.def.tags,
     ...(specials.length > 0 ? { specials } : {}),
+    ...(() => {
+      const mods = resolveRebirthCombatMods(view.owned.rebirthNodes, rebirthNodeById);
+      return mods && Object.keys(mods).length > 0 ? { rebirthMods: mods } : {};
+    })(),
   };
 }
 
@@ -578,6 +597,90 @@ function payCost(cost: GachaBannerDef['cost']): boolean {
   return true;
 }
 
+
+/* ============================================================
+ * 転生 (設計書§17〜§20)
+ * ------------------------------------------------------------
+ * サーバ版(rebirth-service.ts)と同じ規則で実装する。単体版だけ判定が甘いと
+ * 「単体版では転生できるのに本体ではできない」という食い違いが起きるため。
+ * ========================================================== */
+
+function pathPointsOf(ranks: Record<string, number> | undefined): Record<RebirthPath, number> {
+  const out: Record<RebirthPath, number> = { ATTACK: 0, SPEED: 0, ENDURANCE: 0, SPECIAL: 0 };
+  for (const [id, rank] of Object.entries(ranks ?? {})) {
+    const node = rebirthNodeById.get(id);
+    if (node) out[node.path] += node.cost * rank;
+  }
+  return out;
+}
+
+function materialCount(id: string): number {
+  return (state.materials ?? []).find((m) => m.id === id)?.count ?? 0;
+}
+
+function hasMaterials(cost: RebirthConfig['cost']): boolean {
+  return (cost ?? []).every((c) => materialCount(c.materialId) >= c.count);
+}
+
+function consumeMaterials(cost: RebirthConfig['cost']): void {
+  for (const c of cost ?? []) {
+    const stack = (state.materials ?? []).find((m) => m.id === c.materialId);
+    if (stack) stack.count -= c.count;
+  }
+  state.materials = (state.materials ?? []).filter((m) => m.count > 0);
+}
+
+function materialLabel(cost: RebirthConfig['cost']): string {
+  return (cost ?? [])
+    .map((c) => `${materialById.get(c.materialId)?.name ?? c.materialId} ×${c.count}`)
+    .join(' / ');
+}
+
+function rebirthStatusOf(owned: OwnedCharacter): RebirthStatus {
+  const cfg = rebirthConfig;
+  let canRebirth = true;
+  let reason: string | undefined;
+  if (owned.level < cfg.requiredLevel) {
+    canRebirth = false;
+    reason = `転生にはLv${cfg.requiredLevel}以上が必要です(現在Lv${owned.level})`;
+  } else if ((owned.rebirth ?? 0) >= cfg.maxRebirth) {
+    canRebirth = false;
+    reason = `転生回数が上限(${cfg.maxRebirth}回)に達しています`;
+  } else if (!hasMaterials(cfg.cost)) {
+    canRebirth = false;
+    reason = `転生には ${materialLabel(cfg.cost)} が必要です`;
+  }
+  return {
+    rebirth: owned.rebirth ?? 0,
+    canRebirth,
+    reason,
+    pointsAvailable: owned.rebirthPointsAvailable ?? 0,
+    nodes: { ...(owned.rebirthNodes ?? {}) },
+    pathPoints: pathPointsOf(owned.rebirthNodes),
+    growthBonusPercent: cfg.growthBonusPercent * (owned.rebirth ?? 0),
+  };
+}
+
+function statSnapshot(owned: OwnedCharacter): Record<string, number> {
+  const def = charById.get(owned.defId);
+  if (!def) return {};
+  return computeOwnedStats(
+    def, owned, equipmentByUid(), rebirthNodeById, rebirthConfig.growthBonusPercent,
+  ) as unknown as Record<string, number>;
+}
+
+function requireOwned(uid: string): OwnedCharacter {
+  const owned = state.owned.find((o) => o.uid === uid);
+  if (!owned) throw new Error('キャラクターが見つかりません。');
+  return owned;
+}
+
+function viewOf(owned: OwnedCharacter) {
+  const view = toView(owned);
+  if (!view) throw new Error('キャラクター定義が見つかりません。');
+  return view;
+}
+
 /* ============================================================
  * 公開API (client/src/mock/index.ts と同じ形)
  * ========================================================== */
@@ -602,7 +705,10 @@ export const mockApi = {
 
   async getMaster(): Promise<MasterDataResponse> {
     await delay(20);
-    return { characters, enemies, skills, aiProfiles, chapters, combos, materials, plannedCharacters };
+    return {
+      characters, enemies, skills, aiProfiles, chapters, combos, materials, plannedCharacters,
+      rebirthNodes, rebirthConfig,
+    };
   },
 
   async getDungeons(): Promise<DungeonListResponse> {
@@ -788,6 +894,113 @@ export const mockApi = {
     state.player = { ...state.player, gold: state.player.gold + gold };
     save(state);
     return { gold, player: { ...state.player }, inventory: inventory() };
+  },
+
+  /* ---------- 転生 ---------- */
+
+  async getRebirthStatus(uid: string): Promise<RebirthStatusResponse> {
+    await delay(20);
+    const owned = requireOwned(uid);
+    return { character: viewOf(owned), status: rebirthStatusOf(owned) };
+  },
+
+  async rebirth(uid: string): Promise<RebirthResponse> {
+    await delay(60);
+    const owned = requireOwned(uid);
+    const status = rebirthStatusOf(owned);
+    if (!status.canRebirth) {
+      const err = new Error(status.reason ?? '転生できません。');
+      (err as Error & { code?: string }).code = 'REBIRTH_LOCKED';
+      throw err;
+    }
+
+    const before = {
+      level: owned.level,
+      rebirth: owned.rebirth ?? 0,
+      stats: statSnapshot(owned),
+    };
+
+    // 素材消費・レベルリセット・ポイント付与をまとめて行う
+    consumeMaterials(rebirthConfig.cost);
+    owned.level = 1;
+    owned.exp = 0;
+    owned.rebirth = (owned.rebirth ?? 0) + 1;
+    owned.rebirthPointsAvailable =
+      (owned.rebirthPointsAvailable ?? 0) + rebirthConfig.pointsPerRebirth;
+    // 取得済みノードは維持する。転生のたびに振り直しでは育成が積み上がらないため
+    save(state);
+
+    const after = {
+      level: owned.level,
+      rebirth: owned.rebirth,
+      stats: statSnapshot(owned),
+    };
+    return {
+      character: viewOf(owned),
+      status: rebirthStatusOf(owned),
+      player: { ...state.player },
+      before,
+      after,
+      inventory: inventory(),
+    };
+  },
+
+  async allocateRebirth(uid: string, nodeId: string, ranks = 1): Promise<RebirthStatusResponse> {
+    await delay(20);
+    const owned = requireOwned(uid);
+    const node = rebirthNodeById.get(nodeId);
+    if (!node) throw new Error(`転生ノードが見つかりません: ${nodeId}`);
+
+    const n = Math.max(1, Math.floor(ranks));
+    const current = owned.rebirthNodes?.[nodeId] ?? 0;
+    const lock = (msg: string) => {
+      const err = new Error(msg);
+      (err as Error & { code?: string }).code = 'REBIRTH_LOCKED';
+      return err;
+    };
+    if (current + n > node.maxRank) {
+      throw lock(`このノードは最大${node.maxRank}ランクまでです(現在${current})`);
+    }
+    if ((node.requiresRebirth ?? 0) > (owned.rebirth ?? 0)) {
+      throw lock(`転生${node.requiresRebirth}回以上で解放されます(現在${owned.rebirth ?? 0}回)`);
+    }
+    const invested = pathPointsOf(owned.rebirthNodes)[node.path];
+    if ((node.requiresPathPoints ?? 0) > invested) {
+      throw lock(`この系統に累計${node.requiresPathPoints}ポイント必要です(現在${invested})`);
+    }
+    const cost = node.cost * n;
+    if ((owned.rebirthPointsAvailable ?? 0) < cost) {
+      const err = new Error(`転生ポイントが足りません(必要${cost} / 所持${owned.rebirthPointsAvailable ?? 0})`);
+      (err as Error & { code?: string }).code = 'NOT_ENOUGH_POINTS';
+      throw err;
+    }
+
+    owned.rebirthNodes = { ...(owned.rebirthNodes ?? {}), [nodeId]: current + n };
+    owned.rebirthPointsAvailable = (owned.rebirthPointsAvailable ?? 0) - cost;
+    save(state);
+    return { character: viewOf(owned), status: rebirthStatusOf(owned) };
+  },
+
+  async resetRebirth(uid: string): Promise<ResetRebirthResponse> {
+    await delay(30);
+    const owned = requireOwned(uid);
+    if (!rebirthConfig.resetCost || rebirthConfig.resetCost.length === 0) {
+      const err = new Error('このゲームでは振り直しはできません。');
+      (err as Error & { code?: string }).code = 'REBIRTH_LOCKED';
+      throw err;
+    }
+    if (!hasMaterials(rebirthConfig.resetCost)) {
+      const err = new Error(`振り直しには ${materialLabel(rebirthConfig.resetCost)} が必要です`);
+      (err as Error & { code?: string }).code = 'REBIRTH_LOCKED';
+      throw err;
+    }
+    consumeMaterials(rebirthConfig.resetCost);
+    // 消費済みポイントを全額返す
+    const spent = Object.values(pathPointsOf(owned.rebirthNodes)).reduce((a, b) => a + b, 0);
+    owned.rebirthNodes = {};
+    owned.rebirthPointsAvailable = (owned.rebirthPointsAvailable ?? 0) + spent;
+    save(state);
+    return { character: viewOf(owned), status: rebirthStatusOf(owned), inventory: inventory() };
   },
 
   /* ---------- ガチャ ---------- */

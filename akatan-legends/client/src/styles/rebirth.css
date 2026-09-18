@@ -1,0 +1,362 @@
+/* ============================================================
+ * REBIRTH (転生) 画面 — 設計書§17〜§20
+ * 転生=長期育成 / 覚醒=戦闘中だけの特殊状態、という役割の違いが伝わるよう、
+ * 覚醒(AWAKENING, battle.css)とは配色・語調を分けている(金/シアン基調、
+ * ガチャUR(虹コニックグラデ)より格を上げない)。
+ * ========================================================== */
+
+/* ---------- 主系統バッジ(一覧・詳細で共用) ---------- */
+
+.path-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--path-color, var(--cyan));
+  border: 1px solid color-mix(in srgb, var(--path-color, var(--cyan)) 55%, transparent);
+  background: color-mix(in srgb, var(--path-color, var(--cyan)) 14%, transparent);
+  white-space: nowrap;
+}
+.path-badge-md { font-size: 11.5px; padding: 3px 10px; }
+.path-badge-ic {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 900;
+  background: var(--path-color, var(--cyan));
+  color: #06070d;
+}
+
+/* ---------- CHARACTER DETAIL: 系統別投資バー ---------- */
+
+.rebirth-unused-pip {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--gold);
+  border-radius: 99px;
+  padding: 2px 9px;
+  letter-spacing: 0.04em;
+  animation: rn-pip-pulse 1.8s ease-in-out infinite;
+}
+@keyframes rn-pip-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 204, 87, 0.5); }
+  50% { box-shadow: 0 0 10px rgba(255, 204, 87, 0.85); }
+}
+
+.path-row { display: grid; grid-template-columns: 52px 1fr 28px; align-items: center; gap: 8px; font-size: 11px; }
+.path-row-label { font-weight: 800; }
+.path-row-bar { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+.path-row-bar span { display: block; height: 100%; border-radius: 99px; transition: width 0.25s; }
+.path-row-value { text-align: right; color: var(--text-mid); font-variant-numeric: tabular-nums; }
+
+/* ---------- REBIRTH 画面: 実行パネル ---------- */
+
+.rn-mini-label { font-size: 10px; letter-spacing: 0.12em; margin-bottom: 2px; }
+.rn-big-stat { font-size: 21px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.rn-gain-line { font-size: 12.5px; }
+
+.rn-warn {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(255, 204, 87, 0.4);
+  background: rgba(255, 204, 87, 0.08);
+  font-size: 12px;
+  color: var(--text-mid);
+}
+.rn-warn b { color: var(--gold); }
+
+.rn-cost-rows { margin-top: 12px; display: grid; gap: 4px; }
+.rn-cost-row { font-size: 12px; }
+.rn-cost-row.is-bad { color: var(--danger); font-weight: 700; }
+
+.rn-reason {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(255, 95, 109, 0.4);
+  background: rgba(255, 95, 109, 0.08);
+  color: #ffb4bb;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rn-action > .btn { margin-top: 14px; }
+
+/* ---------- REBIRTH 画面: ポイント割り振りツリー ---------- */
+
+.rn-unused {
+  font-size: 11.5px;
+  color: var(--text-mid);
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+}
+.rn-unused b { font-variant-numeric: tabular-nums; }
+.rn-unused.is-hot {
+  color: var(--ink);
+  background: var(--gold);
+  border-color: transparent;
+  font-weight: 800;
+  animation: rn-pip-pulse 1.8s ease-in-out infinite;
+}
+
+.rn-tree {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 980px) { .rn-tree { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .rn-tree { grid-template-columns: 1fr; } }
+
+.rn-path-col {
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--path-color) 40%, var(--line));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--path-color) 8%, transparent), transparent 40%),
+    var(--panel-solid);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rn-path-head { display: flex; align-items: center; gap: 9px; }
+.rn-path-ic {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 900;
+  background: var(--path-color);
+  color: #06070d;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--path-color) 55%, transparent);
+  flex: none;
+}
+.rn-path-name { font-size: 13.5px; font-weight: 900; color: var(--path-color); }
+.rn-path-total { font-size: 10.5px; color: var(--text-mid); }
+.rn-path-desc { font-size: 10.5px; line-height: 1.5; }
+
+.rn-node {
+  position: relative;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--path-color);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 9px 10px;
+  display: grid;
+  gap: 5px;
+}
+.rn-node.is-locked { opacity: 0.62; }
+.rn-node.is-maxed { border-left-color: var(--gold); background: rgba(255, 204, 87, 0.06); }
+
+.rn-node-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.rn-node-name { font-size: 12.5px; font-weight: 800; }
+.rn-node-rank {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--path-color);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.rn-node-desc { font-size: 11px; color: var(--text-mid); line-height: 1.45; }
+.rn-node-effects { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.rn-node-effect { font-size: 10.5px; color: var(--text-mid); }
+.rn-node-current { font-size: 11px; color: var(--ok); }
+.rn-node-current b { font-weight: 800; }
+
+.rn-node-lock { display: grid; gap: 2px; margin-top: 2px; }
+.rn-node-lock-row { font-size: 10.5px; color: var(--warn); line-height: 1.4; }
+
+.rn-node-btn { width: fit-content; margin-top: 2px; }
+.rn-node-afford-warn { font-size: 10px; color: var(--warn); }
+.rn-node-maxed-tag {
+  width: fit-content;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  border: 1px solid rgba(255, 204, 87, 0.5);
+  background: rgba(255, 204, 87, 0.1);
+  border-radius: 99px;
+  padding: 2px 8px;
+}
+
+.rn-reset-bar {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(255, 95, 109, 0.3);
+  background: rgba(255, 95, 109, 0.05);
+}
+
+/* ---------- 確認モーダル(転生実行 / 振り直し) ---------- */
+
+.rn-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(3, 3, 8, 0.72);
+  backdrop-filter: blur(3px);
+}
+.rn-modal {
+  width: 100%;
+  max-width: 420px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-strong);
+  background: var(--panel-solid);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-1);
+  display: grid;
+  gap: 10px;
+}
+.rn-modal-list { margin: 0; padding-left: 18px; font-size: 12.5px; display: grid; gap: 5px; }
+
+/* ---------- 転生カットイン ----------
+ * §20: 転生=長期育成の節目なので相応の演出にするが、ガチャUR(虹コニックグラデ
+ * 回転枠 + プリズム掃引、頻度4%)より格を上げない。単色(金/シアン)の
+ * 一重リング + 中心コアのみに抑え、虹のコニックグラデーションは使わない。 */
+
+.rn-cut-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 28px 20px 40px;
+  overflow-y: auto;
+  background: radial-gradient(120% 90% at 50% 35%, rgba(40, 28, 6, 0.55), rgba(3, 3, 8, 0.94));
+  backdrop-filter: blur(3px);
+}
+.rn-cut-stage {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: auto 0;
+}
+
+.rn-charge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 220px;
+  height: 220px;
+}
+.rn-charge-core {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff, var(--gold) 55%, transparent 78%);
+  animation: rn-core-pulse 0.9s ease-in-out infinite;
+}
+.rn-charge-ring, .rn-charge-ring2 {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  border: 1.5px solid var(--gold);
+  opacity: 0.55;
+  animation: rn-ring-expand 1.5s ease-out infinite;
+}
+.rn-charge-ring2 { border-color: var(--cyan); animation-delay: 0.5s; }
+.rn-charge-kanji {
+  position: absolute;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: #fff;
+  text-shadow: 0 0 18px var(--gold), 0 0 34px var(--gold);
+  animation: rn-kanji-fade 0.9s ease-in-out infinite;
+}
+.rn-charge-skip { position: absolute; bottom: -34px; }
+@keyframes rn-core-pulse { 0%, 100% { transform: scale(0.9); } 50% { transform: scale(1.18); } }
+@keyframes rn-ring-expand { 0% { transform: scale(0.4); opacity: 0.75; } 100% { transform: scale(1.7); opacity: 0; } }
+@keyframes rn-kanji-fade { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
+
+.rn-reveal {
+  width: 100%;
+  max-width: 420px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(255, 204, 87, 0.5);
+  background: var(--panel-solid);
+  padding: 22px;
+  box-shadow: 0 0 34px rgba(255, 204, 87, 0.22);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  animation: rn-reveal-in 0.4s cubic-bezier(0.2, 0.9, 0.25, 1.1) both;
+}
+@keyframes rn-reveal-in {
+  0% { opacity: 0; transform: scale(0.9) translateY(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.rn-reveal-art { width: 96px; height: 96px; border-radius: 14px; overflow: hidden; }
+.rn-reveal-name { font-size: 15px; font-weight: 900; }
+
+.rn-reveal-rows { width: 100%; display: grid; gap: 6px; margin-top: 4px; }
+.rn-reveal-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 20px 1fr;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.rn-reveal-row .k { font-size: 10.5px; color: var(--muted); text-align: left; }
+.rn-reveal-row .before { color: var(--text-mid); text-align: right; }
+.rn-reveal-row .arrow { text-align: center; color: var(--muted); }
+.rn-reveal-row .after { text-align: left; font-weight: 800; }
+.rn-reveal-row .after.gold { color: var(--gold); }
+
+.rn-reveal-growth { width: 100%; margin-top: 6px; }
+.rn-reveal-growth-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+  margin-top: 4px;
+}
+.rn-reveal-growth-bar .old { position: absolute; inset: 0 auto 0 0; height: 100%; background: var(--text-mid); opacity: 0.5; }
+.rn-reveal-growth-bar .added {
+  position: absolute;
+  top: 0; bottom: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), #fff3c4);
+  box-shadow: 0 0 10px rgba(255, 204, 87, 0.7);
+  animation: rn-bar-grow 0.7s ease-out both;
+}
+@keyframes rn-bar-grow { 0% { transform: scaleX(0); transform-origin: left; } 100% { transform: scaleX(1); transform-origin: left; } }
+.rn-reveal-growth-value { font-size: 12.5px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+.rn-reveal-msg {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-mid);
+  margin-top: 4px;
+}
+.rn-reveal-msg b { color: var(--ok); }

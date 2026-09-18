@@ -11,6 +11,7 @@ import type {
   InventoryResponse, EquipRequest, EquipResponse, UnequipRequest,
   SellEquipmentRequest, SellEquipmentResponse, GachaListResponse,
   GachaPullRequest, GachaPullResponse, EquipmentSlot,
+  RebirthStatusResponse, RebirthResponse, ResetRebirthResponse, AllocateRebirthRequest,
 } from '@akatan/shared';
 import { isMockMode } from './mode';
 import { mockApi } from '../mock';
@@ -41,7 +42,9 @@ export function describeError(err: unknown): { title: string; detail: string; co
       PARTY_EMPTY: 'パーティが空です',
       PARTY_INVALID: 'パーティ編成が不正です',
       STAGE_LOCKED: 'このステージはまだ解放されていません',
-      NOT_ENOUGH_CURRENCY: '所持GOLD/チケットが足りません',
+      NOT_ENOUGH_CURRENCY: '所持GOLD/チケット/素材が足りません',
+      REBIRTH_LOCKED: 'まだ転生できません',
+      NOT_ENOUGH_POINTS: '転生ポイントが足りません',
       SLOT_MISMATCH: 'この装備は対応する部位(スロット)が異なります',
       ALREADY_EQUIPPED: 'すでに他のキャラクターが装着中です',
       INTERNAL: 'サーバ内部エラーが発生しました',
@@ -107,6 +110,17 @@ export interface GameApi {
   sellEquipment(equipmentUids: string[]): Promise<SellEquipmentResponse>;
   getGacha(): Promise<GachaListResponse>;
   gachaPull(bannerId: string, count: number): Promise<GachaPullResponse>;
+  /** 転生 (設計書§17〜§20) */
+  getRebirthStatus(uid: string): Promise<RebirthStatusResponse>;
+  rebirth(uid: string): Promise<RebirthResponse>;
+  /**
+   * ポイント割り振り。shared/src/api.ts には `AllocateRebirthRequest` はあるが
+   * 対応するレスポンス型の明示的な宣言が無いため、他の転生エンドポイント
+   * (`RebirthStatusResponse` = `{ character, status }`)と対称になる想定で扱う。
+   * バックエンド実装時にレスポンス形が異なる場合はここを合わせる。
+   */
+  allocateRebirth(uid: string, nodeId: string, ranks?: number): Promise<RebirthStatusResponse>;
+  resetRebirth(uid: string): Promise<ResetRebirthResponse>;
 }
 
 const httpApi: GameApi = {
@@ -155,6 +169,19 @@ const httpApi: GameApi = {
     const payload: GachaPullRequest = { bannerId, count };
     return request<GachaPullResponse>('/gacha/pull', { method: 'POST', body: JSON.stringify(payload) });
   },
+  getRebirthStatus: (uid) => request<RebirthStatusResponse>(`/characters/${encodeURIComponent(uid)}/rebirth`),
+  rebirth: (uid) => request<RebirthResponse>(`/characters/${encodeURIComponent(uid)}/rebirth`, { method: 'POST' }),
+  allocateRebirth: (uid, nodeId, ranks) => {
+    const payload: AllocateRebirthRequest = ranks !== undefined ? { nodeId, ranks } : { nodeId };
+    return request<RebirthStatusResponse>(
+      `/characters/${encodeURIComponent(uid)}/rebirth/allocate`,
+      { method: 'POST', body: JSON.stringify(payload) },
+    );
+  },
+  resetRebirth: (uid) => request<ResetRebirthResponse>(
+    `/characters/${encodeURIComponent(uid)}/rebirth/reset`,
+    { method: 'POST' },
+  ),
 };
 
 /** 現在のモードに応じた API 実装を返す */

@@ -554,13 +554,24 @@ export function getMaterialCount(playerId: string, materialId: string, db: Db = 
   return row?.count ?? 0;
 }
 
-/** 所持数を増減する(負の delta で消費)。0未満にはならない。 */
+/**
+ * 所持数を増減する(負の delta で消費)。0未満にはならない。
+ *
+ * **バグ修正(第4ラウンドで発見)**: 以前は `ON CONFLICT ... DO UPDATE SET count = MAX(0, count + excluded.count)`
+ * だったため、負の delta(消費)が既存行に対して一切効かなかった。`excluded.count` は
+ * 「INSERT側で提案された値」(= `MAX(0, delta)` で既に0に丸められた後の値)を指すため、
+ * delta が負の場合は常に `excluded.count = 0` になり、`count + 0 = count` で減らせていなかった。
+ * (INSERT新規行の場合は `MAX(0, delta)` がそのまま入るため負のdeltaで新規行を作る分には
+ * 問題なかったが、既存の所持数を消費する処理――ガチャのチケット消費・転生の素材消費など――が
+ * 実質的に無効化されていた。今回 `AKATAN_DB_PATH` を使った実機確認で発覚した。)
+ * 修正: UPDATE側で `excluded.count` ではなく生の `delta` を直接使うよう、パラメータを2回束縛する。
+ */
 export function addMaterial(playerId: string, materialId: string, delta: number, db: Db = getDb()): void {
   if (!delta) return;
   db.prepare(
     `INSERT INTO materials (player_id, material_id, count) VALUES (?, ?, MAX(0, ?))
-     ON CONFLICT(player_id, material_id) DO UPDATE SET count = MAX(0, count + excluded.count)`,
-  ).run(playerId, materialId, delta);
+     ON CONFLICT(player_id, material_id) DO UPDATE SET count = MAX(0, count + ?)`,
+  ).run(playerId, materialId, delta, delta);
 }
 
 /* ============================================================

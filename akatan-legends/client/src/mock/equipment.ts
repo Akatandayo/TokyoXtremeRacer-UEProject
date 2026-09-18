@@ -247,6 +247,8 @@ export function buildStarterInventory(): { equipment: EquipmentInstance[]; mater
   const materials: MaterialStack[] = [
     { id: 'mat_scrap', count: 24 }, { id: 'mat_circuit', count: 11 },
     { id: 'mat_ember_core', count: 4 }, { id: 'mat_void_shard', count: 2 },
+    // P4-1: 転生の実行(3個要求)と振り直し(1個要求)を両方デモで確認できるだけの数を持たせる
+    { id: 'mat_rebirth_echo', count: 6 }, { id: 'mat_rebirth_seal', count: 2 },
   ];
   const tickets: MaterialStack[] = [
     { id: 'ticket_standard', count: 5 }, { id: 'ticket_momiji_kc', count: 1 },

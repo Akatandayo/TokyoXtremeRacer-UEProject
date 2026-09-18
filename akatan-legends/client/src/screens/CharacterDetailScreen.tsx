@@ -12,6 +12,9 @@ import {
 } from '../utils/labels';
 import { combosOf, evaluateCombo, buildPlannedMap, comboMemberName } from '../utils/combo';
 import { equipmentOf } from '../utils/equipment';
+import {
+  REBIRTH_PATH_ORDER, REBIRTH_PATH_LABEL, computePathPoints, pathColorVar,
+} from '../utils/rebirth';
 
 const SHOWN_STATS: StatKey[] = ['hp', 'attack', 'defense', 'speed', 'critical', 'criticalDamage', 'resistance', 'healing'];
 const EQUIP_SLOTS: EquipmentSlot[] = ['WEAPON', 'ARMOR', 'ACCESSORY'];
@@ -82,6 +85,20 @@ export function CharacterDetailScreen(): JSX.Element {
         .filter((id): id is string => !!id),
     [store.party, store.characters],
   );
+
+  // P4-1(§17〜§20): 転生の系統別投資量。rebirthNodes(ノードID→ランク)から逆算する。
+  // フルの RebirthStatus(canRebirth 等)は転生画面でのみ取得し、ここでは既に
+  // 持っている情報(owned.rebirthNodes / rebirthPointsAvailable / master.rebirthNodes)だけで
+  // 表示できるようにして、キャラ一覧・詳細では余計なAPI呼び出しを増やさない。
+  const rebirthPathPoints = useMemo(
+    () => computePathPoints(owned.rebirthNodes, store.master?.rebirthNodes),
+    [owned.rebirthNodes, store.master],
+  );
+  const rebirthPointsAvailable = owned.rebirthPointsAvailable ?? 0;
+  const rebirthConfig = store.master?.rebirthConfig;
+  const growthBonusPercent = rebirthConfig ? owned.rebirth * rebirthConfig.growthBonusPercent : undefined;
+  const maxPathPoint = Math.max(1, ...REBIRTH_PATH_ORDER.map((p) => rebirthPathPoints[p]));
+  const hasAnyRebirthInvestment = REBIRTH_PATH_ORDER.some((p) => rebirthPathPoints[p] > 0);
 
   // 装備スロット表示用: 所持品(inventory)が未取得なら取りに行く
   useEffect(() => {
@@ -204,6 +221,42 @@ export function CharacterDetailScreen(): JSX.Element {
               })}
             </div>
           </Panel>
+
+          <Panel
+            title="REBIRTH"
+            jp="転生 — 長期育成でビルドを分ける(§17〜§20)"
+            right={
+              <button className="btn btn-sm btn-primary" onClick={() => store.navigate('REBIRTH', owned.uid)}>
+                転生ツリーを開く →
+              </button>
+            }
+          >
+            <div className="row" style={{ gap: 14, fontSize: 12 }}>
+              <span>転生 <b style={{ fontSize: 16, color: 'var(--gold)' }}>★{owned.rebirth}</b></span>
+              {growthBonusPercent !== undefined && (
+                <span>成長率 <b style={{ color: 'var(--ok)' }}>+{growthBonusPercent}%</b></span>
+              )}
+              {rebirthPointsAvailable > 0 && (
+                <span className="rebirth-unused-pip">未使用ポイント {rebirthPointsAvailable}</span>
+              )}
+            </div>
+            <div className="stack" style={{ gap: 6, marginTop: 10 }}>
+              {REBIRTH_PATH_ORDER.map((p) => (
+                <div key={p} className="path-row">
+                  <span className="path-row-label" style={{ color: pathColorVar(p) }}>{REBIRTH_PATH_LABEL[p]}</span>
+                  <span className="path-row-bar">
+                    <span style={{ width: `${Math.min(100, (rebirthPathPoints[p] / maxPathPoint) * 100)}%`, background: pathColorVar(p) }} />
+                  </span>
+                  <span className="path-row-value">{rebirthPathPoints[p]}</span>
+                </div>
+              ))}
+            </div>
+            {!hasAnyRebirthInvestment && (
+              <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>
+                まだ転生ポイントを振っていません。同じキャラでも系統を選べば違う育ち方になります。
+              </div>
+            )}
+          </Panel>
         </div>
 
         <div className="stack">
@@ -224,10 +277,14 @@ export function CharacterDetailScreen(): JSX.Element {
           </Panel>
 
           {def.awakening && (
-            <Panel title="AWAKENING" jp="覚醒">
+            <Panel title="AWAKENING" jp="覚醒 — 戦闘中だけの特殊状態(§20。転生とは役割が別)">
               <div className="awaken-box">
                 <div style={{ fontWeight: 800, color: 'var(--gold)', fontSize: 15 }}>
                   {def.awakening.name}
+                </div>
+                <div className="muted" style={{ fontSize: 10.5, marginTop: 2 }}>
+                  条件を満たした戦闘中のみ発動し、その戦闘が終われば元に戻る。
+                  レベルや育成には影響しない一時的な強化(転生=恒久的な育成、とは別物)。
                 </div>
                 <div style={{ fontSize: 12.5, marginTop: 4 }}>{def.awakening.description}</div>
                 <div style={{ marginTop: 8 }}>

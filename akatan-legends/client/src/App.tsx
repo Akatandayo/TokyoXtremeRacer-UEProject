@@ -12,6 +12,7 @@ import CollectionScreen from './screens/CollectionScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import EquipmentScreen from './screens/EquipmentScreen';
 import GachaScreen from './screens/GachaScreen';
+import RebirthScreen from './screens/RebirthScreen';
 import BattleScreen from './battle/BattleScreen';
 
 const NAV: { screen: Screen; label: string }[] = [
@@ -45,6 +46,7 @@ function ScreenBody(): JSX.Element {
   switch (store.route.screen) {
     case 'CHARACTERS': return <CharactersScreen />;
     case 'CHARACTER_DETAIL': return <CharacterDetailScreen />;
+    case 'REBIRTH': return <RebirthScreen />;
     case 'PARTY': return <PartyScreen />;
     case 'EQUIPMENT': return <EquipmentScreen />;
     case 'GACHA': return <GachaScreen />;
@@ -57,7 +59,9 @@ function ScreenBody(): JSX.Element {
 
 export function App(): JSX.Element {
   const store = useStore();
-  const active = store.route.screen === 'CHARACTER_DETAIL' ? 'CHARACTERS' : store.route.screen;
+  const active = store.route.screen === 'CHARACTER_DETAIL' || store.route.screen === 'REBIRTH'
+    ? 'CHARACTERS'
+    : store.route.screen;
 
   return (
     <div className="app-shell">
