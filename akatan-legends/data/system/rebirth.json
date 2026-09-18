@@ -1,0 +1,12 @@
+{
+  "requiredLevel": 60,
+  "pointsPerRebirth": 5,
+  "growthBonusPercent": 3,
+  "maxRebirth": 10,
+  "cost": [
+    { "materialId": "mat_rebirth_echo", "count": 3 }
+  ],
+  "resetCost": [
+    { "materialId": "mat_rebirth_seal", "count": 2 }
+  ]
+}

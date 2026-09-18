@@ -28,6 +28,13 @@
     "usage": "キャラクター転生"
   },
   {
+    "id": "mat_rebirth_seal",
+    "name": "転生の刻印",
+    "rarity": "LEGENDARY",
+    "description": "選んだ育ち方そのものを、もう一度選び直すための刻印。転生の残響より遥かに稀。",
+    "usage": "転生ノードの振り直し"
+  },
+  {
     "id": "mat_affix_reroll_dust",
     "name": "因子の霧",
     "rarity": "UNCOMMON",

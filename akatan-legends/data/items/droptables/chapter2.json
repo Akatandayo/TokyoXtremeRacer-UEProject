@@ -23,6 +23,7 @@
       { "kind": "MATERIAL", "id": "mat_enhance_crystal", "weight": 18, "min": 1, "max": 2 },
       { "kind": "MATERIAL", "id": "mat_enhance_core", "weight": 6, "min": 1, "max": 1 },
       { "kind": "MATERIAL", "id": "mat_rebirth_echo", "weight": 8, "min": 1, "max": 1 },
+      { "kind": "MATERIAL", "id": "mat_rebirth_seal", "weight": 4, "min": 1, "max": 1 },
       { "kind": "EQUIPMENT", "weight": 32, "rarityWeights": { "RARE": 25, "EPIC": 48, "LEGENDARY": 24, "MYTHIC": 3 } },
       { "kind": "MATERIAL", "id": "mat_dup_fragment_high", "weight": 10, "min": 1, "max": 1 },
       { "kind": "SUMMON_TICKET", "id": "ticket_summon_pickup", "weight": 10, "min": 1, "max": 1 },
