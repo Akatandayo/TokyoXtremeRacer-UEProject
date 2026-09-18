@@ -7,6 +7,7 @@ import type {
   DungeonListResponse, UpdatePartyResponse, BattleStartResponse, StageDef,
   InventoryResponse, EquipResponse, SellEquipmentResponse, GachaListResponse,
   GachaPullResponse, EquipmentSlot, CharacterView,
+  RebirthStatusResponse, RebirthResponse, ResetRebirthResponse,
 } from '@akatan/shared';
 import {
   MOCK_CHARACTERS, MOCK_ENEMIES, MOCK_SKILLS, MOCK_AI_PROFILES, MOCK_CHAPTERS, MOCK_COMBOS,
@@ -16,6 +17,10 @@ import { mockState, mockCharacterViews, expToNext } from './player';
 import { generateMockBattle } from './battle';
 import { rollMockDrops } from './equipment';
 import { MOCK_BANNERS, pullBanner } from './gacha';
+import {
+  MOCK_REBIRTH_CONFIG, MOCK_REBIRTH_NODES,
+  getMockRebirthStatus, performMockRebirth, allocateMockRebirth, resetMockRebirth,
+} from './rebirth';
 import { ApiClientError } from '../api/client';
 
 function cloneInventory(): InventoryResponse {
@@ -67,6 +72,8 @@ export const mockApi = {
       combos: MOCK_COMBOS,
       materials: MOCK_MATERIALS,
       plannedCharacters: MOCK_PLANNED_CHARACTERS,
+      rebirthNodes: MOCK_REBIRTH_NODES,
+      rebirthConfig: MOCK_REBIRTH_CONFIG,
     };
   },
 
@@ -229,5 +236,27 @@ export const mockApi = {
       inventory: cloneInventory(),
       pityCounter,
     };
+  },
+
+  // ---------- 転生 (設計書§17〜§20, P4-1) ----------
+
+  async getRebirthStatus(uid: string): Promise<RebirthStatusResponse> {
+    await delay(110);
+    return getMockRebirthStatus(uid);
+  },
+
+  async rebirth(uid: string): Promise<RebirthResponse> {
+    await delay(260);
+    return performMockRebirth(uid);
+  },
+
+  async allocateRebirth(uid: string, nodeId: string, ranks?: number): Promise<RebirthStatusResponse> {
+    await delay(140);
+    return allocateMockRebirth(uid, nodeId, ranks);
+  },
+
+  async resetRebirth(uid: string): Promise<ResetRebirthResponse> {
+    await delay(180);
+    return resetMockRebirth(uid);
   },
 };

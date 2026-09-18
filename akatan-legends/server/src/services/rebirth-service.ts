@@ -16,7 +16,7 @@
  *    `requiresPathPoints` 判定もこの値を使う)。
  */
 import type {
-  CharacterView, GameData as GameDataType, MaterialCost, OwnedCharacter, PlayerProfile,
+  CharacterDef, CharacterView, OwnedCharacter, PlayerProfile,
   RebirthResponse, RebirthStatus, RebirthStatusResponse, ResetRebirthResponse,
 } from '@akatan/shared';
 import * as repo from '../db/repository.js';
@@ -26,9 +26,8 @@ import { buildCharacterView, getPlayerProfile } from './player-service.js';
 import { buildInventoryResponse, equipmentByUidMap } from './equipment-service.js';
 import { computeOwnedStats, computeRebirthPathPoints } from './progression.js';
 
-// `MaterialCost` は shared 側に無いため、この場限りの構造で受ける(RebirthConfig.cost/resetCost の要素型)。
+/** RebirthConfig.cost / resetCost の要素型(shared 側に単独の型名が無いためここで定義) */
 type MaterialCostEntry = { materialId: string; count: number };
-void 0 as unknown as MaterialCost; // 型が無ければここでコンパイルエラーになる想定は無いので参照しない
 
 /* ============================================================
  * 素材の検証・消費
@@ -119,7 +118,7 @@ function requireOwnedAndDef(
   playerId: string,
   uid: string,
   data: GameData,
-): { owned: OwnedCharacter; def: NonNullable<ReturnType<GameData['characters']['get']>> } {
+): { owned: OwnedCharacter; def: CharacterDef } {
   const owned = repo.findOwnedCharacter(playerId, uid);
   if (!owned) throw notFound(`所持していないキャラクターです: ${uid}`);
   const def = data.characters.get(owned.defId);

@@ -12,6 +12,7 @@ import { inventoryRouter } from './inventory.js';
 import { masterRouter } from './master.js';
 import { partyRouter } from './party.js';
 import { playerRouter } from './player.js';
+import { rebirthRouter } from './rebirth.js';
 import { notFoundMiddleware } from './_helpers.js';
 
 export function createApiRouter(): Router {
@@ -19,6 +20,7 @@ export function createApiRouter(): Router {
   api.use(healthRouter);
   api.use(playerRouter);
   api.use(charactersRouter);
+  api.use(rebirthRouter);
   api.use(masterRouter);
   api.use(dungeonsRouter);
   api.use(partyRouter);

@@ -80,10 +80,23 @@ export function buildView(def: CharacterDef, owned: OwnedCharacter): CharacterVi
 }
 
 /** expRemain: 次のレベルまでの残りEXP(デモでレベルアップ演出を確実に見せるため) */
-const OWNED_SEED: { defId: string; level: number; rebirth: number; ai?: string; expRemain?: number }[] = [
-  { defId: 'ch_akane', level: 24, rebirth: 1, expRemain: 60 },
+const OWNED_SEED: {
+  defId: string; level: number; rebirth: number; ai?: string; expRemain?: number;
+  /** P4-1: 転生ポイントの割り振り状況(デモ用)。ノードID -> 取得ランク */
+  rebirthNodes?: Record<string, number>;
+  /** P4-1: 未使用の転生ポイント */
+  rebirthPointsAvailable?: number;
+}[] = [
+  // 転生1回目済み・攻撃型に大きく投資し、未使用ポイントも残す(§19のビルド分岐 + 「振り忘れ」を確認できる)
+  {
+    defId: 'ch_akane', level: 24, rebirth: 1, expRemain: 60,
+    rebirthNodes: { rn_atk_1: 3, rn_atk_2: 1 },
+    rebirthPointsAvailable: 7,
+  },
+  // 転生条件(デモではLv20)を満たしているが未転生。転生画面で「今すぐ転生できる」ケースを確認できる
   { defId: 'ch_shiki', level: 21, rebirth: 0 },
   { defId: 'ch_inori', level: 20, rebirth: 0, expRemain: 110 },
+  // 以下はデモの転生必要レベル(20)未満。「レベルが足りない」ロック表示を確認できる
   { defId: 'ch_noa', level: 18, rebirth: 0, ai: 'ai_support' },
   { defId: 'ch_tetsu', level: 19, rebirth: 0, ai: 'ai_defensive', expRemain: 95 },
   { defId: 'ch_rin', level: 15, rebirth: 0 },
@@ -101,6 +114,8 @@ function makeOwned(): OwnedCharacter[] {
       : Math.round(expToNext(s.level) * 0.42),
     rebirth: s.rebirth,
     aiProfile: s.ai,
+    rebirthNodes: s.rebirthNodes,
+    rebirthPointsAvailable: s.rebirthPointsAvailable,
     obtainedAt: new Date(Date.UTC(2026, 7, 1 + i)).toISOString(),
   }));
 }

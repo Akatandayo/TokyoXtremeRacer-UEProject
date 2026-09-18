@@ -6,6 +6,7 @@
  * `plannedCharacters?` が正式追加されたため(第3ラウンド時点で確認)、
  * 第3ラウンドで正式な型フィールドとして返すよう整理した。
  * `materials` / `plannedCharacters` は図鑑・ドロップ演出でクライアントが参照できるよう追加(§3)。
+ * 第4ラウンドで `rebirthNodes` / `rebirthConfig`(転生画面のツリー表示用)を追加。
  */
 import { Router } from 'express';
 import type { MasterDataResponse } from '@akatan/shared';
@@ -25,6 +26,8 @@ masterRouter.get('/master', handler((_req, res) => {
     combos: [...data.combos.values()],
     materials: [...data.materials.values()],
     plannedCharacters: [...data.plannedCharacters.values()],
+    rebirthNodes: [...data.rebirthNodes.values()],
+    rebirthConfig: data.rebirthConfig,
   };
   sendOk(res, body);
 }));
