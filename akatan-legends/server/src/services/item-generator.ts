@@ -249,18 +249,14 @@ function rollBonusStats(
 /* ============================================================
  * 表示名生成
  * ------------------------------------------------------------
- * 例: Prefix "灼熱の" + Base "古びた剣" + Suffix "護り" -> 「灼熱の古びた剣・護り」
+ * Prefix/Suffix の name には data/items/affixes/* の実データの通り、既に
+ * 「灼熱の」(Prefix、末尾に「の」「な」)「の活力」(Suffix、先頭に「の」)のように
+ * 接続の助詞が含まれている。そのため単純に前後へ連結するだけで自然な日本語になる。
+ * 例: Prefix "灼熱の" + Base "古びた木刀" + Suffix "の活力" -> 「灼熱の古びた木刀の活力」
  * ========================================================== */
 
 function buildName(base: ItemBaseDef, prefix?: AffixDef, suffix?: AffixDef): string {
-  let name = base.name;
-  if (prefix) name = `${prefix.name}${name}`;
-  if (suffix) {
-    // Suffix 定義名が「〜の」「・」等の装飾で始まっていても二重にならないよう剥がしてから繋ぐ
-    const label = suffix.name.replace(/^[〜・]+/, '');
-    name = `${name}・${label}`;
-  }
-  return name;
+  return `${prefix?.name ?? ''}${base.name}${suffix?.name ?? ''}`;
 }
 
 /* ============================================================

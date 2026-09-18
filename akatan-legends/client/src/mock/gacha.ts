@@ -43,8 +43,8 @@ export const MOCK_BANNERS: GachaBannerDef[] = [
   },
   {
     id: 'gc_momiji_kc',
-    name: '召喚: 孤月紅葉(幽波紋)',
-    description: 'UR「孤月紅葉(幽波紋)」のピックアップ召喚。UR排出のうち70%が対象。天井50連でUR確定。',
+    name: '召喚: 孤月 紅葉(幽波紋)',
+    description: 'UR「孤月 紅葉(幽波紋)」のピックアップ召喚。UR排出のうち70%が対象。天井50連でUR確定。',
     cost: { currency: 'GOLD', amount: 300 },
     cost10: { currency: 'GOLD', amount: 2700 },
     rates: { rarity: { N: 35, R: 33.5, SR: 19, SSR: 9.5, UR: 3 } },

@@ -451,6 +451,28 @@
   100% { opacity: 0; clip-path: inset(0 0 0 100%); }
 }
 
+/* --- 装備の特殊効果 (fx: "equip:xxx") ---
+ * スキルより控えめ・コンボより地味な「装備が光った」程度の小さなグリント。
+ * リング/コアは小さく抑え、破片の代わりに斜めの光沢が一度だけ走る。 */
+.fx-equip .fx-ring { width: 18px; height: 18px; border-width: 1px; animation-duration: 0.4s; }
+.fx-equip .fx-core { width: 10px; height: 10px; animation-duration: 0.3s; }
+.fx-equip .fx-shard { width: 2px; height: 8px; opacity: 0.7; }
+.fx-equip::after {
+  content: "";
+  position: absolute;
+  width: 70%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fff, var(--c), transparent);
+  box-shadow: 0 0 8px var(--c);
+  transform: rotate(-30deg);
+  animation: equip-glint 0.38s ease-out forwards;
+}
+@keyframes equip-glint {
+  0% { opacity: 0; clip-path: inset(0 100% 0 0); }
+  35% { opacity: 1; }
+  100% { opacity: 0; clip-path: inset(0 0 0 100%); }
+}
+
 /* --- 刺突 --- */
 .fx-pierce .fx-shard {
   width: 2px;

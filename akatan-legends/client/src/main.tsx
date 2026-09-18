@@ -5,6 +5,7 @@ import App from './App';
 import './styles/base.css';
 import './styles/ui.css';
 import './styles/battle.css';
+import './styles/gacha.css';
 
 const el = document.getElementById('root');
 if (!el) {

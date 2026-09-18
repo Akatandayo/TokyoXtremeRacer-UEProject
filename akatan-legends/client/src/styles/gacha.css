@@ -1,0 +1,482 @@
+/* ============================================================
+ * SUMMON (ガチャ) / EQUIPMENT (装備) / ドロップ表示
+ * ========================================================== */
+
+/* ---------- 装備レアリティ枠 (ItemRarity 6段階) ---------- */
+
+.irar-COMMON { --irar-color: var(--irar-COMMON); }
+.irar-UNCOMMON { --irar-color: var(--irar-UNCOMMON); }
+.irar-RARE { --irar-color: var(--irar-RARE); }
+.irar-EPIC { --irar-color: var(--irar-EPIC); }
+.irar-LEGENDARY { --irar-color: var(--irar-LEGENDARY); }
+.irar-MYTHIC { --irar-color: var(--irar-MYTHIC); }
+
+.irar-tag {
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: var(--irar-color, var(--muted));
+  text-shadow: 0 0 6px currentColor;
+}
+
+/* ---------- EQUIPMENT 画面 ---------- */
+
+.equip-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+
+.equip-card, label.equip-card {
+  position: relative;
+  text-align: left;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--panel-solid);
+  padding: 10px 11px;
+  display: grid;
+  gap: 5px;
+  cursor: pointer;
+  transition: transform 0.14s, box-shadow 0.18s, border-color 0.18s;
+}
+.equip-card:hover { transform: translateY(-2px); }
+.equip-card.irar-COMMON { border-color: color-mix(in srgb, var(--irar-COMMON) 55%, transparent); }
+.equip-card.irar-UNCOMMON { border-color: color-mix(in srgb, var(--irar-UNCOMMON) 60%, transparent); box-shadow: 0 0 10px color-mix(in srgb, var(--irar-UNCOMMON) 20%, transparent); }
+.equip-card.irar-RARE { border-color: color-mix(in srgb, var(--irar-RARE) 65%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--irar-RARE) 22%, transparent); }
+.equip-card.irar-EPIC { border-color: color-mix(in srgb, var(--irar-EPIC) 75%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--irar-EPIC) 28%, transparent); }
+.equip-card.irar-LEGENDARY { border-color: color-mix(in srgb, var(--irar-LEGENDARY) 85%, transparent); box-shadow: 0 0 20px color-mix(in srgb, var(--irar-LEGENDARY) 34%, transparent), inset 0 0 16px color-mix(in srgb, var(--irar-LEGENDARY) 10%, transparent); }
+.equip-card.irar-MYTHIC {
+  border-color: transparent;
+  box-shadow: 0 0 26px color-mix(in srgb, var(--irar-MYTHIC) 45%, transparent);
+}
+.equip-card.irar-MYTHIC::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(from 0deg, #ff5ad4, #ffd166, #5ef0ff, #9b6bff, #ff5ad4);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ur-spin 6s linear infinite;
+}
+.equip-card > * { position: relative; z-index: 1; }
+.equip-card.is-selected { outline: 2px solid var(--cyan); outline-offset: 1px; }
+.equip-card.is-equipped { background: linear-gradient(140deg, rgba(53, 230, 255, 0.07), var(--panel-solid) 55%); }
+.equip-card.is-disabled { opacity: 0.5; cursor: not-allowed; }
+
+.equip-card-head { display: flex; align-items: center; gap: 7px; }
+.slot-ic {
+  display: grid; place-items: center;
+  width: 19px; height: 19px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-mid);
+}
+.equip-card-head .ilv { margin-left: auto; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.item-name { font-size: 12.5px; font-weight: 700; line-height: 1.35; }
+.item-name .affix { color: var(--irar-color, var(--cyan)); }
+
+.item-stats { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.item-stat { font-size: 10.5px; color: var(--text-mid); font-variant-numeric: tabular-nums; }
+
+.special-tag {
+  font-size: 10px;
+  color: var(--violet);
+  border: 1px solid rgba(155, 107, 255, 0.4);
+  background: rgba(155, 107, 255, 0.1);
+  border-radius: 5px;
+  padding: 2px 6px;
+  display: inline-block;
+  width: fit-content;
+}
+.equipped-tag {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--cyan);
+  letter-spacing: 0.06em;
+}
+
+.sell-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(255, 95, 109, 0.35);
+  background: rgba(255, 95, 109, 0.06);
+}
+
+.equip-detail-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 16px;
+}
+@media (max-width: 720px) { .equip-detail-grid { grid-template-columns: 1fr; } }
+
+.equip-detail-card {
+  position: relative;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  padding: 14px;
+  background: var(--panel-solid);
+}
+.equip-detail-card.irar-MYTHIC::before {
+  content: "";
+  position: absolute; inset: -2px; z-index: 0; border-radius: inherit; padding: 2px;
+  background: conic-gradient(from 0deg, #ff5ad4, #ffd166, #5ef0ff, #9b6bff, #ff5ad4);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: ur-spin 5s linear infinite;
+}
+.equip-detail-card > * { position: relative; z-index: 1; }
+.equip-detail-card .item-stats { margin-top: 8px; gap: 6px 10px; }
+.equip-detail-card .item-stat { font-size: 12px; }
+
+.special-box {
+  margin-top: 10px;
+  border: 1px solid rgba(155, 107, 255, 0.35);
+  background: rgba(155, 107, 255, 0.08);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+}
+.special-box .t { font-weight: 800; color: var(--violet); font-size: 12px; }
+.special-box .d { font-size: 11.5px; color: var(--text-mid); margin-top: 2px; }
+
+.compare-box {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.compare-row {
+  display: grid;
+  grid-template-columns: 76px 60px 20px 60px 1fr;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 3px 0;
+  font-variant-numeric: tabular-nums;
+}
+.compare-row .k { color: var(--muted); }
+.compare-row .arrow { text-align: center; color: var(--muted); }
+.compare-row.up .delta { color: var(--ok); font-weight: 800; }
+.compare-row.down .delta { color: var(--danger); font-weight: 800; }
+
+.equipped-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.equipped-row-char { display: flex; align-items: center; gap: 8px; }
+.equipped-row-char .cart { width: 42px; height: 42px; flex: none; border-radius: 8px; }
+.equipped-row-items { display: grid; gap: 5px; }
+.equipped-slot {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 3px solid var(--irar-color, var(--line));
+}
+.equipped-slot.is-empty { border-left-color: var(--line); opacity: 0.6; }
+.equipped-slot .nm { flex: 1; }
+
+/* ---------- キャラ詳細の装備スロット ---------- */
+.detail-equip-slot {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: var(--r-sm);
+  border-left: 3px solid var(--irar-color, var(--line));
+  background: rgba(255, 255, 255, 0.025);
+}
+.detail-equip-slot.is-empty { opacity: 0.55; border-left-color: var(--line); }
+.detail-equip-body { display: grid; gap: 1px; }
+.detail-equip-body .k { font-size: 10px; letter-spacing: 0.1em; color: var(--muted); }
+.detail-equip-body .nm { font-size: 12px; font-weight: 700; }
+
+/* ---------- 戦闘リザルトのドロップ表示 ---------- */
+
+.drop-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.drop-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 9px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+  animation: drop-in 0.32s ease-out both;
+}
+@keyframes drop-in {
+  0% { opacity: 0; transform: translateY(6px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.drop-chip .ic {
+  display: inline-grid; place-items: center;
+  width: 18px; height: 18px; border-radius: 5px;
+  font-size: 10px; font-weight: 800;
+  background: rgba(255, 255, 255, 0.08);
+}
+.drop-chip .nm { font-size: 11.5px; font-weight: 700; }
+.drop-chip .ct { font-size: 10.5px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.drop-chip.drop-gold .ic { background: var(--gold); color: #2a1e00; }
+.drop-chip.drop-equip { border-left: 3px solid var(--irar-color, var(--line)); }
+.drop-chip.drop-material .ic { background: var(--violet); color: #fff; }
+.drop-chip.drop-ticket .ic { background: var(--magenta); color: #fff; }
+.drop-chip.drop-character { border-left: 3px solid var(--rar-color, var(--line)); align-items: flex-start; }
+.drop-char-art { width: 34px; height: 34px; border-radius: 7px; overflow: hidden; margin-bottom: 2px; }
+
+/* ---------- SUMMON 画面: バナー ---------- */
+
+.gacha-banner-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.gacha-banner-tab {
+  position: relative;
+  padding: 8px 14px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-mid);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.gacha-banner-tab.is-on {
+  border-color: var(--bp, var(--cyan));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--bp, var(--cyan)) 20%, transparent), transparent);
+  color: var(--text);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--bp, var(--cyan)) 30%, transparent);
+}
+.pu-mark {
+  font-size: 8.5px;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 99px;
+  background: var(--magenta);
+  color: #fff;
+  letter-spacing: 0.06em;
+}
+
+.gacha-banner-body {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 18px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  padding: 16px;
+  background:
+    radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--bp, var(--cyan)) 14%, transparent), transparent 60%),
+    radial-gradient(100% 100% at 100% 100%, color-mix(in srgb, var(--ba, var(--magenta)) 12%, transparent), transparent 60%),
+    var(--panel-solid);
+}
+@media (max-width: 820px) { .gacha-banner-body { grid-template-columns: 1fr; } }
+
+.gb-name { font-size: 18px; font-weight: 900; letter-spacing: 0.03em; }
+.gb-desc { font-size: 12px; margin-top: 4px; line-height: 1.5; }
+.gb-pickup { margin-top: 8px; display: grid; gap: 4px; }
+.pickup-chip { font-size: 11.5px; color: var(--sakura); font-weight: 700; }
+.gb-pity { font-size: 11.5px; margin-top: 6px; }
+.gb-pity b { color: var(--gold); }
+
+.rate-table { margin-top: 12px; }
+.rate-table-title { font-size: 10.5px; letter-spacing: 0.18em; color: var(--muted); margin-bottom: 6px; }
+.rate-row { display: grid; grid-template-columns: 40px 1fr 46px; align-items: center; gap: 8px; font-size: 11.5px; padding: 2px 0; }
+.rate-row .rk { font-weight: 900; }
+.rate-row .rbar { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+.rate-row .rbar span { display: block; height: 100%; }
+.rate-row .rv { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-mid); }
+
+.gacha-actions { display: grid; gap: 6px; align-content: start; }
+.gacha-pull-btn {
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+}
+.gacha-pull-btn small { font-size: 10.5px; font-weight: 600; opacity: 0.9; letter-spacing: 0.02em; }
+.afford-reason { font-size: 10.5px; color: var(--warn); margin: -2px 0 4px; }
+
+/* ---------- SUMMON 演出 ---------- */
+
+.gacha-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 28px 20px 40px;
+  overflow-y: auto;
+  background: radial-gradient(120% 90% at 50% 40%, rgba(20, 12, 40, 0.7), rgba(3, 3, 8, 0.92));
+  backdrop-filter: blur(3px);
+}
+.gacha-stage {
+  /* flex + stretch: 子(.gacha-summary 等)が実際に幅を持てるようにする。
+   * これが無いと display:grid; place-items:center; の shrink-to-fit で
+   * .gacha-summary-grid が横幅を持てず、10連の結果が1カラム縦積みになってしまう。
+   * 各ステージ(charging/reveal/summary)は自分自身の中で水平中央寄せする。 */
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: min(320px, calc(100vh - 100px));
+  margin: auto 0;
+}
+
+.gacha-charge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 220px;
+  height: 220px;
+}
+.gacha-charge .charge-core {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: radial-gradient(circle, #fff, var(--cyan) 55%, transparent 78%);
+  animation: charge-pulse 0.9s ease-in-out infinite;
+}
+.gacha-charge .charge-rings { position: absolute; inset: 0; }
+.gacha-charge .charge-rings i {
+  position: absolute; inset: 0; margin: auto;
+  border-radius: 50%;
+  border: 1.5px solid var(--cyan);
+  opacity: 0.5;
+  animation: charge-ring 1.6s ease-out infinite;
+}
+.gacha-charge .charge-rings i:nth-child(1) { width: 80px; height: 80px; animation-delay: 0s; }
+.gacha-charge .charge-rings i:nth-child(2) { width: 80px; height: 80px; animation-delay: 0.5s; }
+.gacha-charge .charge-rings i:nth-child(3) { width: 80px; height: 80px; animation-delay: 1s; }
+.gacha-charge .charge-text { position: absolute; bottom: 10px; font-size: 12px; letter-spacing: 0.2em; color: var(--text-mid); }
+.gacha-charge.tier-3 .charge-core, .gacha-charge.tier-3 .charge-rings i { border-color: var(--rar-SSR); background: radial-gradient(circle, #fff, var(--rar-SSR) 55%, transparent 78%); }
+.gacha-charge.tier-3 .charge-rings i { border-color: var(--rar-SSR); }
+.gacha-charge.tier-4 .charge-core { background: conic-gradient(from 0deg, #ff5ad4, #ffd166, #5ef0ff, #9b6bff, #ff5ad4); animation-duration: 0.6s; }
+.gacha-charge.tier-4 .charge-rings i { border-color: #fff; }
+.gacha-charge.is-fast .charge-core, .gacha-charge.is-fast .charge-rings i { animation-duration: 0.3s; }
+@keyframes charge-pulse { 0%, 100% { transform: scale(0.9); } 50% { transform: scale(1.15); } }
+@keyframes charge-ring { 0% { transform: scale(0.3); opacity: 0.8; } 100% { transform: scale(2.4); opacity: 0; } }
+
+.gacha-reveal-wrap { display: grid; place-items: center; gap: 4px; }
+.gacha-reveal-progress { font-size: 11px; letter-spacing: 0.2em; color: var(--muted); margin-bottom: 8px; }
+
+.gacha-result-card {
+  position: relative;
+  width: 200px;
+  padding: 16px 14px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--panel-solid);
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+  animation: reveal-pop 0.42s cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+}
+@keyframes reveal-pop {
+  0% { opacity: 0; transform: scale(0.55) rotateY(90deg); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: scale(1) rotateY(0); }
+}
+.gacha-result-card.is-big { width: 240px; padding: 22px 18px; }
+.gacha-result-card.tier-0 { border-color: rgba(141, 155, 184, 0.5); }
+.gacha-result-card.tier-1 { border-color: rgba(85, 184, 255, 0.6); box-shadow: 0 0 14px rgba(85, 184, 255, 0.2); }
+.gacha-result-card.tier-2 { border-color: rgba(180, 125, 255, 0.7); box-shadow: 0 0 18px rgba(180, 125, 255, 0.28); }
+.gacha-result-card.tier-3 {
+  border-color: rgba(255, 197, 66, 0.9);
+  box-shadow: 0 0 28px rgba(255, 197, 66, 0.4), inset 0 0 22px rgba(255, 197, 66, 0.1);
+}
+.gacha-result-card.tier-4 {
+  border-color: transparent;
+  box-shadow: 0 0 40px rgba(255, 90, 212, 0.5);
+}
+.gacha-result-card.tier-4::before {
+  content: "";
+  position: absolute; inset: -3px; z-index: 0; border-radius: inherit; padding: 3px;
+  background: conic-gradient(from 0deg, #ff5ad4, #ffd166, #5ef0ff, #9b6bff, #ff5ad4);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: ur-spin 3.2s linear infinite;
+}
+.gacha-result-card > * { position: relative; z-index: 1; }
+
+.result-burst {
+  position: absolute;
+  inset: -40%;
+  background: conic-gradient(from 0deg, transparent 0 8%, rgba(255,255,255,0.5) 9% 10%, transparent 11% 100%);
+  animation: burst-spin 1.4s linear infinite;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes burst-spin { to { transform: rotate(360deg); } }
+
+.result-rarity-tag {
+  position: absolute;
+  top: 8px; left: 10px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+.gacha-result-card.tier-4 .result-rarity-tag { color: #fff; text-shadow: 0 0 10px var(--rar-UR); }
+.result-pity-tag {
+  position: absolute;
+  top: 8px; right: 10px;
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: var(--magenta);
+  color: #fff;
+  letter-spacing: 0.04em;
+}
+
+.result-art { width: 100px; height: 100px; border-radius: 12px; overflow: hidden; margin-top: 10px; }
+.gacha-result-card.is-big .result-art { width: 130px; height: 130px; }
+.result-art-equip {
+  display: grid; place-items: center;
+  background: radial-gradient(circle, color-mix(in srgb, var(--irar-color, var(--cyan)) 30%, transparent), transparent 70%);
+}
+.slot-ic-big { font-size: 34px; font-weight: 900; color: var(--irar-color, var(--text)); text-shadow: 0 0 14px currentColor; }
+
+.result-name { font-size: 13.5px; font-weight: 800; margin-top: 2px; }
+.gacha-result-card.is-big .result-name { font-size: 16px; }
+.result-new { font-size: 11px; font-weight: 900; color: var(--ok); letter-spacing: 0.1em; }
+.result-dup { font-size: 10.5px; color: var(--text-mid); }
+.result-dup .dup-mat { color: var(--violet); font-weight: 700; }
+
+.gacha-summary { display: grid; gap: 14px; justify-items: center; width: 100%; max-width: 760px; margin: 0 auto; }
+.gacha-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+.gacha-summary-grid .gacha-result-card { width: 100%; padding: 10px 8px; }
+.gacha-summary-grid .result-art { width: 64px; height: 64px; }
+.gacha-summary-grid .result-name { font-size: 11px; }
+.gacha-summary-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+@media (max-width: 480px) {
+  .gacha-result-card { width: 160px; }
+  .gacha-result-card.is-big { width: 200px; padding: 16px 12px; }
+  .result-art { width: 84px; height: 84px; }
+  .gacha-result-card.is-big .result-art { width: 104px; height: 104px; }
+}

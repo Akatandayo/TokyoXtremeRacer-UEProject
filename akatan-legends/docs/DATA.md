@@ -30,6 +30,13 @@ node scripts/validate-data.mjs
 | `data/dungeons/chapter1.json` `chapter2.json` | **1ファイル1章** | `ChapterDef` |
 | `data/system/affinity.json` | 属性相性表 | `AffinityTable` |
 | `data/system/progression.json` | レベル曲線・戦闘定数 | `ProgressionConfig` |
+| `data/system/planned-characters.json` | まだ実装されていないがコンボから参照されるキャラ | `PlannedCharacterDef[]` |
+| `data/combos/combos.json` | キャラクターコンボ | `ComboDef[]` |
+| `data/items/bases/*.json` | 装備ベース(武器/防具/装飾品) | `ItemBaseDef[]` |
+| `data/items/affixes/*.json` | Prefix / Suffix | `AffixDef[]` |
+| `data/items/materials.json` | 強化・転生・重複変換・召喚チケット素材 | `MaterialDef[]` |
+| `data/items/droptables/*.json` | ドロップテーブル(`StageDef.rewards.dropTable` / `GachaBannerDef.equipment.dropTable` から参照) | `DropTableDef[]` |
+| `data/gacha/banners.json` | ガチャバナー | `GachaBannerDef[]` |
 
 ### 命名規約(IDは全ファイル横断で一意)
 
@@ -203,7 +210,12 @@ ch1-1 が意図的に短いのはチュートリアルだからです。
 - `art` のhexカラー形式・`sigil` の文字数・`pattern` の値
 - `awakening` の条件キー・`skillReplace` の整合・`withAlly` が実在キャラか
 - 属性相性の倍率が 0.5〜1.6 に収まっているか
-- (警告) どこからも参照されていないスキル / AIプロファイル
+- `art.portrait` が指定されたキャラについて `client/public/portraits/<key>.webp` が実在するか(読み取りのみ。`client/` へは書き込まない)
+- 装備ベース(`ItemBaseDef.mainStat` が `StatKey` か)・アフィックス(`stats[].min <= max`・`special.trigger` が既定値か)・素材・ID重複
+- ドロップテーブルが参照する素材ID/キャラID/装備スロットが妥当か、`weight` が正か、ステージの `rewards.dropTable` が実在するか
+- ガチャバナーの `rates.rarity` 合計が100か、`pool`/`pickup` のキャラIDが実在するか、`cost.ticketId` が素材として実在するか、`pity.rarity` が妥当か
+- コンボの `members`/`trigger.actor`/`effect.performer` が「実キャラ」または `data/system/planned-characters.json` の未実装キャラのどちらかとして実在するか
+- (警告) どこからも参照されていないスキル / AIプロファイル、`rewards.dropTable` 未設定のステージ、スロットあたりのベースアイテムが4種未満、Prefix/Suffixが10種未満
 
 ---
 
@@ -213,6 +225,18 @@ ch1-1 が意図的に短いのはチュートリアルだからです。
 
 1. **`AiRule.skill` に総称指定が欲しい** — `'ULTIMATE'` `'ANY_ACTIVE'` `'HIGHEST_POWER'` のようなセンチネルがあれば、全キャラで使い回せる汎用戦術プリセット(`AiProfile.description` が言う「プレイヤーが選べる戦術プリセット」)が作れます。現状はスキルIDべた書きのため、ユニット数ぶんプロファイルが必要です。
 2. **`SkillEffect` に属性/タグ特効の条件が無い** — 北斗の「対DARK特効」を属性相性1.25とスキル倍率でしか表現できていません。`bonusVsElement?: Partial<Record<Element, number>>` か `condition?: { targetElement?: Element; targetHasStatus?: StatusType }` があると、低レアの特化役割を数値で明示できます。
-3. **コンボの型が無い** — `CharacterDef.combos` は `string[]` ですが、参照先の `ComboDef`(参加キャラ / 発動条件 / 効果)が型にありません。独と紅葉の `network_link` は現状ID文字列だけで、`data/combos/` は空のままです。
+3. ~~**コンボの型が無い**~~ → `ComboDef`/`PlannedCharacterDef` が追加され解消。`data/combos/combos.json` に7件実装済み。
 4. **`Awakening.statBonus` の単位が曖昧** — コメントは「%」ですが、`Partial<Record<StatKey, number>>` なので加算値とも読めます。`statBonusPercent` へのリネームか、コメントの明確化を希望します。
 5. **`StageDef.recommendedPower` の定義が無い** — 本データでは**推奨レベル**を入れています。戦闘力スコアを意味するなら算出式の定義が必要です。
+6. **`GachaBannerDef.rates` が装備専用バナーでも必須** — `equipment` フィールドを持つバナー(キャラを排出しない)でも `rates.rarity`(`Rarity` 型、N〜UR)を埋める必要があり、意味的に使われません。`rates` を optional にするか、装備バナー用に `ItemRarity` ベースの別フィールドを検討してほしいです。
+
+---
+
+## 6. 装備 / ハクスラ / ガチャ (Phase 3 / Phase 5)
+
+- **装備生成**: `ItemBaseDef`(スロット3種 × 6種 = 18種) + `AffixDef`(Prefix12 / Suffix12、`stats` は `min`〜`max` の幅を持ち生成時に乱数で確定)。一部のアフィックスは `special`(`ON_ATTACK` / `ON_HIT_TAKEN` / `ON_BATTLE_START` / `ON_KILL`)を持ち、`minRarity` / `slots` で出現条件を絞っている。
+- **素材**: `data/items/materials.json` に9種。強化素材3段階・転生素材・重複キャラ変換素材2段階・アフィックス再抽選素材・召喚チケット2種(`ticket_summon_standard` / `ticket_summon_pickup`)。召喚チケットも `MaterialDef` として定義し、`GachaBannerDef.cost.ticketId` から参照する。
+- **ドロップテーブル**: 章・難易度で4種+ガチャ専用1種を用意(`dt_ch1_common` / `dt_ch1_boss` / `dt_ch2_common` / `dt_ch2_boss` / `dt_gacha_equipment`)。ボスほど装備の高レア率とキャラドロップ率を上げ、`nothingWeight` で「何も出ない」枠も必ず作っている。全ステージの `rewards.dropTable` に紐付け済み。
+- **ガチャ**: 3バナー(常設 / ピックアップ / 装備)。`rates.rarity` は合計100%になるようバリデータで検査。`pity`(天井)と `guarantee10`(10連最低保証)を設定し、重複はサーバ側で素材へ自動変換される(完全なハズレにならない)。コストは既存経済(ステージ報酬GOLD 40〜1500、初期所持1000G)と釣り合わせてある(詳細は評価報告を参照)。
+- **未実装キャラを先に参照する仕組み**: `data/system/planned-characters.json` に `id`/`name`/`note` だけ登録すると、`ComboDef.members` / `trigger.actor` / `effect.performer` からその未実装キャラを参照できる。バリデータは「実キャラ or 未実装キャラ」のどちらかであれば通す。実装され次第 `data/characters/<id>.json` を追加し、`planned-characters.json` から当該エントリを削除する。
+- **立ち絵 (`art.portrait`)**: `CharacterArt.portrait` にアセットキーを入れると、`client/public/portraits/<key>.webp` を参照する(バリデータがファイル存在を読み取り専用でチェックする)。未設定のキャラは従来通りプロシージャル描画にフォールバックするため、両方式が混在してよい。

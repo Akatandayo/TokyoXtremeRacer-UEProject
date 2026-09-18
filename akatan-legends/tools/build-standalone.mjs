@@ -57,6 +57,34 @@ if (/assets\//.test(html)) {
   process.exitCode = 1;
 }
 
+// 立ち絵の埋め込み。
+// 単体版は file:// で開かれるため `portraits/<key>.webp` という相対参照は解決できない。
+// そこで client/public/portraits/ の画像を data URL にして window.__AKATAN_PORTRAITS__ へ
+// 注入する。クライアントはこのオブジェクトがあれば優先して使う(無ければ相対パス→
+// プロシージャル描画へフォールバックする)。
+const portraitDir = path.join(ROOT, 'client', 'public', 'portraits');
+const portraits = {};
+if (fs.existsSync(portraitDir)) {
+  for (const file of fs.readdirSync(portraitDir)) {
+    const ext = path.extname(file).toLowerCase();
+    const mime = { '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' }[ext];
+    if (!mime) continue;
+    const key = path.basename(file, ext);
+    const data = fs.readFileSync(path.join(portraitDir, file)).toString('base64');
+    portraits[key] = `data:${mime};base64,${data}`;
+  }
+}
+const portraitKeys = Object.keys(portraits);
+if (portraitKeys.length > 0) {
+  const kb = (JSON.stringify(portraits).length / 1024).toFixed(0);
+  console.log(`  立ち絵 ${portraitKeys.length} 件を埋め込み (${kb} KB): ${portraitKeys.join(', ')}`);
+  const inject = `<script>window.__AKATAN_PORTRAITS__=${JSON.stringify(portraits)};</script>`;
+  if (html.includes('</head>')) html = html.replace('</head>', `${inject}\n</head>`);
+  else html = inject + html;
+} else {
+  console.log('  立ち絵なし(プロシージャル描画のみ)');
+}
+
 // 単体版は「モックデータ」ではなく data/ の本物のマスターデータで動くため、
 // クライアント側のデモモード用バナー文言を実態に合わせて差し替える。
 // (App.tsx はフロント担当の所有ファイルなので、ビルド後の文字列置換で対応している。

@@ -5,13 +5,27 @@
     "kind": "ACTIVE",
     "description": "returnのない要求を全員に投げつける。回線が悲鳴を上げても、独は黙っている。",
     "cooldown": 3,
-    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 1.15 },
-      { "type": "STATUS", "status": "SILENCE", "duration": 2, "chance": 40 }
+      {
+        "type": "DAMAGE",
+        "power": 1.15
+      },
+      {
+        "type": "STATUS",
+        "status": "SILENCE",
+        "duration": 2,
+        "chance": 40
+      }
     ],
     "fx": "glitch",
-    "tags": ["Glitch", "Network"]
+    "tags": [
+      "Glitch",
+      "Network"
+    ]
   },
   {
     "id": "sk_hitori_null_hack",
@@ -19,28 +33,55 @@
     "kind": "ACTIVE",
     "description": "相手の構えを「未定義」に書き換える。防御も、次の行動も、根拠を失う。",
     "cooldown": 4,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 1.6 },
-      { "type": "STATUS", "status": "DEF_DOWN", "duration": 3, "potency": 25, "chance": 80 },
-      { "type": "GAUGE", "amount": -30 }
+      {
+        "type": "DAMAGE",
+        "power": 1.6
+      },
+      {
+        "type": "STATUS",
+        "status": "DEF_DOWN",
+        "duration": 3,
+        "potency": 25,
+        "chance": 80
+      },
+      {
+        "type": "GAUGE",
+        "amount": -30
+      }
     ],
     "fx": "glitch_hack",
-    "tags": ["Glitch"]
+    "tags": [
+      "Glitch"
+    ]
   },
-
   {
     "id": "sk_momiji_relay",
     "name": "紅蓮リレー",
     "kind": "ACTIVE",
     "description": "自分の熱を回線に流して、味方全員に配る。独に届くまでが彼女の仕事。",
     "cooldown": 4,
-    "target": { "side": "ALLY", "pattern": "ALL" },
+    "target": {
+      "side": "ALLY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "STATUS", "status": "ATK_UP", "duration": 3, "potency": 24 }
+      {
+        "type": "STATUS",
+        "status": "ATK_UP",
+        "duration": 3,
+        "potency": 24
+      }
     ],
     "fx": "ember_aura",
-    "tags": ["Network", "Buff"]
+    "tags": [
+      "Network",
+      "Buff"
+    ]
   },
   {
     "id": "sk_momiji_scatter",
@@ -48,27 +89,52 @@
     "kind": "ACTIVE",
     "description": "舞い落ちた葉が、着地した瞬間に一枚残らず発火する。",
     "cooldown": 3,
-    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 1.1 },
-      { "type": "STATUS", "status": "BURN", "duration": 3, "potency": 30, "chance": 60 }
+      {
+        "type": "DAMAGE",
+        "power": 1.1
+      },
+      {
+        "type": "STATUS",
+        "status": "BURN",
+        "duration": 3,
+        "potency": 30,
+        "chance": 60
+      }
     ],
     "fx": "flame_scatter"
   },
-
   {
     "id": "sk_kurogane_provoke",
     "name": "不動の号令",
     "kind": "ACTIVE",
     "description": "「こっちだ」。それだけで敵の狙いが全部ずれる。名乗りは盾の一部である。",
     "cooldown": 3,
-    "target": { "side": "SELF", "pattern": "SELF" },
+    "target": {
+      "side": "SELF",
+      "pattern": "SELF"
+    },
     "effects": [
-      { "type": "STATUS", "status": "TAUNT", "duration": 3 },
-      { "type": "STATUS", "status": "DEF_UP", "duration": 3, "potency": 45 }
+      {
+        "type": "STATUS",
+        "status": "TAUNT",
+        "duration": 3
+      },
+      {
+        "type": "STATUS",
+        "status": "DEF_UP",
+        "duration": 3,
+        "potency": 45
+      }
     ],
     "fx": "earth_guard",
-    "tags": ["Taunt"]
+    "tags": [
+      "Taunt"
+    ]
   },
   {
     "id": "sk_kurogane_bulwark",
@@ -76,27 +142,49 @@
     "kind": "ACTIVE",
     "description": "足元の岩を持ち上げて、味方の前に置く。自分が下敷きになる側には立たない。",
     "cooldown": 4,
-    "target": { "side": "ALLY", "pattern": "ALL" },
+    "target": {
+      "side": "ALLY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "STATUS", "status": "SHIELD", "duration": 3, "potency": 18 },
-      { "type": "STATUS", "status": "DEF_UP", "duration": 2, "potency": 20 }
+      {
+        "type": "STATUS",
+        "status": "SHIELD",
+        "duration": 3,
+        "potency": 18
+      },
+      {
+        "type": "STATUS",
+        "status": "DEF_UP",
+        "duration": 2,
+        "potency": 20
+      }
     ],
     "fx": "earth_wall"
   },
-
   {
     "id": "sk_shizuku_purify",
     "name": "清めの雫",
     "kind": "ACTIVE",
     "description": "毒も呪いも凍結も、まとめて洗い流す。「痛いのは後で聞くから、先に落とすね」",
     "cooldown": 3,
-    "target": { "side": "ALLY", "pattern": "ALL" },
+    "target": {
+      "side": "ALLY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "CLEANSE" },
-      { "type": "HEAL", "power": 1.4 }
+      {
+        "type": "CLEANSE"
+      },
+      {
+        "type": "HEAL",
+        "power": 1.4
+      }
     ],
     "fx": "purify_wave",
-    "tags": ["Cleanse"]
+    "tags": [
+      "Cleanse"
+    ]
   },
   {
     "id": "sk_shizuku_tide_heal",
@@ -104,27 +192,51 @@
     "kind": "ACTIVE",
     "description": "一番危ない一人だけを、確実に引き戻す。全員は救えないと知っている手つき。",
     "cooldown": 4,
-    "target": { "side": "ALLY", "pattern": "LOWEST_HP", "count": 1 },
+    "target": {
+      "side": "ALLY",
+      "pattern": "LOWEST_HP",
+      "count": 1
+    },
     "effects": [
-      { "type": "HEAL", "power": 3.2 },
-      { "type": "STATUS", "status": "REGEN", "duration": 3, "potency": 8 }
+      {
+        "type": "HEAL",
+        "power": 3.2
+      },
+      {
+        "type": "STATUS",
+        "status": "REGEN",
+        "duration": 3,
+        "potency": 8
+      }
     ],
     "fx": "heal_wave"
   },
-
   {
     "id": "sk_rin_thunderstep",
     "name": "雷歩",
     "kind": "ACTIVE",
     "description": "一歩で間合いを消す。斬られたことより、止まったことに気づくのが先。",
     "cooldown": 3,
-    "target": { "side": "ENEMY", "pattern": "HIGHEST_ATK" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "HIGHEST_ATK"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 1.3 },
-      { "type": "STATUS", "status": "STUN", "duration": 1, "chance": 55 }
+      {
+        "type": "DAMAGE",
+        "power": 1.3
+      },
+      {
+        "type": "STATUS",
+        "status": "STUN",
+        "duration": 1,
+        "chance": 55
+      }
     ],
     "fx": "wind_flash",
-    "tags": ["Control"]
+    "tags": [
+      "Control"
+    ]
   },
   {
     "id": "sk_rin_binding_gale",
@@ -132,29 +244,59 @@
     "kind": "ACTIVE",
     "description": "風で足を編む。速い敵ほど、自分の速さで転ぶ。",
     "cooldown": 4,
-    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 0.9 },
-      { "type": "STATUS", "status": "SLOW", "duration": 3, "potency": 30, "chance": 75 },
-      { "type": "GAUGE", "amount": -15 }
+      {
+        "type": "DAMAGE",
+        "power": 0.9
+      },
+      {
+        "type": "STATUS",
+        "status": "SLOW",
+        "duration": 3,
+        "potency": 30,
+        "chance": 75
+      },
+      {
+        "type": "GAUGE",
+        "amount": -15
+      }
     ],
     "fx": "wind_bind",
-    "tags": ["Control"]
+    "tags": [
+      "Control"
+    ]
   },
-
   {
     "id": "sk_hokuto_piercing_ray",
     "name": "貫光",
     "kind": "ACTIVE",
     "description": "闇に属するものの中心を、迷わず一点で抜く。狙いを外した記憶がない。",
     "cooldown": 3,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 1.9 },
-      { "type": "STATUS", "status": "DEF_DOWN", "duration": 2, "potency": 20, "chance": 70 }
+      {
+        "type": "DAMAGE",
+        "power": 1.9
+      },
+      {
+        "type": "STATUS",
+        "status": "DEF_DOWN",
+        "duration": 2,
+        "potency": 20,
+        "chance": 70
+      }
     ],
     "fx": "light_pierce",
-    "tags": ["AntiDark"]
+    "tags": [
+      "AntiDark"
+    ]
   },
   {
     "id": "sk_hokuto_banish",
@@ -162,29 +304,62 @@
     "kind": "ACTIVE",
     "description": "地に描いた陣が起き上がり、闇そのものを場から追い出す。",
     "cooldown": 4,
-    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 1.45 },
-      { "type": "STATUS", "status": "ATK_DOWN", "duration": 3, "potency": 20, "chance": 70 }
+      {
+        "type": "DAMAGE",
+        "power": 1.45
+      },
+      {
+        "type": "STATUS",
+        "status": "ATK_DOWN",
+        "duration": 3,
+        "potency": 20,
+        "chance": 70
+      }
     ],
     "fx": "light_burst",
-    "tags": ["AntiDark"]
+    "tags": [
+      "AntiDark"
+    ]
   },
-
   {
     "id": "sk_yomi_curse_mark",
     "name": "呪詛刻印",
     "kind": "ACTIVE",
     "description": "傷は入り口にすぎない。刻まれた印が、時間をかけて内側から仕事をする。",
     "cooldown": 3,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 1.0 },
-      { "type": "STATUS", "status": "POISON", "duration": 4, "potency": 45, "chance": 95 },
-      { "type": "STATUS", "status": "BLEED", "duration": 3, "potency": 35, "chance": 80 }
+      {
+        "type": "DAMAGE",
+        "power": 1.0
+      },
+      {
+        "type": "STATUS",
+        "status": "POISON",
+        "duration": 4,
+        "potency": 45,
+        "chance": 95
+      },
+      {
+        "type": "STATUS",
+        "status": "BLEED",
+        "duration": 3,
+        "potency": 35,
+        "chance": 80
+      }
     ],
     "fx": "curse_mark",
-    "tags": ["DoT"]
+    "tags": [
+      "DoT"
+    ]
   },
   {
     "id": "sk_yomi_plague_veil",
@@ -192,26 +367,58 @@
     "kind": "ACTIVE",
     "description": "薄い帳を下ろす。くぐった者は、くぐったことにさえ気づかない。",
     "cooldown": 4,
-    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 0.85 },
-      { "type": "STATUS", "status": "POISON", "duration": 3, "potency": 30, "chance": 85 },
-      { "type": "STATUS", "status": "ATK_DOWN", "duration": 2, "potency": 15, "chance": 60 }
+      {
+        "type": "DAMAGE",
+        "power": 0.85
+      },
+      {
+        "type": "STATUS",
+        "status": "POISON",
+        "duration": 3,
+        "potency": 30,
+        "chance": 85
+      },
+      {
+        "type": "STATUS",
+        "status": "ATK_DOWN",
+        "duration": 2,
+        "potency": 15,
+        "chance": 60
+      }
     ],
     "fx": "dark_mist",
-    "tags": ["DoT"]
+    "tags": [
+      "DoT"
+    ]
   },
-
   {
     "id": "sk_sazanami_still_water",
     "name": "凪の護り",
     "kind": "ACTIVE",
     "description": "水面を止める。止まった水は、どんな石も一度は受け止める。",
     "cooldown": 3,
-    "target": { "side": "ALLY", "pattern": "ALL" },
+    "target": {
+      "side": "ALLY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "STATUS", "status": "SHIELD", "duration": 3, "potency": 16 },
-      { "type": "STATUS", "status": "DEF_UP", "duration": 3, "potency": 18 }
+      {
+        "type": "STATUS",
+        "status": "SHIELD",
+        "duration": 3,
+        "potency": 16
+      },
+      {
+        "type": "STATUS",
+        "status": "DEF_UP",
+        "duration": 3,
+        "potency": 18
+      }
     ],
     "fx": "water_shield"
   },
@@ -221,24 +428,47 @@
     "kind": "ACTIVE",
     "description": "味方の足元にだけ順流を作る。押すのではなく、運ぶ。",
     "cooldown": 4,
-    "target": { "side": "ALLY", "pattern": "HIGHEST_ATK", "count": 2 },
+    "target": {
+      "side": "ALLY",
+      "pattern": "HIGHEST_ATK",
+      "count": 2
+    },
     "effects": [
-      { "type": "GAUGE", "amount": 35 },
-      { "type": "STATUS", "status": "SPD_UP", "duration": 3, "potency": 25 }
+      {
+        "type": "GAUGE",
+        "amount": 35
+      },
+      {
+        "type": "STATUS",
+        "status": "SPD_UP",
+        "duration": 3,
+        "potency": 25
+      }
     ],
     "fx": "water_flow"
   },
-
   {
     "id": "sk_enji_blazing_edge",
     "name": "烈火刃",
     "kind": "ACTIVE",
     "description": "踏み込みから斬り上げまでが一息。斬られた側は、後から燃える。",
     "cooldown": 3,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 2.0 },
-      { "type": "STATUS", "status": "BURN", "duration": 3, "potency": 35, "chance": 70 }
+      {
+        "type": "DAMAGE",
+        "power": 2.0
+      },
+      {
+        "type": "STATUS",
+        "status": "BURN",
+        "duration": 3,
+        "potency": 35,
+        "chance": 70
+      }
     ],
     "fx": "flame_slash"
   },
@@ -248,28 +478,64 @@
     "kind": "ACTIVE",
     "description": "剣を地に突き立て、そこから火の波を起こす。派手なのは自覚している。",
     "cooldown": 4,
-    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 1.35 },
-      { "type": "STATUS", "status": "BURN", "duration": 2, "potency": 25, "chance": 50 }
+      {
+        "type": "DAMAGE",
+        "power": 1.35
+      },
+      {
+        "type": "STATUS",
+        "status": "BURN",
+        "duration": 2,
+        "potency": 25,
+        "chance": 50
+      }
     ],
     "fx": "flame_burst"
   },
-
   {
     "id": "sk_momiji_kc_timeskip",
     "name": "時飛ばし",
     "kind": "ACTIVE",
-    "description": "十数秒を丸ごと刈り取る。刈られた側に体感時間は無く、ただ「結果」だけが戦場に残る。",
+    "description": "十数秒を丸ごと刈り取る。刈られた側に体感時間は無く、ただ「結果」だけが戦場に残る。消し飛んだ時間のぶん、相手は手番を失う。",
     "cooldown": 4,
-    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "GAUGE", "amount": -40 },
-      { "type": "DAMAGE", "power": 0.55 },
-      { "type": "GAUGE", "amount": 45, "target": { "side": "SELF", "pattern": "SELF" } }
+      {
+        "type": "GAUGE",
+        "amount": -50
+      },
+      {
+        "type": "DAMAGE",
+        "power": 0.78
+      },
+      {
+        "type": "STATUS",
+        "status": "STUN",
+        "duration": 1,
+        "chance": 35
+      },
+      {
+        "type": "GAUGE",
+        "amount": 45,
+        "target": {
+          "side": "SELF",
+          "pattern": "SELF"
+        }
+      }
     ],
     "fx": "void_erase",
-    "tags": ["TimeSkip", "Control"]
+    "tags": [
+      "TimeSkip",
+      "Control"
+    ]
   },
   {
     "id": "sk_momiji_kc_epitaph",
@@ -277,14 +543,43 @@
     "kind": "ACTIVE",
     "description": "第三の目が数秒先を見る。危ない一撃は、当たる前に「無かったこと」になる。",
     "cooldown": 3,
-    "target": { "side": "ALLY", "pattern": "LOWEST_HP", "count": 1 },
+    "target": {
+      "side": "ALLY",
+      "pattern": "LOWEST_HP",
+      "count": 1
+    },
     "effects": [
-      { "type": "STATUS", "status": "SHIELD", "duration": 2, "potency": 22 },
-      { "type": "STATUS", "status": "SPD_UP", "duration": 3, "potency": 30, "target": { "side": "SELF", "pattern": "SELF" } },
-      { "type": "STATUS", "status": "ATK_UP", "duration": 2, "potency": 15, "target": { "side": "SELF", "pattern": "SELF" } }
+      {
+        "type": "STATUS",
+        "status": "SHIELD",
+        "duration": 3,
+        "potency": 34
+      },
+      {
+        "type": "STATUS",
+        "status": "SPD_UP",
+        "duration": 3,
+        "potency": 30,
+        "target": {
+          "side": "SELF",
+          "pattern": "SELF"
+        }
+      },
+      {
+        "type": "STATUS",
+        "status": "ATK_UP",
+        "duration": 2,
+        "potency": 15,
+        "target": {
+          "side": "SELF",
+          "pattern": "SELF"
+        }
+      }
     ],
     "fx": "void_epitaph",
-    "tags": ["Epitaph"]
+    "tags": [
+      "Epitaph"
+    ]
   },
   {
     "id": "sk_amagi_grace",
@@ -292,13 +587,23 @@
     "kind": "ACTIVE",
     "description": "傷も、毒も、抱えた呪いも、等しく光の下に置く。裁かないのが彼女の流儀。",
     "cooldown": 3,
-    "target": { "side": "ALLY", "pattern": "ALL" },
+    "target": {
+      "side": "ALLY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "HEAL", "power": 2.2 },
-      { "type": "CLEANSE" }
+      {
+        "type": "HEAL",
+        "power": 2.2
+      },
+      {
+        "type": "CLEANSE"
+      }
     ],
     "fx": "heal_wave",
-    "tags": ["Cleanse"]
+    "tags": [
+      "Cleanse"
+    ]
   },
   {
     "id": "sk_amagi_aegis",
@@ -306,10 +611,23 @@
     "kind": "ACTIVE",
     "description": "五人ぶんの星を空に留める。誓約が切れるまで、誰も落ちない。",
     "cooldown": 5,
-    "target": { "side": "ALLY", "pattern": "ALL" },
+    "target": {
+      "side": "ALLY",
+      "pattern": "ALL"
+    },
     "effects": [
-      { "type": "STATUS", "status": "SHIELD", "duration": 3, "potency": 25 },
-      { "type": "STATUS", "status": "ATK_UP", "duration": 3, "potency": 18 }
+      {
+        "type": "STATUS",
+        "status": "SHIELD",
+        "duration": 3,
+        "potency": 25
+      },
+      {
+        "type": "STATUS",
+        "status": "ATK_UP",
+        "duration": 3,
+        "potency": 18
+      }
     ],
     "fx": "holy_aegis"
   }

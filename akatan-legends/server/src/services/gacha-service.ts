@@ -17,7 +17,7 @@
  *   8. 支払い・付与・天井カウンタ更新をすべて1トランザクションで確定する
  */
 import type {
-  CharacterDropResult, GachaBannerDef, GachaListResponse, GachaPullResponse, GachaPullResult, Rarity,
+  CharacterDropResult, DropEntry, GachaBannerDef, GachaListResponse, GachaPullResponse, GachaPullResult, Rarity,
 } from '@akatan/shared';
 import { RARITIES } from '@akatan/shared';
 import * as repo from '../db/repository.js';
@@ -31,6 +31,19 @@ import { buildInventoryResponse } from './equipment-service.js';
 import { randomSeed } from './rng-util.js';
 
 export const VALID_PULL_COUNTS = [1, 10] as const;
+
+/** dropTable 内の EQUIPMENT エントリ群(スロットごとに分かれている想定)を重み付き抽選する */
+function pickWeightedEquipmentEntry(rng: Rng, entries: DropEntry[]): DropEntry | undefined {
+  if (entries.length === 0) return undefined;
+  const total = entries.reduce((s, e) => s + Math.max(0, e.weight), 0);
+  if (total <= 0) return entries[0];
+  let roll = rng.next() * total;
+  for (const e of entries) {
+    roll -= Math.max(0, e.weight);
+    if (roll <= 0) return e;
+  }
+  return entries[entries.length - 1];
+}
 
 function rarityIdx(r: Rarity): number {
   return RARITIES.indexOf(r);
@@ -132,22 +145,30 @@ function pickCharacterDefId(
     .sort((a, b) => a.id.localeCompare(b.id));
   if (candidates.length === 0) return undefined;
 
-  const pickupRates = new Map((banner.pickup ?? []).map((p) => [p.defId, p.rate]));
-  const weighted = candidates.map((c) => ({
-    id: c.id,
-    // pickup.rate は「同レアリティ内での優遇率(%)」。基準重み100に対する加算的な倍率として扱う。
-    weight: 100 + (pickupRates.get(c.id) ?? 0) * 10,
-  }));
-  const total = weighted.reduce((s, w) => s + w.weight, 0);
-  let roll = rng.next() * total;
-  for (const w of weighted) {
-    roll -= w.weight;
-    if (roll <= 0) return w.id;
+  // pickup.rate の解釈: 「このレアリティが当選した後、pickup対象へ落ちる確率(%)」。
+  // 実データ例(banner_pickup_momiji_kc): rates.rarity.UR=6% × pickup.rate=70% -> このキャラを
+  // 引ける確率は 4.2%/回 になる、典型的なピックアップガチャの設計に合わせている。
+  const pickupEntries = (banner.pickup ?? []).filter((p) => candidates.some((c) => c.id === p.defId));
+  if (pickupEntries.length > 0) {
+    const totalPickupRate = Math.min(100, pickupEntries.reduce((s, p) => s + Math.max(0, p.rate), 0));
+    if (totalPickupRate > 0 && rng.chance(totalPickupRate)) {
+      // pickup対象群の中で rate の比率に応じて1体選ぶ(pickupが1体だけなら常にそれ)
+      let roll = rng.next() * totalPickupRate;
+      for (const p of pickupEntries) {
+        roll -= Math.max(0, p.rate);
+        if (roll <= 0) return p.defId;
+      }
+      return pickupEntries[pickupEntries.length - 1].defId;
+    }
+    // 非pickup側: pickup対象を除いた候補から均等抽選(pickup対象しか無いプールならそのまま候補全体から)
+    const rest = candidates.filter((c) => !pickupEntries.some((p) => p.defId === c.id));
+    return rng.pick(rest.length > 0 ? rest : candidates).id;
   }
-  return weighted[weighted.length - 1]?.id;
+
+  return rng.pick(candidates).id;
 }
 
-/** 重複キャラを素材へ変換する。drop-service と同じ shard_<rarity> 規約を共有する。 */
+/** 重複キャラを素材へ変換する(drop-service.duplicateShardMaterialId と同じ規約を共有)。 */
 function grantOrConvertCharacter(
   playerId: string,
   data: GameData,
@@ -242,17 +263,19 @@ export function pullGacha(
 
   if (banner.equipment) {
     // 装備バナー: キャラ抽選(rates/pity/guarantee10)は使わず、指定ドロップテーブルの
-    // 傾向を itemLevel で装備生成にそのまま渡す。天井の概念は現状の型(GachaPity.rarity が
-    // Rarity 固定)では表現できないため未実装(下記「統括への型変更要望」参照)。
+    // EQUIPMENT エントリ群を重み付き抽選してスロット/レアリティ傾向を決め、itemLevel は
+    // バナー設定を使う。天井の概念は現状の型(GachaPity.rarity が Rarity 固定)では
+    // 表現できないため未実装(下記「統括への型変更要望」参照)。
     const genCtx = contextFromGameData(data);
     const table = data.dropTables.get(banner.equipment.dropTable);
-    const equipmentEntry = table?.entries.find((e) => e.kind === 'EQUIPMENT');
+    const equipmentEntries = (table?.entries ?? []).filter((e) => e.kind === 'EQUIPMENT');
     for (let i = 0; i < count; i += 1) {
+      const entry = pickWeightedEquipmentEntry(rng, equipmentEntries);
       const item = generateEquipment(genCtx, {
         itemLevel: banner.equipment.itemLevel,
         seed: randomSeed(),
-        slot: equipmentEntry?.slot,
-        rarityWeights: equipmentEntry?.rarityWeights ?? DEFAULT_ITEM_RARITY_WEIGHTS,
+        slot: entry?.slot,
+        rarityWeights: entry?.rarityWeights ?? DEFAULT_ITEM_RARITY_WEIGHTS,
       });
       if (item) results.push({ equipment: item, rarity: item.rarity });
       else console.warn(`[gacha] banner '${banner.id}': 装備を生成できませんでした(装備ベース未作成の可能性)`);

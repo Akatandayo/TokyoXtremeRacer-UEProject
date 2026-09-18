@@ -11,6 +11,7 @@ export type FxFamily =
   | 'glitch' | 'acid' | 'laser' | 'roar'
   | 'heal' | 'cleanse' | 'buff' | 'debuff' | 'gauge'
   | 'ult' | 'awaken' | 'combo' | 'defeat' | 'resist' | 'stun'
+  | 'equip'
   | 'generic';
 
 export interface FxSpec {
@@ -38,6 +39,9 @@ const FAMILY_COLOR: Record<FxFamily, string> = {
   heal: '#56f0a8', cleanse: '#9ef4ff', buff: '#ffd166', debuff: '#c07bff', gauge: '#35e6ff',
   ult: '#ff3ea5', awaken: '#ffcc57', combo: '#ff8fb1', defeat: '#ff5f6d',
   resist: '#9aa8cc', stun: '#ffd166', generic: '#dfe8ff',
+  // 装備の特殊効果 (fx: "equip:xxx") 用。スキルより控えめ・コンボより地味な、
+  // 金属的な光沢色にして「装備が光った」と分かる程度に留める。
+  equip: '#e4d9a8',
 };
 
 /** fxキーの部分一致ルール(上から順に評価) */
@@ -101,7 +105,7 @@ const SCREEN_BY_FAMILY: Partial<Record<FxFamily, FxSpec['screen']>> = {
 };
 
 const DURATION_BY_FAMILY: Partial<Record<FxFamily, number>> = {
-  ult: 1100, awaken: 1400, combo: 1000, defeat: 800, heal: 700,
+  ult: 1100, awaken: 1400, combo: 1000, defeat: 800, heal: 700, equip: 380,
 };
 
 /** 覚醒 / コンボは属性トークンより常に優先する */
@@ -118,11 +122,30 @@ function matchRule(text: string): FxFamily | undefined {
   return undefined;
 }
 
+/**
+ * 装備の特殊効果(統括共有の規約): `fx` が "equip:" で始まるイベントは装備由来。
+ * `skillId` は未設定、`skillName` に特殊効果名が入る(COMBOイベントと同じ流儀)。
+ * スキルより控えめ・コンボより地味な専用演出(小さな光沢グリント)に固定する。
+ */
+export function isEquipFx(fxKey?: string): boolean {
+  return !!fxKey && fxKey.startsWith('equip:');
+}
+
 export function resolveFx(
   fxKey: string | undefined,
   element: Element | undefined,
   type: BattleEventType,
 ): FxSpec {
+  if (isEquipFx(fxKey)) {
+    return {
+      family: 'equip',
+      color: FAMILY_COLOR.equip,
+      shards: 5,
+      screen: 'none',
+      duration: DURATION_BY_FAMILY.equip ?? 380,
+    };
+  }
+
   let family: FxFamily | undefined;
   if (fxKey) {
     // 1) 先頭トークンを最優先で見る (dark_wave が「波」ではなく「闇」になるように)。

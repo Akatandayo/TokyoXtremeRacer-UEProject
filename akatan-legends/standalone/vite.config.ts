@@ -63,6 +63,14 @@ export default defineConfig({
   root: path.join(ROOT, 'client'),
   base: './',
   plugins: [akatanStandaloneResolver(), react()],
+  resolve: {
+    alias: [
+      // server 側のサービスが import している Node 組み込みモジュールを、
+      // ブラウザで動く最小実装へ差し替える(単体版は戦闘・装備生成のロジックを
+      // サーバと共有しているため、この差し替えだけで再利用できる)
+      { find: /^node:crypto$/, replacement: path.join(HERE, 'node-crypto-shim.ts') },
+    ],
+  },
   define: {
     __AKATAN_STANDALONE__: 'true',
   },

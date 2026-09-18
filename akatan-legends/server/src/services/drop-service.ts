@@ -7,10 +7,12 @@
  * 処理:
  *   1. DropTableDef.entries + nothingWeight を1つのプールとして `rolls` 回、重み付き抽選する。
  *   2. 当選した DropEntry の kind ごとに GOLD / EQUIPMENT / MATERIAL / SUMMON_TICKET / CHARACTER を処理する。
+ *      CHARACTER は `entry.id` が指定されていればそのキャラ、省略時は
+ *      「実装済み全キャラからランダムに1体」を抽選する(実データ `dt_ch1_common` 等がこの形)。
  *   3. CHARACTER は未所持なら付与、既所持なら「重複が完全なハズレにならない」方針(設計書§27)
- *      に従って素材へ変換する。変換先の素材IDはデータ担当が `data/items/materials.json` に
- *      `shard_<rarity>` (小文字, 例: shard_ssr) という規約で用意する想定。無ければ警告して
- *      GOLD 変換にフォールバックする(下記 DUPLICATE_FALLBACK_GOLD 参照)。
+ *      に従って素材へ変換する。変換先の素材IDは実データ `data/items/materials.json` の規約
+ *      (`mat_dup_fragment_low` = N〜SR, `mat_dup_fragment_high` = SSR〜UR)に合わせている。
+ *      該当素材が無ければ警告して GOLD 変換にフォールバックする(DUPLICATE_FALLBACK_GOLD)。
  *   4. すべてのDB書き込みは1トランザクションにまとめる。
  */
 import type {
@@ -32,9 +34,14 @@ const DUPLICATE_FALLBACK_GOLD: Record<Rarity, number> = {
   UR: 2000,
 };
 
-/** 重複キャラを変換する素材IDの命名規約。データ担当がこのIDで用意する。 */
+/**
+ * 重複キャラを変換する素材ID。
+ * 実データ (`data/items/materials.json`) の規約に合わせた2段階変換:
+ *   N/R/SR   -> mat_dup_fragment_low  (「探索者の欠片・並」)
+ *   SSR/UR   -> mat_dup_fragment_high (「探索者の欠片・特」)
+ */
 export function duplicateShardMaterialId(rarity: Rarity): string {
-  return `shard_${rarity.toLowerCase()}`;
+  return rarity === 'SSR' || rarity === 'UR' ? 'mat_dup_fragment_high' : 'mat_dup_fragment_low';
 }
 
 interface WeightedChoice<T> {
@@ -124,9 +131,13 @@ export function resolveDrops(
       }
 
       case 'CHARACTER': {
-        if (!entry.id) break;
         for (let n = 0; n < count; n += 1) {
-          characterResults.push(resolveCharacterDrop(playerId, data, entry.id, materialDeltas, goldGained));
+          const defId = entry.id ?? pickRandomCharacterId(rng, data);
+          if (!defId) {
+            console.warn(`[drop] CHARACTER: 抽選対象キャラが1体もいません(data/characters/ 未作成?): table=${table.id}`);
+            continue;
+          }
+          characterResults.push(resolveCharacterDrop(playerId, data, defId, materialDeltas, goldGained));
         }
         break;
       }
@@ -150,6 +161,13 @@ export function resolveDrops(
   });
 
   return { gold, equipment: equipmentGained, materials, characters: characterResults, tickets };
+}
+
+/** entry.id 省略時(「誰か」枠)に実装済み全キャラからランダムに1体選ぶ。決定論のため id 昇順ソート後に pick。 */
+function pickRandomCharacterId(rng: Rng, data: GameData): string | undefined {
+  const ids = [...data.characters.keys()].sort();
+  if (ids.length === 0) return undefined;
+  return rng.pick(ids);
 }
 
 function rollCount(rng: Rng, entry: DropEntry): number {

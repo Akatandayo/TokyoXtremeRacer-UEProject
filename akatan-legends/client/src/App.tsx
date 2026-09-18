@@ -10,12 +10,16 @@ import PartyScreen from './screens/PartyScreen';
 import DungeonScreen from './screens/DungeonScreen';
 import CollectionScreen from './screens/CollectionScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import EquipmentScreen from './screens/EquipmentScreen';
+import GachaScreen from './screens/GachaScreen';
 import BattleScreen from './battle/BattleScreen';
 
 const NAV: { screen: Screen; label: string }[] = [
   { screen: 'HOME', label: 'HOME' },
   { screen: 'CHARACTERS', label: 'キャラ' },
   { screen: 'PARTY', label: '編成' },
+  { screen: 'EQUIPMENT', label: '装備' },
+  { screen: 'GACHA', label: 'SUMMON' },
   { screen: 'DUNGEON', label: 'ダンジョン' },
   { screen: 'COLLECTION', label: '図鑑' },
   { screen: 'SETTINGS', label: '設定' },
@@ -42,6 +46,8 @@ function ScreenBody(): JSX.Element {
     case 'CHARACTERS': return <CharactersScreen />;
     case 'CHARACTER_DETAIL': return <CharacterDetailScreen />;
     case 'PARTY': return <PartyScreen />;
+    case 'EQUIPMENT': return <EquipmentScreen />;
+    case 'GACHA': return <GachaScreen />;
     case 'DUNGEON': return <DungeonScreen />;
     case 'COLLECTION': return <CollectionScreen />;
     case 'SETTINGS': return <SettingsScreen />;

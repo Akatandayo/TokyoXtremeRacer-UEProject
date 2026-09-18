@@ -5,10 +5,22 @@
     "kind": "NORMAL",
     "description": "応答を求めない信号を二度撃ち込む。返事はいらない、穴が空けばいい。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 0.58, "hits": 2 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.58,
+        "hits": 2
+      }
+    ],
     "fx": "glitch_slash",
-    "tags": ["Glitch", "Network"]
+    "tags": [
+      "Glitch",
+      "Network"
+    ]
   },
   {
     "id": "na_momiji_ember",
@@ -16,10 +28,20 @@
     "kind": "NORMAL",
     "description": "指先で弾いた小さな火の粉。合図でもあり、挨拶でもある。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 1.0 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.0
+      }
+    ],
     "fx": "ember",
-    "tags": ["Network"]
+    "tags": [
+      "Network"
+    ]
   },
   {
     "id": "na_kurogane_bash",
@@ -27,8 +49,16 @@
     "kind": "NORMAL",
     "description": "速くはない。ただ、当たれば必ず前に出られる。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "FRONT" },
-    "effects": [ { "type": "DAMAGE", "power": 0.9 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "FRONT"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.9
+      }
+    ],
     "fx": "impact"
   },
   {
@@ -37,8 +67,16 @@
     "kind": "NORMAL",
     "description": "戦うためではなく、届かせるために撃つ一滴。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 0.95 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.95
+      }
+    ],
     "fx": "water_shot"
   },
   {
@@ -47,8 +85,16 @@
     "kind": "NORMAL",
     "description": "抜いた音より斬った音のほうが遅い。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 1.0 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.0
+      }
+    ],
     "fx": "wind_slash"
   },
   {
@@ -57,8 +103,16 @@
     "kind": "NORMAL",
     "description": "闇に向けてのみ、まっすぐ飛ぶと決めている矢。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 1.05 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.05
+      }
+    ],
     "fx": "light_arrow"
   },
   {
@@ -67,10 +121,22 @@
     "kind": "NORMAL",
     "description": "浅く裂く。傷そのものより、そこから入るものが本体だ。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 0.9 },
-      { "type": "STATUS", "status": "BLEED", "duration": 2, "potency": 20, "chance": 35 }
+      {
+        "type": "DAMAGE",
+        "power": 0.9
+      },
+      {
+        "type": "STATUS",
+        "status": "BLEED",
+        "duration": 2,
+        "potency": 20,
+        "chance": 35
+      }
     ],
     "fx": "dark_claw"
   },
@@ -80,8 +146,16 @@
     "kind": "NORMAL",
     "description": "叩くというより、水面を揺らして間合いを整えている。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 0.9 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.9
+      }
+    ],
     "fx": "water_ripple"
   },
   {
@@ -90,8 +164,16 @@
     "kind": "NORMAL",
     "description": "剣が通った跡だけ空気が焦げる。基本動作でこれである。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 1.1 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.1
+      }
+    ],
     "fx": "flame_slash"
   },
   {
@@ -100,8 +182,16 @@
     "kind": "NORMAL",
     "description": "戦意のない光。それでも当たれば痛い、と本人は少し気にしている。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 1.0 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.0
+      }
+    ],
     "fx": "holy_bolt"
   },
   {
@@ -110,19 +200,35 @@
     "kind": "NORMAL",
     "description": "呼吸の間さえ与えない拳が、瞬きのうちに二度届く。こぶし90の本領。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 0.55, "hits": 2 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.6,
+        "hits": 3
+      }
+    ],
     "fx": "void_strike"
   },
-
   {
     "id": "na_slime_tackle",
     "name": "体当たり",
     "kind": "NORMAL",
     "description": "粘性のある塊が、重さだけでぶつかってくる。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 0.9 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.9
+      }
+    ],
     "fx": "impact"
   },
   {
@@ -131,8 +237,16 @@
     "kind": "NORMAL",
     "description": "闇から降りてきて、浅く噛んで離れる。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "RANDOM" },
-    "effects": [ { "type": "DAMAGE", "power": 0.95 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "RANDOM"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.95
+      }
+    ],
     "fx": "dark_claw"
   },
   {
@@ -141,8 +255,16 @@
     "kind": "NORMAL",
     "description": "宙に浮いた火種が、思い出したように弾ける。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "RANDOM" },
-    "effects": [ { "type": "DAMAGE", "power": 1.0 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "RANDOM"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.0
+      }
+    ],
     "fx": "ember"
   },
   {
@@ -151,8 +273,16 @@
     "kind": "NORMAL",
     "description": "腕を振り下ろすだけで地面が鳴る。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "FRONT" },
-    "effects": [ { "type": "DAMAGE", "power": 1.05 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "FRONT"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.05
+      }
+    ],
     "fx": "rock_smash"
   },
   {
@@ -161,8 +291,16 @@
     "kind": "NORMAL",
     "description": "踏み込みが速い。姿を見てからでは遅い。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 1.0 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.0
+      }
+    ],
     "fx": "wind_slash"
   },
   {
@@ -171,8 +309,16 @@
     "kind": "NORMAL",
     "description": "攻撃というより計測。ただし計測値の分だけ削れる。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 1.0 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.0
+      }
+    ],
     "fx": "laser"
   },
   {
@@ -181,8 +327,16 @@
     "kind": "NORMAL",
     "description": "触れられた場所から体温が抜けていく。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "LOWEST_HP" },
-    "effects": [ { "type": "DAMAGE", "power": 0.95 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "LOWEST_HP"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.95
+      }
+    ],
     "fx": "dark_touch"
   },
   {
@@ -191,8 +345,16 @@
     "kind": "NORMAL",
     "description": "誰も入っていない鎧が、正しい型で槍を出す。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "FRONT" },
-    "effects": [ { "type": "DAMAGE", "power": 1.05 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "FRONT"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.05
+      }
+    ],
     "fx": "slash"
   },
   {
@@ -201,10 +363,22 @@
     "kind": "NORMAL",
     "description": "威力はないが、粉が舞う。それが目的だ。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
     "effects": [
-      { "type": "DAMAGE", "power": 0.8 },
-      { "type": "STATUS", "status": "POISON", "duration": 2, "potency": 15, "chance": 30 }
+      {
+        "type": "DAMAGE",
+        "power": 0.8
+      },
+      {
+        "type": "STATUS",
+        "status": "POISON",
+        "duration": 2,
+        "potency": 15,
+        "chance": 30
+      }
     ],
     "fx": "poison_puff"
   },
@@ -214,8 +388,16 @@
     "kind": "NORMAL",
     "description": "戦い方を知らない者の、それでも必死な一撃。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 0.85 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.85
+      }
+    ],
     "fx": "impact"
   },
   {
@@ -224,8 +406,16 @@
     "kind": "NORMAL",
     "description": "巨腕が落ちる。避けるのではなく、耐える場所を選ぶ攻撃。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "FRONT" },
-    "effects": [ { "type": "DAMAGE", "power": 1.15 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "FRONT"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.15
+      }
+    ],
     "fx": "rock_smash"
   },
   {
@@ -234,8 +424,17 @@
     "kind": "NORMAL",
     "description": "二度斬る。一度目は鎧を、二度目は覚悟を。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "SINGLE" },
-    "effects": [ { "type": "DAMAGE", "power": 0.68, "hits": 2 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.68,
+        "hits": 2
+      }
+    ],
     "fx": "dark_slash"
   },
   {
@@ -244,8 +443,16 @@
     "kind": "NORMAL",
     "description": "存在しない数値が、存在する体を削っていく。",
     "cooldown": 0,
-    "target": { "side": "ENEMY", "pattern": "RANDOM" },
-    "effects": [ { "type": "DAMAGE", "power": 1.2 } ],
+    "target": {
+      "side": "ENEMY",
+      "pattern": "RANDOM"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.2
+      }
+    ],
     "fx": "void_bolt"
   }
 ]

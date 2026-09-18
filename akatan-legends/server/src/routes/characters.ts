@@ -63,6 +63,7 @@ charactersRouter.put('/characters/:uid/ai', handler((req, res) => {
   const def = data.characters.get(updated.defId);
   if (!def) throw notFound(`キャラクター定義が見つかりません: ${updated.defId}`);
 
-  const view: CharacterView = buildCharacterView(updated, def, data);
+  const equipmentByUid = new Map(repo.listEquipment(playerId).map((e) => [e.uid, e]));
+  const view: CharacterView = buildCharacterView(updated, def, data, equipmentByUid);
   sendOk(res, view);
 }));

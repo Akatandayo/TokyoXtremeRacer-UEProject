@@ -4,13 +4,16 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
-  BattleStartResponse, BattleUnitStat, ActiveStatus, BattleLog,
+  BattleStartResponse, BattleUnitStat, ActiveStatus, BattleLog, DropResult, MasterDataResponse,
 } from '@akatan/shared';
 import { useStore } from '../state/store';
 import { effectPolicy } from '../state/settings';
 import { useBattlePlayback, type PlaybackState, type Speed, type UnitRuntime, type FxInstance, type Popup } from './playback';
 import { CharacterArtView } from '../components/CharacterArt';
-import { STATUS_ICON, STATUS_LABEL, isBuff, formatNumber } from '../utils/labels';
+import {
+  STATUS_ICON, STATUS_LABEL, isBuff, formatNumber,
+  EQUIPMENT_SLOT_LABEL, EQUIPMENT_SLOT_ICON, ITEM_RARITY_LABEL,
+} from '../utils/labels';
 
 /** 再生対象が無いときの空ログ。毎レンダで新しいオブジェクトを作らないようモジュール定数にする。 */
 const EMPTY_LOG: BattleLog = {
@@ -247,11 +250,78 @@ function CutInView({ state }: { state: PlaybackState }): JSX.Element | null {
   );
 }
 
+/* ---------- ドロップ (設計書§24) ---------- */
+
+function DropsSection({ drops, master }: { drops: DropResult | null | undefined; master: MasterDataResponse | null }): JSX.Element | null {
+  if (!drops) return null;
+  const nothing =
+    drops.gold <= 0 && drops.equipment.length === 0 && drops.materials.length === 0 &&
+    drops.tickets.length === 0 && drops.characters.length === 0;
+
+  const materialName = (id: string) => master?.materials?.find((m) => m.id === id)?.name ?? id;
+  const charArt = (defId: string) => master?.characters.find((c) => c.id === defId)?.art;
+
+  return (
+    <div className="stack" style={{ gap: 8 }}>
+      <div className="section-title" style={{ marginBottom: 0 }}>DROPS<span className="jp">今回の入手</span></div>
+      {nothing ? (
+        <div className="muted" style={{ fontSize: 12 }}>今回のドロップはありませんでした。</div>
+      ) : (
+        <div className="drop-grid">
+          {drops.gold > 0 && (
+            <div className="drop-chip drop-gold">
+              <span className="ic">G</span>
+              <span className="nm">ボーナスゴールド</span>
+              <span className="ct">+{formatNumber(drops.gold)}</span>
+            </div>
+          )}
+          {drops.equipment.map((eq) => (
+            <div key={eq.uid} className={`drop-chip drop-equip irar-${eq.rarity}`}>
+              <span className="ic">{EQUIPMENT_SLOT_ICON[eq.slot]}</span>
+              <span className="nm">{eq.name}</span>
+              <span className="ct muted">{ITEM_RARITY_LABEL[eq.rarity]} / {EQUIPMENT_SLOT_LABEL[eq.slot]} Lv{eq.itemLevel}</span>
+            </div>
+          ))}
+          {drops.materials.map((m) => (
+            <div key={m.id} className="drop-chip drop-material">
+              <span className="ic">素</span>
+              <span className="nm">{materialName(m.id)}</span>
+              <span className="ct">×{m.count}</span>
+            </div>
+          ))}
+          {drops.tickets.map((t) => (
+            <div key={t.id} className="drop-chip drop-ticket">
+              <span className="ic">券</span>
+              <span className="nm">召喚チケット</span>
+              <span className="ct">×{t.count}</span>
+            </div>
+          ))}
+          {drops.characters.map((c, i) => (
+            <div key={`${c.defId}-${i}`} className={`drop-chip drop-character rar-${c.rarity}`}>
+              <div className="drop-char-art">
+                <CharacterArtView art={charArt(c.defId)} name={c.name} rarity={c.rarity} ratio="square" hideBadges />
+              </div>
+              <span className="nm">{c.name}</span>
+              {c.duplicate ? (
+                <span className="ct" style={{ color: 'var(--muted)' }}>
+                  重複 → 素材変換{c.converted ? `(${materialName(c.converted.id)}×${c.converted.count})` : ''}
+                </span>
+              ) : (
+                <span className="ct" style={{ color: 'var(--ok)' }}>新規入手!</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------- リザルト ---------- */
 
 function ResultOverlay({
-  data, onBack, onRetry,
-}: { data: BattleStartResponse; onBack: () => void; onRetry: () => void }): JSX.Element {
+  data, onBack, onRetry, master,
+}: { data: BattleStartResponse; onBack: () => void; onRetry: () => void; master: MasterDataResponse | null }): JSX.Element {
   const { log, rewards, stage } = data;
   const victory = log.result.victory;
   const allyStats = log.result.stats.filter((s) => s.side === 'ALLY');
@@ -307,6 +377,8 @@ function ResultOverlay({
             ))}
           </div>
         )}
+
+        <DropsSection drops={data.drops} master={master} />
 
         {mvp && (
           <div className="mvp-box">
@@ -626,6 +698,7 @@ export function BattleScreen(): JSX.Element {
           data={data}
           onBack={handleBack}
           onRetry={retrying ? () => undefined : handleRetry}
+          master={store.master}
         />
       )}
     </div>

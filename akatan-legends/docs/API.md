@@ -33,6 +33,9 @@
 | `PARTY_INVALID` | 400 | 重複編成・未所持キャラ・枠数超過 |
 | `NOT_FOUND` | 404 | ステージ/キャラ/エンドポイントが存在しない |
 | `STAGE_LOCKED` | 400 | **実装済み(第2ラウンド対応)。** `StageDef.unlockAfter` の前提ステージを未クリアで挑戦した |
+| `NOT_ENOUGH_CURRENCY` | 400 | **実装済み(第3ラウンド対応)。** ガチャのコスト(GOLD/チケット)が所持数を上回る |
+| `SLOT_MISMATCH` | 400 | **実装済み(第3ラウンド対応)。** 装備データ自体の `slot` が不正、または `POST /api/equipment/unequip` の `slot` が `EquipmentSlot` の値でない |
+| `ALREADY_EQUIPPED` | 400 | **実装済み(第3ラウンド対応)。** 他キャラが装着中の装備を別キャラへ装着しようとした/装着中の装備を売却しようとした |
 | `INTERNAL` | 500 | サーバ内部エラー。**スタックはサーバログのみ**、レスポンスには出さない |
 
 バリデーションは zod を使わず自前実装 (`server/src/routes/_helpers.ts`)。
@@ -60,6 +63,10 @@ MVP では認証を作らず、固定の `player_id = 'local'` を使う。
 | ダメージ・戦闘結果 | サーバ (戦闘エンジンを server 上で実行) | `server/src/battle/**` |
 | 報酬 (EXP/ゴールド) | サーバ (ステージ定義の `rewards`) | `services/battle-service.ts: grantRewards()` |
 | 所持キャラの検証 | サーバ (DB 照合) | `services/party-service.ts: validateMembers()` |
+| **装備の中身(ステータス/名前/特殊効果)** | サーバ(**第3ラウンド**。シード付き決定論的生成) | `services/item-generator.ts: rollEquipment()` |
+| **戦闘勝利時のドロップ** | サーバ(**第3ラウンド**。勝利時のみ抽選) | `services/drop-service.ts: resolveDrops()` |
+| **ガチャの抽選結果・天井・払い戻し** | サーバ(**第3ラウンド**。1トランザクションで残高確認→支払い→付与) | `services/gacha-service.ts: pullGacha()` |
+| **装備込みの最終ステータス** | サーバ(装備フラット→%の順で適用) | `services/progression.ts: computeStats() / resolveEquipmentMods()` |
 
 `POST /api/battle/start` がクライアントから受け取るのは **`stageId` と編成の `uid` だけ**。
 編成に含まれる `uid` は必ず DB でそのプレイヤーの所持キャラかを検証し、保存済みパーティ経由の場合も
@@ -412,13 +419,25 @@ curl -s -X POST localhost:8787/api/battle/start \
       "clearedStages": ["st_test_1"]
     },
     "characters": [ /* 戦闘後の最新 CharacterView[] */ ],
-    "stage": { "id": "st_test_1", "name": "テスト1", "enemies": [...], "rewards": { "exp": 500, "gold": 120 } }
+    "stage": { "id": "st_test_1", "name": "テスト1", "enemies": [...], "rewards": { "exp": 500, "gold": 120 } },
+    "drops": {
+      "gold": 22,
+      "equipment": [ { "uid": "eq_...", "baseId": "acc_worn_notebook", "slot": "ACCESSORY", "rarity": "UNCOMMON", "name": "書き込みだらけの手帳の活力", "itemLevel": 1, "stats": { "hp": 77, "healing": 9.2 }, "statsPercent": { "speed": 1 }, "suffixId": "sx_vitality", "seed": 968129164 } ],
+      "materials": [],
+      "characters": [],
+      "tickets": []
+    },
+    "inventory": { "equipment": [ /* InventoryResponse.equipment (ドロップ後の最新値) */ ], "materials": [], "tickets": [] }
   }
 }
 ```
 
 敗北時は `rewards: null`、`log.result.victory: false`、プレイヤーのゴールド/レベルは変化しない。
 ログは勝敗にかかわらず保存される。
+**`drops` も勝利時のみ抽選される**(第3ラウンド。`services/drop-service.ts: resolveDrops()`)。
+`stage.rewards.dropTable` が未設定、またはマスタに該当テーブルが無い場合は
+空の `DropResult`(`gold:0` 他すべて空配列)を返すだけで、戦闘自体は失敗しない。
+`itemLevel` はそのステージの敵配置の最大レベル(`StageDef.enemies[].level`)を使う。
 
 エラー例:
 
@@ -435,19 +454,298 @@ curl -s -X POST localhost:8787/api/battle/start \
 
 ---
 
-## 3. 育成計算
+### GET /api/inventory
+
+`InventoryResponse`。所持装備・素材・チケットの一覧。
+
+- `materials` と `tickets` は同じ DB テーブル(`materials`)から取得するが、
+  `data/gacha/banners.json` の `cost(10).ticketId` と `data/items/droptables/*.json` の
+  `SUMMON_TICKET` エントリが参照している素材IDを「チケット」として振り分ける
+  (`GameData.ticketMaterialIds`。`server/src/data/loader.ts`)。`MaterialDef` 自体には
+  種別を示すフィールドが無いため、この逆引きで判定している(詳細は §7)。
+
+```bash
+curl -s localhost:8787/api/inventory
+```
+
+```json
+{
+  "ok": true,
+  "data": {
+    "equipment": [ { "uid": "eq_...", "baseId": "wpn_bokuto", "slot": "WEAPON", "rarity": "COMMON", "name": "古びた木刀", "itemLevel": 1, "stats": { "attack": 12 }, "seed": 424242 } ],
+    "materials": [ { "id": "mat_dup_fragment_low", "count": 2 } ],
+    "tickets": [ { "id": "ticket_summon_standard", "count": 1 } ]
+  }
+}
+```
+
+---
+
+### POST /api/equipment/equip
+
+`EquipRequest` → `EquipResponse`。実装は `server/src/services/equipment-service.ts: equipItem()`。
+
+検証(すべてサーバ側):
+
+1. `equipmentUid` / `characterUid` は必須の文字列。
+2. `equipmentUid` はそのプレイヤーの所持装備でなければならない(`NOT_FOUND`)。
+3. `characterUid` はそのプレイヤーの所持キャラでなければならない(`NOT_FOUND`)。
+4. 対象装備が **他キャラに装着中** なら `ALREADY_EQUIPPED`(同じキャラへの再装着はno-opで成功扱い)。
+5. 対象キャラの同じスロットに既に別の装備があれば **自動的に外してから付け替える**。
+6. 反映後のキャラの `stats` は装備込みで再計算して返す(§3参照)。
+
+```bash
+curl -s -X POST localhost:8787/api/equipment/equip -H 'content-type: application/json' \
+  -d '{"equipmentUid":"eq_b5108264-...","characterUid":"ch_0bdc99e8-..."}'
+```
+
+```json
+{
+  "ok": true,
+  "data": {
+    "character": { "owned": { "...": "equipment: {\"WEAPON\":\"eq_b5108264-...\"}" }, "stats": { "attack": 129, "speed": 106, "critical": 15.5, "...": "他は変化なし" } },
+    "inventory": { "equipment": [ { "uid": "eq_b5108264-...", "equippedBy": "ch_0bdc99e8-..." } ], "materials": [], "tickets": [] }
+  }
+}
+```
+
+実測(装着前 attack=112/speed=101/critical=15、`{"stats":{"attack":17,"speed":5,"critical":0.5}}` のフラット加算のみを持つ装備を装着):
+装着後 `attack=129 / speed=106 / critical=15.5`(すべて期待通りの加算値)。
+
+エラー例:
+
+```json
+// 他キャラが装着中 -> HTTP 400
+{"ok":false,"error":{"code":"ALREADY_EQUIPPED","message":"この装備は既に他のキャラクターが装着しています: eq_... (equippedBy=ch_...)"}}
+```
+
+---
+
+### POST /api/equipment/unequip
+
+`UnequipRequest` → `{ character: CharacterView, inventory: InventoryResponse }`(`shared/src/api.ts` の記述通り、専用の
+レスポンス型は無いためこの形で返す)。
+
+- `slot` が `WEAPON` / `ARMOR` / `ACCESSORY` のいずれでもない場合は `SLOT_MISMATCH`。
+- 指定スロットに何も装備していなければ何もせず成功扱い(冪等)。
+
+```bash
+curl -s -X POST localhost:8787/api/equipment/unequip -H 'content-type: application/json' \
+  -d '{"characterUid":"ch_0bdc99e8-...","slot":"WEAPON"}'
+```
+
+```json
+// 不正なslot -> HTTP 400
+{"ok":false,"error":{"code":"SLOT_MISMATCH","message":"slot は WEAPON/ARMOR/ACCESSORY のいずれかである必要があります: HELMET"}}
+```
+
+---
+
+### POST /api/equipment/sell
+
+`SellEquipmentRequest` → `SellEquipmentResponse`。
+
+- **装着中の装備は売れない**(先に unequip が必要。`ALREADY_EQUIPPED`)。
+- 売却額はレアリティ基準額 × `1 + (itemLevel-1) * 0.05` で決まる暫定バランス値
+  (`equipment-service.ts: SELL_BASE_GOLD`)。
+
+```bash
+curl -s -X POST localhost:8787/api/equipment/sell -H 'content-type: application/json' \
+  -d '{"equipmentUids":["eq_b5108264-..."]}'
+```
+
+```json
+{ "ok": true, "data": { "gold": 25, "player": { "...": "gold加算後" }, "inventory": { "equipment": [], "materials": [], "tickets": [] } } }
+```
+
+```json
+// 装着中の装備を売却しようとした -> HTTP 400
+{"ok":false,"error":{"code":"ALREADY_EQUIPPED","message":"装着中の装備は売却できません(先に外してください): eq_..."}}
+```
+
+---
+
+### GET /api/gacha
+
+`GachaListResponse`。バナー一覧・天井カウンタ・所持チケット。
+
+```bash
+curl -s localhost:8787/api/gacha
+```
+
+```json
+{
+  "ok": true,
+  "data": {
+    "banners": [ /* GachaBannerDef[] (data/gacha/banners.json) */ ],
+    "player": { "...": "PlayerProfile" },
+    "pityCounters": { "banner_standard_char": 3, "banner_pickup_momiji_kc": 0, "banner_equipment": 0 },
+    "tickets": [ { "id": "ticket_summon_standard", "count": 1 } ]
+  }
+}
+```
+
+---
+
+### POST /api/gacha/pull
+
+`GachaPullRequest` → `GachaPullResponse`。**サーバ権威(設計書§37)の中核。**
+実装は `server/src/services/gacha-service.ts: pullGacha()`。処理順は §7 参照。
+
+- `count` は `1` または `10` のみ。それ以外は `BAD_REQUEST`。
+- コスト不足は `NOT_ENOUGH_CURRENCY`(GOLD/TICKETいずれも)。**残高確認は支払いより前に行い、
+  支払い・付与・天井カウンタ更新は1トランザクション**(`repo.inTransaction`)。
+- 重複キャラは `duplicate:true` にして素材へ変換(`mat_dup_fragment_low`=N〜SR / `mat_dup_fragment_high`=SSR〜UR。
+  §7の実データ規約に合わせている)。
+
+```bash
+curl -s -X POST localhost:8787/api/gacha/pull -H 'content-type: application/json' \
+  -d '{"bannerId":"banner_standard_char","count":1}'
+```
+
+```json
+{
+  "ok": true,
+  "data": {
+    "results": [ { "character": { "defId": "yomi", "name": "黄泉", "rarity": "SR", "duplicate": false, "uid": "ch_5dba3108-..." }, "rarity": "SR", "byPity": false } ],
+    "player": { "...": "gold -300" },
+    "characters": [ /* 更新後の CharacterView[] */ ],
+    "inventory": { "...": "InventoryResponse" },
+    "pityCounter": 1
+  }
+}
+```
+
+残高不足の実測例(`banner_standard_char` を10連で引こうとし、所持1000ゴールドに対して必要2700ゴールド):
+
+```json
+{"ok":false,"error":{"code":"NOT_ENOUGH_CURRENCY","message":"ゴールドが不足しています(必要: 2700 / 所持: 1000)","details":{"currency":"GOLD","required":2700,"owned":1000}}}
+```
+
+---
+
+## 3. ハクスラ / ガチャ (第3ラウンド)
+
+設計書§37の通り、**装備生成・ドロップ抽選・ガチャ結果はすべてサーバ側で確定させる**。
+クライアントから受け取るのは「どのバナーを何回引くか」「どの装備をどのキャラへ付けるか」
+という意図だけで、数値やシードそのものは一切受け取らない。
+
+### 3.1 装備生成(`server/src/services/item-generator.ts`)
+
+構造は `Base + Prefix + Suffix + ランダムステータス(ボーナス行) + 特殊効果`。
+
+- **決定論**: `rollEquipment(ctx, { seed, itemLevel, rarity?, slot?, baseId? })` は
+  `server/src/battle/rng.ts` の `createRng(seed)`(mulberry32、読み取り専用で再利用)を使い、
+  同じ `seed` + 同じ入力なら必ず同じ結果を返す。ロール順序は
+  **レアリティ → ベース選択 → Prefix → Suffix → ボーナスステータス行** で固定。
+  `EquipmentInstance.seed` に使用シードを保存するので、不具合再現や検算に使える。
+  `generateEquipment()` はこれに `uid`/`obtainedAt` を足した実インスタンスを返す(こちらは非決定)。
+- **レアリティ別チューニング**(`RARITY_TUNING`。バランス調整用の暫定値、コード側の定数):
+
+  | レアリティ | Prefix/Suffix数 | ボーナス行数 | mainValue倍率 | 特殊効果発動率 |
+  |---|---|---|---|---|
+  | COMMON | 0 | 0 | ×1.0 | 0% |
+  | UNCOMMON | 1(どちらか) | 1 | ×1.15 | 0% |
+  | RARE | 2 | 2 | ×1.35 | 20% |
+  | EPIC | 2 | 3 | ×1.6 | 45% |
+  | LEGENDARY | 2 | 4 | ×1.9 | 75% |
+  | MYTHIC | 2 | 5 | ×2.3 | 100% |
+
+  `EquipmentInstance` は `prefixId`/`suffixId` を1個ずつしか持てない構造なので、
+  「オプション数」は (a) Prefix/Suffix の有無(0〜2個)と (b) 名前の付かないボーナス
+  ステータス行の本数、の2軸で表現している。特殊効果は Prefix/Suffix 自身が
+  `AffixDef.special` を持っている場合のみ、上表の確率で「実際に発動」させるかを判定する
+  (対象の Affix に special が無ければ何も付かない)。
+- **itemLevel 補正**: 主ステータスは `base.mainValue + base.mainPerLevel*(itemLevel-1)`(`mainPerLevel` 省略時は
+  `mainValue*0.1` を既定値として使う)。Affix/ボーナス行も `itemLevel` に応じて緩やかに増加する
+  (`ITEM_LEVEL_FLAT_SCALE = 0.08` = 1レベルあたり+8%)。
+- **表示名**: 実データの Prefix/Suffix 名には既に助詞(「灼熱の」「の活力」)が入っているため、
+  `Prefix名 + Base名 + Suffix名` の単純連結で自然な日本語になる
+  (例: `px_scorching`(灼熱の) + `wpn_bokuto`(古びた木刀) + `sx_vitality`(の活力)
+  → 「灼熱の古びた木刀の活力」)。
+- ベース/アフィックス候補が1件も無い(スロット不一致・データ未整備)場合は `null` を返し、
+  呼び出し側(drop-service/gacha-service)がそのロールをスキップする。**データが空でも例外を投げない。**
+
+### 3.2 ドロップ抽選(`server/src/services/drop-service.ts`)
+
+- `StageDef.rewards.dropTable` を `data.dropTables` から引き、`DropTableDef.rolls` 回、
+  `nothingWeight` を含めた重み付き抽選を行う(**勝利時のみ**。`battle-service.ts: startBattle()`)。
+- `kind` ごとの処理:
+  - `GOLD` → 所持金へ加算。
+  - `EQUIPMENT` → `item-generator` で生成(`entry.slot`/`entry.rarityWeights` を尊重)してインベントリへ。
+  - `MATERIAL` / `SUMMON_TICKET` → 素材スタックへ加算。
+  - `CHARACTER` → `entry.id` が指定されていればそのキャラ、**省略時は実装済み全キャラから
+    ランダムに1体**を抽選する(実データの `dt_ch1_common` 等がこの形。id指定なし)。
+    未所持なら付与、既所持なら重複として素材へ変換する(§3.3)。
+- すべての DB 書き込みは `repo.inTransaction` で1トランザクションにまとめる
+  (better-sqlite3 の SAVEPOINT ベースのネストで、更に外側の戦闘報酬トランザクションと入れ子にできる)。
+- `dropTableId` がマスタに無い場合は空の `DropResult` を返すだけで、戦闘自体は失敗しない。
+
+### 3.3 重複キャラの変換規約
+
+実データ (`data/items/materials.json`) に合わせ、2段階で変換する
+(`drop-service.ts: duplicateShardMaterialId()`。gacha-service もこれを共有):
+
+- `N` / `R` / `SR` → `mat_dup_fragment_low`(「探索者の欠片・並」)
+- `SSR` / `UR` → `mat_dup_fragment_high`(「探索者の欠片・特」)
+
+該当素材がマスタに無い場合は警告ログを出し、レアリティ別の固定額(`DUPLICATE_FALLBACK_GOLD`:
+N=20 / R=50 / SR=150 / SSR=500 / UR=2000)を GOLD として加算するフォールバックに切り替える
+(「重複が完全なハズレにならない」設計書§27の方針を、データ未整備時も守るため)。
+
+### 3.4 ガチャ(`server/src/services/gacha-service.ts`)
+
+1回のガチャあたりの抽選順序:
+
+1. `count`(1 or 10)からコストを解決(`cost10` があれば10連時はそちらを使う。無ければ `cost * 10`)。
+2. **残高確認**(`assertAffordable`)。ここで不足していれば **何も変更せず** `NOT_ENOUGH_CURRENCY`。
+3. DB から天井カウンタを読む。
+4. 1回ごとに: 天井到達済みなら `pity.rarity` を確定、そうでなければ `rates.rarity` の重みで抽選。
+   当選レアリティが `pity.rarity` 以上ならカウンタを0に戻し、そうでなければ+1する。
+5. レアリティ内で `pool`(省略時は全キャラ)から1体選ぶ。`pickup` があれば
+   **「このレアリティが当選した後、pickup対象へ落ちる確率(%)」** として解釈する
+   (実データ例: `rates.rarity.UR=6%` × `pickup.rate=70%` → そのキャラを引ける確率は
+   4.2%/回 になる、典型的なピックアップガチャの設計に合わせた)。
+6. 重複キャラは §3.3 と同じ規約で素材へ変換。
+7. **10連のみ**: `guarantee10` 以上の結果が1件も無ければ、最後の1件を強制的に
+   `guarantee10` レアリティへ差し替える。
+8. 装備バナー(`banner.equipment`)はキャラ抽選(4〜7)をスキップし、
+   `equipment.dropTable` の **EQUIPMENT エントリ群を重み付き抽選**してスロット/レアリティ傾向を決め、
+   `item-generator` で `count` 回生成する(実データの `dt_gacha_equipment` はWEAPON/ARMOR/ACCESSORYの
+   3エントリに均等配分しており、これを正しく重み付き抽選しないと装備が特定スロットに偏るバグになる
+   — 実際に発生させて修正済み。検証結果は下記「検証」参照)。
+9. 支払い・付与・天井カウンタ更新をすべて1トランザクションで確定する。
+
+天井カウンタは `gacha_pity` テーブル(playerId + bannerId)に永続化し、プロセス再起動をまたいで保持される。
+300回の10連(3000回抽選)をローカルでシミュレーションし、`guarantee10` 違反0件を確認済み(§検証参照)。
+
+---
+
+## 4. 育成計算
 
 ### 最終ステータス
 
 ```
-stat = baseStats[key] + growth[key] * (level - 1)
-     + rebirthPoints[key]     (Phase 2: 転生ポイント)
-     + equipmentFlat[key]     (Phase 2: 装備)
-     * limitBreak 補正         (Phase 2: 限界突破 / 現状は係数 0 で無効)
+stat = baseStats[key] + growth[key] * (level - 1)      … ① レベル成長
+     + rebirthPoints[key]                               … ② 転生ポイント (Phase 2)
+     + equipmentFlat[key]                                … ③ 装備の固定値加算 (Phase 3。実装済み)
+     * (1 + limitBreakRate * limitBreak)                 … ④ 限界突破 (Phase 2。現状は係数 0 で無効)
+     * (1 + equipmentPercent[key] / 100)                 … ⑤ 装備の%加算 (Phase 3。実装済み)
 ```
 
-Phase 1 では **level と growth のみ** 反映する。拡張点は
-`server/src/services/progression.ts` の `computeStats()` にコメントで明示してある。
+**(第3ラウンドで装備反映を実装)** ③④⑤ の順序は固定(`services/progression.ts: computeStats()` に
+コメントで明示)。**装備の%は必ず「装備フラット適用後の値」に対する割合として一番最後に乗算する**
+(`EquipmentInstance.statsPercent` は「装備フラット適用後の値に対する割合加算」という仕様)。
+装備の集計は `resolveEquipmentMods(owned, equipmentByUid)` が
+`OwnedCharacter.equipment`(スロット→装備uid)を引き当てて `stats`(フラット)/`statsPercent`(%)を
+合算する。`computeOwnedStats(def, owned, equipmentByUid?)` の第3引数を省略すると装備なしとして
+計算する(装備テーブルを引く必要がない軽量な呼び出し向け)。
+
+**実測**(装着前 `attack=112/speed=101/critical=15` のキャラに、フラット加算のみ
+`{attack:+17, speed:+5, critical:+0.5}` の装備を装着): 装着後 `attack=129/speed=106/critical=15.5`
+(すべて加算値通り)。%込みの計算も別途 `(base+equipFlat) * (1+equipPercent/100)` で検算済み
+(例: attack 88 に +50フラット・+20%装備 → `round((88+50)*1.20) = 166`。実測値と一致)。
+
 `hp / attack / defense / speed` は整数丸め、`critical / criticalDamage / resistance / healing` は
 小数1桁まで保持する。
 
@@ -492,7 +790,7 @@ grantBattleExp()`、`DEFEATED_EXP_RATE` 定数)。生存/戦闘不能の判定�
 
 ---
 
-## 4. データローダ
+## 5. データローダ
 
 `server/src/data/loader.ts` が起動時に `data/` を読み、メモリにキャッシュする。
 
@@ -506,15 +804,35 @@ grantBattleExp()`、`DEFEATED_EXP_RATE` 定数)。生存/戦闘不能の判定�
 | `data/combos/*.json` | `ComboDef` 単体 または 配列 (**第2ラウンドで追加**) |
 | `data/system/affinity.json` | `AffinityTable` |
 | `data/system/progression.json` | `ProgressionConfig` |
+| `data/items/bases/*.json` | `ItemBaseDef[]` (**第3ラウンドで追加**) |
+| `data/items/affixes/*.json` | `AffixDef[]` (**第3ラウンドで追加**) |
+| `data/items/materials.json` | `MaterialDef[]` (**第3ラウンドで追加**。単一ファイル/`items/materials/*.json`ディレクトリのどちらでも可) |
+| `data/items/droptables/*.json` | `DropTableDef[]` (**第3ラウンドで追加**) |
+| `data/gacha/banners.json` | `GachaBannerDef[]` (**第3ラウンドで追加**。単一ファイル/`gacha/*.json`ディレクトリのどちらでも可) |
+| `data/system/planned-characters.json` | `PlannedCharacterDef[]` (**第3ラウンドで追加**) |
 
 - **寛容なパース**: 単一オブジェクト / 配列 / `{ "items": [...] }` 等のラッパ、BOM付きJSON、
   サブディレクトリの再帰探索すべてに対応。`data/combos/` も他カテゴリと同じ方針でパースする。
+  第3ラウンドで追加したアイテム/ガチャ系も同じ寛容パースを踏襲し、単一ファイル運用の
+  `materials.json`/`banners.json`/`planned-characters.json` は「そのファイル」と
+  「同名ディレクトリ」の両方を探索してマージする(`collectJsonSources()`)ので、
+  データ担当がファイル1本運用からディレクトリ分割運用に変えても壊れない。
 - **落ちない**: ファイル欠損・空ファイル・JSON破損・ID重複・参照切れはすべて起動時の警告ログに留め、
-  サーバは起動する。データが 0 件でも全エンドポイントが 200 を返す(`data/combos/` が空でも戦闘は動く)。
+  サーバは起動する。データが 0 件でも全エンドポイントが 200 を返す(`data/combos/` /
+  `data/items/**` / `data/gacha/**` が空でも戦闘・ガチャAPIは200を返し、結果が空になるだけ)。
 - ID重複は **先に読んだ定義が勝つ**(ファイル名昇順)。
 - `progression.json` が欠損/部分的でも既定値でマージされる。
-- インデックス: `characters` / `skills` / `enemies` / `aiProfiles` / `chapters` / `stages` / `combos`
+- インデックス: `characters` / `skills` / `enemies` / `aiProfiles` / `chapters` / `stages` / `combos` /
+  `itemBases` / `affixes` / `materials` / `dropTables` / `gachaBanners` / `plannedCharacters`
   (`stages` は全チャプター横断の `stageId -> {stage, chapterId}` 平坦インデックス)。
+- **`ticketMaterialIds`**(第3ラウンド追加): `MaterialDef` 自体には種別を示すフィールドが無いため、
+  `gachaBanners` の `cost(10).ticketId` と `dropTables` の `SUMMON_TICKET` エントリが参照している
+  素材IDを収集して「チケット扱いにする素材ID集合」を作る(データ駆動、コード変更不要)。
+  `InventoryResponse.materials` / `.tickets` の振り分けに使う(`equipment-service.ts: buildInventoryResponse()`)。
+- 第3ラウンド分の参照整合性チェック(警告のみ・落とさない): `AffixDef.minRarity`/`slots` の妥当性、
+  `ItemBaseDef.slot` の妥当性、`DropTableDef.entries` の `MATERIAL`/`SUMMON_TICKET` の `id` が
+  `materials` に存在するか、`CHARACTER` の `id` が `characters`/`plannedCharacters` に存在するか、
+  `GachaBannerDef.pool`/`pickup`/`equipment.dropTable`/`cost.ticketId` の参照切れ。
 - コンボの参照整合性チェック(`members` / `trigger.actor` / `trigger.skill` /
   `effects[].performer` / `effects[].skill`)も他カテゴリ同様、警告のみで落とさない。
 - `StageDef.unlockAfter` が指すステージIDがマスタに存在しない場合も起動時警告に留める
@@ -524,7 +842,7 @@ grantBattleExp()`、`DEFEATED_EXP_RATE` 定数)。生存/戦闘不能の判定�
 
 ---
 
-## 5. データベース
+## 6. データベース
 
 `better-sqlite3` / ファイルは `server/data.db` (gitignore 済み)。
 スキーマはコードで冪等に構築し、`PRAGMA user_version` でマイグレーション管理する
@@ -593,9 +911,67 @@ CREATE INDEX idx_battle_logs_player_created ON battle_logs(player_id, created_at
 リプレイ API (`GET /api/battle/logs` 等) は Phase 2 で追加予定。リポジトリ層には
 `findBattleLog()` / `listBattleLogSummaries()` を実装済み。
 
+### v1 → v2 マイグレーション(第3ラウンド: ハクスラ / ガチャ)
+
+`server/src/db/index.ts` の `MIGRATIONS` 配列に関数を1つ追加しただけで、
+既存の `server/data.db` も次回起動時に自動で v2 へ進む(`user_version` を見て未実行の
+マイグレーションだけ順番に流すため、既存データは一切壊れない。実機で確認済み:
+v1 で作った DB を v2 のコードで開くと `schema v1 -> v2` とログに出て正常起動する)。
+
+```sql
+CREATE TABLE equipment (
+  uid            TEXT PRIMARY KEY,
+  player_id      TEXT NOT NULL,
+  base_id        TEXT NOT NULL,
+  slot           TEXT NOT NULL,
+  rarity         TEXT NOT NULL,
+  name           TEXT NOT NULL,
+  item_level     INTEGER NOT NULL DEFAULT 1,
+  prefix_id      TEXT,
+  suffix_id      TEXT,
+  stats          TEXT NOT NULL,   -- JSON Partial<Record<StatKey, number>>
+  stats_percent  TEXT,            -- JSON Partial<Record<StatKey, number>>
+  special        TEXT,            -- JSON ItemSpecialEffect
+  enhance_level  INTEGER NOT NULL DEFAULT 0,
+  seed           INTEGER,         -- 再現用の生成シード
+  equipped_by    TEXT,            -- owned_characters.uid。NULL = 未装備
+  obtained_at    TEXT NOT NULL,
+  FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_equipment_player ON equipment(player_id);
+CREATE INDEX idx_equipment_equipped_by ON equipment(equipped_by);
+
+CREATE TABLE materials (
+  player_id   TEXT NOT NULL,
+  material_id TEXT NOT NULL,
+  count       INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (player_id, material_id),
+  FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+-- ガチャチケットも同じテーブルに入る。「チケットかどうか」は
+-- GameData.ticketMaterialIds (loader.ts) で判定する(§5参照)。
+
+CREATE TABLE gacha_pity (
+  player_id TEXT NOT NULL,
+  banner_id TEXT NOT NULL,
+  counter   INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (player_id, banner_id),
+  FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+```
+
+- `OwnedCharacter.equipment`(スロット→装備uid の JSON)は既存の `owned_characters.equipment` 列を
+  そのまま使う(Phase1から型は定義済みだったが第3ラウンドで初めて実際に書き込む)。
+  `equipment.equipped_by` と `owned_characters.equipment` は常に両方向で同期させる
+  (`repository.ts: setEquipmentEquippedBy()` / `setCharacterEquipmentSlot()` を必ずセットで呼ぶ。
+  `equipment-service.ts` の equip/unequip はどちらも `repo.inTransaction` で1トランザクションにしている)。
+- `materials` は `MAX(0, count + delta)` の `UPSERT` で増減する(`repo.addMaterial()`)。
+  マイナス方向(ガチャ/装備コストの消費)でも0未満にはならない安全弁。
+- `gacha_pity` は `(playerId, bannerId)` 単位でカウンタを永続化し、プロセス再起動をまたいで保持される。
+
 ---
 
-## 6. 戦闘エンジンとの結合
+## 7. 戦闘エンジンとの結合
 
 - エンジンは `server/src/battle/index.ts` から `runBattle` を
   `RunBattle` 署名 (`server/src/battle/contract.ts`) で export する。
@@ -625,7 +1001,7 @@ CREATE INDEX idx_battle_logs_player_created ON battle_logs(player_id, created_at
 
 ---
 
-## 7. 統括への型変更要望 (第2ラウンド)
+## 8. 統括への型変更要望
 
 `shared/` はバックエンド担当の書き込み禁止範囲のため、以下は実装せず要望のみ記載する。
 
@@ -644,7 +1020,7 @@ CREATE INDEX idx_battle_logs_player_created ON battle_logs(player_id, created_at
    フロントは `MasterDataResponse.combos` があればクライアント側でも判定可能なため、
    バックエンド側では今回実装していない(要望があれば追加する)。
 
-## 8. 他担当への依頼事項 (第2ラウンド)
+## 9. 他担当への依頼事項
 
 - **バトルエンジン担当**: `server/src/battle/engine.ts` が `ctx.now` / `ctx.combos` を
   まだ参照していない(`contract.ts` の契約は更新済み)。`BattleLog.createdAt` は

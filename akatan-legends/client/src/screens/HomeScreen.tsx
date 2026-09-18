@@ -10,6 +10,8 @@ import { combosOf, evaluateCombos, buildPlannedMap } from '../utils/combo';
 const NAV_CARDS: { screen: Screen; icon: string; title: string; desc: string }[] = [
   { screen: 'CHARACTERS', icon: '⛩', title: 'キャラクター', desc: '所持探索者の確認と育成' },
   { screen: 'PARTY', icon: '⚔', title: '編成', desc: '5人パーティを組む' },
+  { screen: 'EQUIPMENT', icon: '🛡', title: '装備', desc: '所持装備の管理と装着' },
+  { screen: 'GACHA', icon: '✨', title: 'SUMMON', desc: '召喚で探索者/装備を入手' },
   { screen: 'DUNGEON', icon: '🗺', title: 'ダンジョン', desc: 'ステージに挑戦する' },
   { screen: 'COLLECTION', icon: '📖', title: '図鑑', desc: 'キャラと敵の一覧' },
   { screen: 'SETTINGS', icon: '⚙', title: '設定', desc: '戦闘速度・演出設定' },

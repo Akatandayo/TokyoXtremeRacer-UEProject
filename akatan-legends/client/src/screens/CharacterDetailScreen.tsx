@@ -1,6 +1,6 @@
 /** CHARACTER DETAIL: 設計書 §39 のキャラ詳細 */
-import React, { useMemo, useState } from 'react';
-import type { CharacterDef, Skill, StatKey } from '@akatan/shared';
+import React, { useEffect, useMemo, useState } from 'react';
+import type { CharacterDef, Skill, StatKey, EquipmentSlot } from '@akatan/shared';
 import { useStore } from '../state/store';
 import { describeError } from '../api/client';
 import { CharacterArtView } from '../components/CharacterArt';
@@ -8,10 +8,13 @@ import { ElementChip, RoleChips, StatRow, Panel } from '../components/common';
 import {
   SKILL_KIND_LABEL, targetText, awakenConditionText, statPower, formatNumber,
   STAT_LABEL, ELEMENT_LABEL, ROLE_FULL, COMBO_KIND_LABEL,
+  EQUIPMENT_SLOT_LABEL, EQUIPMENT_SLOT_ICON, ITEM_RARITY_LABEL,
 } from '../utils/labels';
 import { combosOf, evaluateCombo, buildPlannedMap, comboMemberName } from '../utils/combo';
+import { equipmentOf } from '../utils/equipment';
 
 const SHOWN_STATS: StatKey[] = ['hp', 'attack', 'defense', 'speed', 'critical', 'criticalDamage', 'resistance', 'healing'];
+const EQUIP_SLOTS: EquipmentSlot[] = ['WEAPON', 'ARMOR', 'ACCESSORY'];
 
 function SkillCard({ skill, label }: { skill: Skill; label?: string }): JSX.Element {
   return (
@@ -79,6 +82,13 @@ export function CharacterDetailScreen(): JSX.Element {
         .filter((id): id is string => !!id),
     [store.party, store.characters],
   );
+
+  // 装備スロット表示用: 所持品(inventory)が未取得なら取りに行く
+  useEffect(() => {
+    if (store.inventory) return;
+    void store.refreshInventory().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onChangeAi = async (id: string) => {
     setSaving(true);
@@ -161,6 +171,37 @@ export function CharacterDetailScreen(): JSX.Element {
             {aiError && <div style={{ color: 'var(--danger)', fontSize: 11, marginTop: 6 }}>保存に失敗: {aiError}</div>}
             <div className="muted" style={{ fontSize: 10.5, marginTop: 8 }}>
               戦闘は完全オート。選んだ戦術に沿ってAIが行動します。
+            </div>
+          </Panel>
+
+          <Panel
+            title="EQUIPMENT"
+            jp="装備"
+            right={<button className="btn btn-sm btn-primary" onClick={() => store.navigate('EQUIPMENT', undefined, owned.uid)}>装備を変更 →</button>}
+          >
+            <div className="stack" style={{ gap: 7 }}>
+              {EQUIP_SLOTS.map((slot) => {
+                const uid = owned.equipment?.[slot];
+                const item = uid ? equipmentOf(store.inventory, uid) : undefined;
+                return (
+                  <div key={slot} className={`detail-equip-slot ${item ? `irar-${item.rarity}` : 'is-empty'}`}>
+                    <span className="slot-ic">{EQUIPMENT_SLOT_ICON[slot]}</span>
+                    <div className="detail-equip-body">
+                      <div className="k">{EQUIPMENT_SLOT_LABEL[slot]}</div>
+                      {item ? (
+                        <>
+                          <div className="nm">{item.name}</div>
+                          <div className="muted" style={{ fontSize: 10.5 }}>
+                            {ITEM_RARITY_LABEL[item.rarity]} / Lv{item.itemLevel}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="muted">未装着</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </Panel>
         </div>
