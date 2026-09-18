@@ -1,0 +1,153 @@
+[
+  {
+    "id": "px_swift",
+    "name": "疾風の",
+    "kind": "PREFIX",
+    "minRarity": "COMMON",
+    "stats": [{ "stat": "speed", "min": 4, "max": 9 }]
+  },
+  {
+    "id": "px_heavy",
+    "name": "重厚な",
+    "kind": "PREFIX",
+    "minRarity": "COMMON",
+    "stats": [{ "stat": "hp", "min": 40, "max": 90 }]
+  },
+  {
+    "id": "px_sharp",
+    "name": "鋭利な",
+    "kind": "PREFIX",
+    "minRarity": "UNCOMMON",
+    "stats": [{ "stat": "critical", "min": 3, "max": 7, "percent": true }]
+  },
+  {
+    "id": "px_guardian",
+    "name": "守護の",
+    "kind": "PREFIX",
+    "minRarity": "UNCOMMON",
+    "slots": ["ARMOR"],
+    "stats": [{ "stat": "defense", "min": 8, "max": 16 }]
+  },
+  {
+    "id": "px_frozen",
+    "name": "凍てつく",
+    "kind": "PREFIX",
+    "minRarity": "UNCOMMON",
+    "slots": ["ARMOR"],
+    "stats": [{ "stat": "defense", "min": 5, "max": 10 }],
+    "special": {
+      "id": "sp_frost_ward",
+      "name": "凍結障壁",
+      "description": "被弾時、まれに反射的に身体が強張って攻撃力が落ちる敵の一撃を軽く受け流す。",
+      "trigger": "ON_HIT_TAKEN",
+      "chance": 15,
+      "status": "DEF_UP",
+      "duration": 1,
+      "potency": 15
+    }
+  },
+  {
+    "id": "px_scorching",
+    "name": "灼熱の",
+    "kind": "PREFIX",
+    "minRarity": "UNCOMMON",
+    "slots": ["WEAPON"],
+    "stats": [{ "stat": "attack", "min": 6, "max": 12 }],
+    "special": {
+      "id": "sp_scorch_on_hit",
+      "name": "灼熱付与",
+      "description": "攻撃時、まれに刃先の余熱が相手を焼く。",
+      "trigger": "ON_ATTACK",
+      "chance": 10,
+      "status": "BURN",
+      "duration": 2,
+      "potency": 20
+    }
+  },
+  {
+    "id": "px_resonant",
+    "name": "共鳴する",
+    "kind": "PREFIX",
+    "minRarity": "RARE",
+    "stats": [{ "stat": "resistance", "min": 4, "max": 9, "percent": true }]
+  },
+  {
+    "id": "px_vampiric",
+    "name": "吸魂の",
+    "kind": "PREFIX",
+    "minRarity": "RARE",
+    "slots": ["WEAPON"],
+    "stats": [{ "stat": "attack", "min": 5, "max": 10 }],
+    "special": {
+      "id": "sp_soul_drain",
+      "name": "魂の余熱",
+      "description": "敵を撃破すると、奪った分だけ小さく回復が続く。",
+      "trigger": "ON_KILL",
+      "chance": 100,
+      "status": "REGEN",
+      "duration": 2,
+      "potency": 6
+    }
+  },
+  {
+    "id": "px_arcane",
+    "name": "神秘の",
+    "kind": "PREFIX",
+    "minRarity": "RARE",
+    "stats": [
+      { "stat": "attack", "min": 8, "max": 14 },
+      { "stat": "criticalDamage", "min": 5, "max": 10, "percent": true }
+    ]
+  },
+  {
+    "id": "px_cursed",
+    "name": "呪われし",
+    "kind": "PREFIX",
+    "minRarity": "RARE",
+    "stats": [
+      { "stat": "attack", "min": 12, "max": 20 },
+      { "stat": "hp", "min": -30, "max": -10 }
+    ]
+  },
+  {
+    "id": "px_ghostly",
+    "name": "亡霊の",
+    "kind": "PREFIX",
+    "minRarity": "EPIC",
+    "stats": [
+      { "stat": "speed", "min": 6, "max": 12 },
+      { "stat": "critical", "min": 2, "max": 5 }
+    ],
+    "special": {
+      "id": "sp_ghost_start",
+      "name": "亡霊の先手",
+      "description": "戦闘開始時、姿の薄さがそのまま初速に変わる。",
+      "trigger": "ON_BATTLE_START",
+      "chance": 100,
+      "status": "SPD_UP",
+      "duration": 3,
+      "potency": 15
+    }
+  },
+  {
+    "id": "px_kings",
+    "name": "王たる",
+    "kind": "PREFIX",
+    "minRarity": "MYTHIC",
+    "slots": ["WEAPON"],
+    "stats": [
+      { "stat": "attack", "min": 15, "max": 25 },
+      { "stat": "critical", "min": 5, "max": 10, "percent": true }
+    ],
+    "special": {
+      "id": "sp_kings_resolve",
+      "name": "王の号令",
+      "description": "戦闘開始時、迷いなく前へ出る覚悟が全身に満ちる。",
+      "trigger": "ON_BATTLE_START",
+      "chance": 100,
+      "status": "ATK_UP",
+      "duration": 3,
+      "potency": 20
+    }
+  }
+]

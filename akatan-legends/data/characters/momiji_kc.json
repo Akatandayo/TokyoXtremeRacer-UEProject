@@ -1,0 +1,65 @@
+{
+  "id": "momiji_kc",
+  "name": "孤月 紅葉",
+  "title": "KOGETSU MOMIJI / 幽波紋《キング・クリムゾン》",
+  "rarity": "UR",
+  "element": "VOID",
+  "roles": ["CONTROL", "SPECIALIST"],
+  "baseStats": {
+    "hp": 560,
+    "attack": 116,
+    "defense": 38,
+    "speed": 150,
+    "critical": 28,
+    "criticalDamage": 175,
+    "resistance": 24,
+    "healing": 100
+  },
+  "growth": {
+    "hp": 38,
+    "attack": 7.0,
+    "defense": 2.2,
+    "speed": 2.1,
+    "critical": 0.3,
+    "criticalDamage": 0.55
+  },
+  "normalAttack": "na_momiji_kc_flurry",
+  "skills": ["sk_momiji_kc_timeskip", "sk_momiji_kc_epitaph"],
+  "ultimate": "ult_momiji_kc_crimson_erase",
+  "awakening": {
+    "id": "epitaph_resonance",
+    "name": "第三の眼、開く",
+    "condition": {
+      "hpBelow": 30,
+      "skillUsed": { "skill": "sk_momiji_kc_timeskip", "count": 4 }
+    },
+    "statBonus": { "speed": 45, "critical": 25, "criticalDamage": 20, "attack": 20 },
+    "skillReplace": {
+      "sk_momiji_kc_timeskip": "sk_momiji_kc_timeskip_ex",
+      "ult_momiji_kc_crimson_erase": "ult_momiji_kc_crimson_erase_ex"
+    },
+    "grant": [{ "status": "SPD_UP", "duration": 3, "potency": 30 }],
+    "description": "何度時を刈っても独が見つからない。それでも彼女は諦め方を知らない。追い詰められた末に見えるのは、数秒先の未来ではなく、探し続けるという結末だけだ。",
+    "fx": "awaken_void"
+  },
+  "combos": ["kc_epitaph_link"],
+  "defaultAi": "ai_momiji_kc_epitaph",
+  "description": "ここではない、けれど確かに在り得た「もう一つの現世」からやってきた紅葉。幽波紋《キング・クリムゾン》は迷う暇も与えず十数秒を刈り取り、彼女が見た「結果」だけを戦場に残す。世界がどれだけ違っても、独君のことが大好きで大好きで仕方が無いところは何一つ変わらない。「独君どこだ〜い♡」と駆け回るこの執着だけは、どの現世に立っても寸分たりとも変わらない。",
+  "tags": ["king crimson", "幽波紋", "Network", "探索者", "TimeSkip"],
+  "trpg": {
+    "source": "アカルア卓(旧卓)",
+    "player": "あかたん",
+    "investigator": "孤月紅葉",
+    "affiliation": "不明",
+    "visibility": "PRIVATE",
+    "note": "元ネタ: ジョジョの奇妙な冒険 / 荒木飛呂彦。幽波紋《キング・クリムゾン》。"
+  },
+  "art": {
+    "primary": "#C8102E",
+    "secondary": "#241019",
+    "accent": "#7BE08A",
+    "sigil": "刻",
+    "pattern": "void",
+    "portrait": "momiji_kc"
+  }
+}

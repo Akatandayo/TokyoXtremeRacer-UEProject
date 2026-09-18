@@ -50,6 +50,14 @@
   --rar-SSR: #ffc542;
   --rar-UR: #ff5ad4;
 
+  /* 装備レアリティ (ItemRarity, 6段階: COMMON〜MYTHIC) */
+  --irar-COMMON: #9aa5c2;
+  --irar-UNCOMMON: #6fd48a;
+  --irar-RARE: #55b8ff;
+  --irar-EPIC: #b47dff;
+  --irar-LEGENDARY: #ffc542;
+  --irar-MYTHIC: #ff5ad4;
+
   --nav-h: 56px;
   --speed: 1;
 }

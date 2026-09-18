@@ -1,0 +1,63 @@
+[
+  {
+    "id": "acc_lucky_coin",
+    "name": "使い古した幸運のコイン",
+    "slot": "ACCESSORY",
+    "minRarity": "COMMON",
+    "mainStat": "critical",
+    "mainValue": 3,
+    "mainPerLevel": 0.25,
+    "description": "表も裏もすり減って判別できない。それでも持ち主はまだ信じている。"
+  },
+  {
+    "id": "acc_worn_notebook",
+    "name": "書き込みだらけの手帳",
+    "slot": "ACCESSORY",
+    "minRarity": "COMMON",
+    "mainStat": "healing",
+    "mainValue": 8,
+    "mainPerLevel": 0.7,
+    "description": "応急手当の手順がびっしり書き込まれている。役に立った日には、端に小さく印がつく。"
+  },
+  {
+    "id": "acc_pocket_watch",
+    "name": "錆びた懐中時計",
+    "slot": "ACCESSORY",
+    "minRarity": "UNCOMMON",
+    "mainStat": "speed",
+    "mainValue": 6,
+    "mainPerLevel": 0.5,
+    "description": "針は止まったままなのに、身につけると妙に急かされる気がする。"
+  },
+  {
+    "id": "acc_handmade_amulet",
+    "name": "手作りのお守り",
+    "slot": "ACCESSORY",
+    "minRarity": "UNCOMMON",
+    "mainStat": "resistance",
+    "mainValue": 6,
+    "mainPerLevel": 0.5,
+    "description": "誰が作ったのかは、もう本人も思い出せない。それでも肌身離さず持っている。"
+  },
+  {
+    "id": "acc_broken_compass",
+    "name": "壊れたコンパス",
+    "slot": "ACCESSORY",
+    "minRarity": "RARE",
+    "mainStat": "criticalDamage",
+    "mainValue": 12,
+    "mainPerLevel": 1.1,
+    "description": "針が指すのは北ではなく、狙った獲物の急所だという。真偽は誰も確かめていない。"
+  },
+  {
+    "id": "acc_epitaph_lens",
+    "name": "第三の目の欠片",
+    "slot": "ACCESSORY",
+    "minRarity": "MYTHIC",
+    "mainStat": "critical",
+    "mainValue": 12,
+    "mainPerLevel": 1.0,
+    "tags": ["Network"],
+    "description": "数秒先が視える、という言い伝えだけが残る欠片。持たせると、避けるべき一撃が「先に」わかる。"
+  }
+]

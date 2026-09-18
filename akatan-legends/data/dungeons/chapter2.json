@@ -31,7 +31,8 @@
       ],
       "rewards": {
         "exp": 700,
-        "gold": 380
+        "gold": 380,
+        "dropTable": "dt_ch2_common"
       },
       "description": "沈黙の初見殺し。スキルを封じられても通常攻撃で押せる素の火力が要る、という第2章の前提を提示する。",
       "unlockAfter": "ch1-5"
@@ -64,7 +65,8 @@
       ],
       "rewards": {
         "exp": 900,
-        "gold": 460
+        "gold": 460,
+        "dropTable": "dt_ch2_common"
       },
       "description": "敵側に回復役が出る。狙う順番を間違えると戦闘が終わらない、ターゲット選択の教材。",
       "unlockAfter": "ch2-1"
@@ -92,7 +94,8 @@
       ],
       "rewards": {
         "exp": 1300,
-        "gold": 700
+        "gold": 700,
+        "dropTable": "dt_ch2_common"
       },
       "description": "中ボス戦。闇属性の高速アタッカーで、北斗の対闇特効と凛の足止めが正面から刺さる。属性編成を組み替える動機づけ。",
       "unlockAfter": "ch2-2"
@@ -130,7 +133,8 @@
       ],
       "rewards": {
         "exp": 1700,
-        "gold": 900
+        "gold": 900,
+        "dropTable": "dt_ch2_common"
       },
       "description": "第2章の稼ぎ場。妨害・壁・回復が同時に出る総合問題で、ここをLv17前後で安定周回できればボスに挑める。",
       "unlockAfter": "ch2-3"
@@ -164,7 +168,8 @@
       ],
       "rewards": {
         "exp": 2600,
-        "gold": 1500
+        "gold": 1500,
+        "dropTable": "dt_ch2_boss"
       },
       "description": "第2章最終ボス。Lv20相当が必要。自己修復と状態異常解除を持つため、毒だけ・シールドだけといった単一戦術では落ちない。回復2枚で耐えるか、ファイアウォール再使用前に押し切るかを選ばせる。",
       "unlockAfter": "ch2-4"

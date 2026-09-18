@@ -1,7 +1,7 @@
 /** 日本語ラベル / 表示用ヘルパー */
 import type {
   Element, Role, Rarity, StatusType, StatKey, AwakeningCondition,
-  SkillKind, TargetPattern, TargetSide, Stats, ComboKind,
+  SkillKind, TargetPattern, TargetSide, Stats, ComboKind, ItemRarity, EquipmentSlot,
 } from '@akatan/shared';
 
 export const ELEMENT_LABEL: Record<Element, string> = {
@@ -24,6 +24,52 @@ export const ROLE_FULL: Record<Role, string> = {
 };
 
 export const RARITY_ORDER: Record<Rarity, number> = { N: 0, R: 1, SR: 2, SSR: 3, UR: 4 };
+
+/* ---------- 装備レアリティ (ItemRarity) ---------- */
+
+export const ITEM_RARITY_ORDER: Record<ItemRarity, number> = {
+  COMMON: 0, UNCOMMON: 1, RARE: 2, EPIC: 3, LEGENDARY: 4, MYTHIC: 5,
+};
+
+export const ITEM_RARITY_LABEL: Record<ItemRarity, string> = {
+  COMMON: 'コモン', UNCOMMON: 'アンコモン', RARE: 'レア',
+  EPIC: 'エピック', LEGENDARY: 'レジェンダリー', MYTHIC: 'ミシック',
+};
+
+export const EQUIPMENT_SLOT_LABEL: Record<EquipmentSlot, string> = {
+  WEAPON: '武器', ARMOR: '防具', ACCESSORY: '装飾品',
+};
+
+export const EQUIPMENT_SLOT_ICON: Record<EquipmentSlot, string> = {
+  WEAPON: '剣', ARMOR: '鎧', ACCESSORY: '珠',
+};
+
+/**
+ * ガチャ演出は `GachaPullResult.rarity: Rarity | ItemRarity` の両方を扱う。
+ * どちらの型の値が来てもラベル/色/演出の「格」を安全に引けるようにする。
+ */
+export function anyRarityLabel(r: Rarity | ItemRarity | string): string {
+  if (r in RARITY_ORDER) return r;
+  if (r in ITEM_RARITY_LABEL) return ITEM_RARITY_LABEL[r as ItemRarity];
+  return String(r);
+}
+
+export function anyRarityColorVar(r: Rarity | ItemRarity | string): string {
+  if (r in RARITY_ORDER) return `var(--rar-${r})`;
+  if (r in ITEM_RARITY_LABEL) return `var(--irar-${r})`;
+  return 'var(--muted)';
+}
+
+/** 演出の「格」を 0(地味)〜4(最大級)の5段階に正規化する */
+export function anyRarityTier(r: Rarity | ItemRarity | string): 0 | 1 | 2 | 3 | 4 {
+  if (r in RARITY_ORDER) return RARITY_ORDER[r as Rarity] as 0 | 1 | 2 | 3 | 4;
+  if (r in ITEM_RARITY_ORDER) {
+    // ItemRarity は6段階なので 0-5 を 0-4 へ圧縮 (EPIC以上をSSR格、MYTHICをUR格に寄せる)
+    const t = ITEM_RARITY_ORDER[r as ItemRarity];
+    return (t <= 1 ? 0 : t === 2 ? 1 : t === 3 ? 2 : t === 4 ? 3 : 4) as 0 | 1 | 2 | 3 | 4;
+  }
+  return 0;
+}
 
 export const STATUS_LABEL: Record<StatusType, string> = {
   POISON: '毒', BURN: '火傷', FREEZE: '氷結', STUN: '気絶', SILENCE: '沈黙',

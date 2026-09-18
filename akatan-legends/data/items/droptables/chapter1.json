@@ -1,0 +1,29 @@
+[
+  {
+    "id": "dt_ch1_common",
+    "rolls": 2,
+    "nothingWeight": 30,
+    "entries": [
+      { "kind": "GOLD", "weight": 40, "min": 20, "max": 45 },
+      { "kind": "MATERIAL", "id": "mat_enhance_shard", "weight": 25, "min": 1, "max": 2 },
+      { "kind": "EQUIPMENT", "weight": 20, "rarityWeights": { "COMMON": 60, "UNCOMMON": 32, "RARE": 8 } },
+      { "kind": "MATERIAL", "id": "mat_dup_fragment_low", "weight": 8, "min": 1, "max": 1 },
+      { "kind": "SUMMON_TICKET", "id": "ticket_summon_standard", "weight": 3, "min": 1, "max": 1 },
+      { "kind": "CHARACTER", "weight": 1, "min": 1, "max": 1 }
+    ]
+  },
+  {
+    "id": "dt_ch1_boss",
+    "rolls": 3,
+    "nothingWeight": 10,
+    "entries": [
+      { "kind": "GOLD", "weight": 35, "min": 80, "max": 160 },
+      { "kind": "MATERIAL", "id": "mat_enhance_shard", "weight": 20, "min": 2, "max": 4 },
+      { "kind": "MATERIAL", "id": "mat_enhance_crystal", "weight": 10, "min": 1, "max": 1 },
+      { "kind": "EQUIPMENT", "weight": 30, "rarityWeights": { "UNCOMMON": 35, "RARE": 40, "EPIC": 22, "LEGENDARY": 3 } },
+      { "kind": "MATERIAL", "id": "mat_dup_fragment_low", "weight": 12, "min": 1, "max": 2 },
+      { "kind": "SUMMON_TICKET", "id": "ticket_summon_standard", "weight": 8, "min": 1, "max": 1 },
+      { "kind": "CHARACTER", "weight": 3, "min": 1, "max": 1 }
+    ]
+  }
+]

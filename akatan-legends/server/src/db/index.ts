@@ -95,7 +95,52 @@ const MIGRATIONS: ((db: Db) => void)[] = [
         ON battle_logs(player_id, created_at DESC);
     `);
   },
-  // v1 -> v2 以降はここに追記する (例: 装備テーブル、ガチャ履歴 など)
+  // v1 -> v2: Phase 3 (ハクスラ) / Phase 5 (ガチャ)
+  //   - equipment: 生成済み装備インスタンス(EquipmentInstance)の永続化
+  //   - materials: 素材(チケット含む)の所持数。playerId + materialId で1行
+  //   - gacha_pity: バナーごとの天井カウンタ
+  (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS equipment (
+        uid            TEXT PRIMARY KEY,
+        player_id      TEXT NOT NULL,
+        base_id        TEXT NOT NULL,
+        slot           TEXT NOT NULL,
+        rarity         TEXT NOT NULL,
+        name           TEXT NOT NULL,
+        item_level     INTEGER NOT NULL DEFAULT 1,
+        prefix_id      TEXT,
+        suffix_id      TEXT,
+        stats          TEXT NOT NULL,
+        stats_percent  TEXT,
+        special        TEXT,
+        enhance_level  INTEGER NOT NULL DEFAULT 0,
+        seed           INTEGER,
+        equipped_by    TEXT,
+        obtained_at    TEXT NOT NULL,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_equipment_player ON equipment(player_id);
+      CREATE INDEX IF NOT EXISTS idx_equipment_equipped_by ON equipment(equipped_by);
+
+      CREATE TABLE IF NOT EXISTS materials (
+        player_id   TEXT NOT NULL,
+        material_id TEXT NOT NULL,
+        count       INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (player_id, material_id),
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS gacha_pity (
+        player_id TEXT NOT NULL,
+        banner_id TEXT NOT NULL,
+        counter   INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (player_id, banner_id),
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      );
+    `);
+  },
+  // v2 -> v3 以降はここに追記する
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

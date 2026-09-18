@@ -140,6 +140,22 @@
     "fx": "ult_flame_burst"
   },
   {
+    "id": "ult_momiji_kc_crimson_erase",
+    "name": "紅刻・時間抹消",
+    "kind": "ULTIMATE",
+    "description": "見えた数秒先のとおりに刻んで、時を消す。相手が気づいたときには、もう終わっている。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.9 },
+      { "type": "STATUS", "status": "STUN", "duration": 1, "chance": 85 },
+      { "type": "CLEANSE", "hits": 2 }
+    ],
+    "fx": "ult_void_crimson",
+    "tags": ["TimeSkip", "Epitaph"]
+  },
+  {
     "id": "ult_amagi_dawn",
     "name": "黎明の再誕",
     "kind": "ULTIMATE",

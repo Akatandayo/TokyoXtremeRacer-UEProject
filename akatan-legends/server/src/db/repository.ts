@@ -8,7 +8,10 @@
  * すべての関数は playerId を引数で受け取る。MVP では 'local' 固定だが、
  * 認証を入れた時に呼び出し側を変えるだけでマルチプレイヤー化できる。
  */
-import type { BattleLog, OwnedCharacter, Party, PlayerProfile, StatKey } from '@akatan/shared';
+import type {
+  BattleLog, EquipmentInstance, EquipmentSlot, ItemSpecialEffect, MaterialStack,
+  OwnedCharacter, Party, PlayerProfile, StatKey,
+} from '@akatan/shared';
 import { PARTY_SIZE } from '@akatan/shared';
 import { getDb, type Db } from './index.js';
 
@@ -356,6 +359,183 @@ export function countBattleLogs(playerId: string, db: Db = getDb()): number {
     .prepare('SELECT COUNT(*) AS n FROM battle_logs WHERE player_id = ?')
     .get(playerId) as { n: number };
   return row.n;
+}
+
+/* ============================================================
+ * 装備 (Phase 3: ハクスラ)
+ * ========================================================== */
+
+interface EquipmentRow {
+  uid: string;
+  player_id: string;
+  base_id: string;
+  slot: string;
+  rarity: string;
+  name: string;
+  item_level: number;
+  prefix_id: string | null;
+  suffix_id: string | null;
+  stats: string;
+  stats_percent: string | null;
+  special: string | null;
+  enhance_level: number;
+  seed: number | null;
+  equipped_by: string | null;
+  obtained_at: string;
+}
+
+function toEquipmentInstance(row: EquipmentRow): EquipmentInstance {
+  const item: EquipmentInstance = {
+    uid: row.uid,
+    baseId: row.base_id,
+    slot: row.slot as EquipmentSlot,
+    rarity: row.rarity as EquipmentInstance['rarity'],
+    name: row.name,
+    itemLevel: row.item_level,
+    stats: parseJson<EquipmentInstance['stats']>(row.stats, {}),
+    obtainedAt: row.obtained_at,
+  };
+  if (row.prefix_id) item.prefixId = row.prefix_id;
+  if (row.suffix_id) item.suffixId = row.suffix_id;
+  const statsPercent = parseJson<EquipmentInstance['statsPercent'] | null>(row.stats_percent, null);
+  if (statsPercent) item.statsPercent = statsPercent;
+  const special = parseJson<ItemSpecialEffect | null>(row.special, null);
+  if (special) item.special = special;
+  if (row.enhance_level) item.enhanceLevel = row.enhance_level;
+  if (typeof row.seed === 'number') item.seed = row.seed;
+  if (row.equipped_by) item.equippedBy = row.equipped_by;
+  return item;
+}
+
+export function insertEquipment(playerId: string, item: EquipmentInstance, db: Db = getDb()): EquipmentInstance {
+  db.prepare(
+    `INSERT INTO equipment
+       (uid, player_id, base_id, slot, rarity, name, item_level, prefix_id, suffix_id,
+        stats, stats_percent, special, enhance_level, seed, equipped_by, obtained_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    item.uid,
+    playerId,
+    item.baseId,
+    item.slot,
+    item.rarity,
+    item.name,
+    item.itemLevel,
+    item.prefixId ?? null,
+    item.suffixId ?? null,
+    JSON.stringify(item.stats ?? {}),
+    item.statsPercent ? JSON.stringify(item.statsPercent) : null,
+    item.special ? JSON.stringify(item.special) : null,
+    item.enhanceLevel ?? 0,
+    typeof item.seed === 'number' ? item.seed : null,
+    item.equippedBy ?? null,
+    item.obtainedAt ?? new Date().toISOString(),
+  );
+  return item;
+}
+
+export function listEquipment(playerId: string, db: Db = getDb()): EquipmentInstance[] {
+  const rows = db
+    .prepare('SELECT * FROM equipment WHERE player_id = ? ORDER BY obtained_at ASC, uid ASC')
+    .all(playerId) as EquipmentRow[];
+  return rows.map(toEquipmentInstance);
+}
+
+export function findEquipment(playerId: string, uid: string, db: Db = getDb()): EquipmentInstance | null {
+  const row = db
+    .prepare('SELECT * FROM equipment WHERE player_id = ? AND uid = ?')
+    .get(playerId, uid) as EquipmentRow | undefined;
+  return row ? toEquipmentInstance(row) : null;
+}
+
+/** 装着先キャラを更新する(null = 未装備に戻す) */
+export function setEquipmentEquippedBy(
+  playerId: string,
+  uid: string,
+  characterUid: string | null,
+  db: Db = getDb(),
+): void {
+  db.prepare('UPDATE equipment SET equipped_by = ? WHERE player_id = ? AND uid = ?')
+    .run(characterUid, playerId, uid);
+}
+
+/** 売却などで完全に削除する。装着中の行を消すと owned_characters 側の参照が浮くので、
+ *  呼び出し側(equipment-service)が必ず先に unequip してから呼ぶこと。 */
+export function deleteEquipment(playerId: string, uid: string, db: Db = getDb()): boolean {
+  const info = db.prepare('DELETE FROM equipment WHERE player_id = ? AND uid = ?').run(playerId, uid);
+  return info.changes > 0;
+}
+
+/** OwnedCharacter.equipment (JSON列) のスロットを更新する */
+export function setCharacterEquipmentSlot(
+  playerId: string,
+  uid: string,
+  slot: EquipmentSlot,
+  equipmentUid: string | null,
+  db: Db = getDb(),
+): void {
+  const owned = findOwnedCharacter(playerId, uid, db);
+  if (!owned) return;
+  const equipment: Partial<Record<EquipmentSlot, string>> = { ...(owned.equipment ?? {}) };
+  if (equipmentUid) equipment[slot] = equipmentUid;
+  else delete equipment[slot];
+  const hasAny = Object.keys(equipment).length > 0;
+  db.prepare('UPDATE owned_characters SET equipment = ? WHERE player_id = ? AND uid = ?')
+    .run(hasAny ? JSON.stringify(equipment) : null, playerId, uid);
+}
+
+/* ============================================================
+ * 素材 / チケット (Phase 3/5)
+ * ========================================================== */
+
+export function listMaterials(playerId: string, db: Db = getDb()): MaterialStack[] {
+  const rows = db
+    .prepare('SELECT material_id, count FROM materials WHERE player_id = ? AND count > 0 ORDER BY material_id ASC')
+    .all(playerId) as { material_id: string; count: number }[];
+  return rows.map((r) => ({ id: r.material_id, count: r.count }));
+}
+
+export function getMaterialCount(playerId: string, materialId: string, db: Db = getDb()): number {
+  const row = db
+    .prepare('SELECT count FROM materials WHERE player_id = ? AND material_id = ?')
+    .get(playerId, materialId) as { count: number } | undefined;
+  return row?.count ?? 0;
+}
+
+/** 所持数を増減する(負の delta で消費)。0未満にはならない。 */
+export function addMaterial(playerId: string, materialId: string, delta: number, db: Db = getDb()): void {
+  if (!delta) return;
+  db.prepare(
+    `INSERT INTO materials (player_id, material_id, count) VALUES (?, ?, MAX(0, ?))
+     ON CONFLICT(player_id, material_id) DO UPDATE SET count = MAX(0, count + excluded.count)`,
+  ).run(playerId, materialId, delta);
+}
+
+/* ============================================================
+ * ガチャ天井 (Phase 5)
+ * ========================================================== */
+
+export function getPityCounter(playerId: string, bannerId: string, db: Db = getDb()): number {
+  const row = db
+    .prepare('SELECT counter FROM gacha_pity WHERE player_id = ? AND banner_id = ?')
+    .get(playerId, bannerId) as { counter: number } | undefined;
+  return row?.counter ?? 0;
+}
+
+export function listPityCounters(playerId: string, db: Db = getDb()): Record<string, number> {
+  const rows = db
+    .prepare('SELECT banner_id, counter FROM gacha_pity WHERE player_id = ?')
+    .all(playerId) as { banner_id: string; counter: number }[];
+  const out: Record<string, number> = {};
+  for (const r of rows) out[r.banner_id] = r.counter;
+  return out;
+}
+
+export function setPityCounter(playerId: string, bannerId: string, counter: number, db: Db = getDb()): void {
+  db.prepare(
+    `INSERT INTO gacha_pity (player_id, banner_id, counter) VALUES (?, ?, ?)
+     ON CONFLICT(player_id, banner_id) DO UPDATE SET counter = excluded.counter`,
+  ).run(playerId, bannerId, Math.max(0, Math.floor(counter || 0)));
 }
 
 /* ============================================================

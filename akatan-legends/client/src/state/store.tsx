@@ -6,7 +6,7 @@ import React, {
 } from 'react';
 import type {
   PlayerProfile, CharacterView, Party, MasterDataResponse, ChapterDef,
-  BattleStartResponse,
+  BattleStartResponse, InventoryResponse,
 } from '@akatan/shared';
 import { api, describeError } from '../api/client';
 import { isMockMode } from '../api/mode';
@@ -14,11 +14,14 @@ import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './s
 
 export type Screen =
   | 'HOME' | 'CHARACTERS' | 'CHARACTER_DETAIL' | 'PARTY'
-  | 'DUNGEON' | 'BATTLE' | 'COLLECTION' | 'SETTINGS';
+  | 'DUNGEON' | 'BATTLE' | 'COLLECTION' | 'SETTINGS'
+  | 'EQUIPMENT' | 'GACHA';
 
 export interface Route {
   screen: Screen;
   charUid?: string;
+  /** EQUIPMENT 画面へ「このキャラの装備を変更」で遷移した場合、先に選択しておくキャラ */
+  equipCharUid?: string;
 }
 
 export interface RecentBattle {
@@ -43,6 +46,8 @@ export interface AppState {
   master: MasterDataResponse | null;
   chapters: ChapterDef[];
   clearedStages: string[];
+  /** 所持装備・素材・チケット。EQUIPMENT/GACHA 画面が使う(取得は各画面の責務)。 */
+  inventory: InventoryResponse | null;
 }
 
 interface Store extends AppState {
@@ -51,7 +56,7 @@ interface Store extends AppState {
   battle: BattleStartResponse | null;
   recent: RecentBattle[];
   mock: boolean;
-  navigate: (screen: Screen, charUid?: string) => void;
+  navigate: (screen: Screen, charUid?: string, equipCharUid?: string) => void;
   reload: () => Promise<void>;
   updateSettings: (patch: Partial<Settings>) => void;
   saveParty: (members: (string | null)[]) => Promise<void>;
@@ -59,6 +64,14 @@ interface Store extends AppState {
   startBattle: (stageId: string, members?: (string | null)[]) => Promise<void>;
   finishBattle: (rec: RecentBattle | null) => void;
   clearBattle: () => void;
+  /** 装備/ガチャ画面用: 所持品を取得してストアへ反映する */
+  refreshInventory: () => Promise<InventoryResponse>;
+  applyInventory: (inv: InventoryResponse) => void;
+  applyPlayer: (p: PlayerProfile) => void;
+  /** 単一キャラの最新状態を反映(装備の着脱など) */
+  applyCharacterView: (view: CharacterView) => void;
+  /** 複数キャラの最新状態をuidでマージ(ガチャで新規入手した場合を含む) */
+  mergeCharacters: (views: CharacterView[]) => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -84,6 +97,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
     master: null,
     chapters: [],
     clearedStages: [],
+    inventory: null,
   });
   const [route, setRoute] = useState<Route>({ screen: 'HOME' });
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -111,7 +125,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
         client.getDungeons(),
       ]);
       if (!mounted.current) return;
-      setState({
+      setState((s) => ({
         loading: false,
         error: null,
         player: player.player,
@@ -120,7 +134,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
         master,
         chapters: dungeons.chapters,
         clearedStages: dungeons.clearedStages,
-      });
+        inventory: player.inventory ?? s.inventory,
+      }));
     } catch (e) {
       if (!mounted.current) return;
       setState((s) => ({ ...s, loading: false, error: e }));
@@ -131,8 +146,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
     void reload();
   }, [reload]);
 
-  const navigate = useCallback((screen: Screen, charUid?: string) => {
-    setRoute({ screen, charUid });
+  const navigate = useCallback((screen: Screen, charUid?: string, equipCharUid?: string) => {
+    setRoute({ screen, charUid, equipCharUid });
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
 
@@ -172,6 +187,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
         ...s,
         player: b.player,
         characters: b.characters.length > 0 ? b.characters : s.characters,
+        inventory: b.inventory ?? s.inventory,
         clearedStages:
           b.log.result.victory && b.stage && !s.clearedStages.includes(b.stage.id)
             ? [...s.clearedStages, b.stage.id]
@@ -193,6 +209,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
 
   const clearBattle = useCallback(() => setBattle(null), []);
 
+  const refreshInventory = useCallback(async () => {
+    const inv = await api().getInventory();
+    if (mounted.current) setState((s) => ({ ...s, inventory: inv }));
+    return inv;
+  }, []);
+
+  const applyInventory = useCallback((inv: InventoryResponse) => {
+    setState((s) => ({ ...s, inventory: inv }));
+  }, []);
+
+  const applyPlayer = useCallback((p: PlayerProfile) => {
+    setState((s) => ({ ...s, player: p }));
+  }, []);
+
+  const applyCharacterView = useCallback((view: CharacterView) => {
+    setState((s) => ({
+      ...s,
+      characters: s.characters.some((c) => c.owned.uid === view.owned.uid)
+        ? s.characters.map((c) => (c.owned.uid === view.owned.uid ? view : c))
+        : [...s.characters, view],
+    }));
+  }, []);
+
+  const mergeCharacters = useCallback((views: CharacterView[]) => {
+    if (views.length === 0) return;
+    setState((s) => {
+      const map = new Map(s.characters.map((c) => [c.owned.uid, c] as const));
+      for (const v of views) map.set(v.owned.uid, v);
+      return { ...s, characters: [...map.values()] };
+    });
+  }, []);
+
   const value = useMemo<Store>(
     () => ({
       ...state,
@@ -209,8 +257,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
       startBattle,
       finishBattle,
       clearBattle,
+      refreshInventory,
+      applyInventory,
+      applyPlayer,
+      applyCharacterView,
+      mergeCharacters,
     }),
-    [state, route, settings, battle, recent, navigate, reload, updateSettings, saveParty, setAi, startBattle, finishBattle, clearBattle],
+    [
+      state, route, settings, battle, recent, navigate, reload, updateSettings, saveParty, setAi,
+      startBattle, finishBattle, clearBattle, refreshInventory, applyInventory, applyPlayer,
+      applyCharacterView, mergeCharacters,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

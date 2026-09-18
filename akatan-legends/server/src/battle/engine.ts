@@ -28,7 +28,7 @@
 import type {
   ActiveStatus, AffinityTable, Awakening, BattleEvent, BattleEventType, BattleLog,
   BattleResult, BattleUnit, BattleUnitSnapshot, BattleUnitStat, ComboDef, ComboEffect, Element,
-  ProgressionConfig, Side, Skill, SkillEffect, StatKey, StatusType,
+  ItemSpecialEffect, ProgressionConfig, Side, Skill, SkillEffect, StatKey, StatusType,
 } from '@akatan/shared';
 import type { BattleContext, CombatantInput, RunBattle } from './contract.js';
 import { createRng, type Rng } from './rng.js';
@@ -39,6 +39,7 @@ import {
 } from './status.js';
 import { decideAction, hpRatio, selectTargets, profileTendency, type AiUnit } from './ai.js';
 import { qualifyCombos, type ComboRuntime } from './combo.js';
+import { rollSpecialChance, specialFx, specialsOf } from './specials.js';
 
 type BattleConfig = ProgressionConfig['battle'];
 
@@ -50,6 +51,8 @@ interface EngineUnit extends AiUnit {
   /** 必殺ゲージMAXを既に告知済みか (ULT_READY を毎行動出さないため) */
   ultAnnounced: boolean;
   stat: BattleUnitStat;
+  /** 装備から解決済みの特殊効果 (CombatantInput.specials をそのまま保持)。省略時は空配列扱い。 */
+  specials?: ItemSpecialEffect[];
 }
 
 /**
@@ -95,6 +98,16 @@ class BattleRunner {
    * (以後のコンボ判定は全て length===0 で早期returnし、既存の挙動に一切影響しない)。
    */
   private readonly comboRuntimes: ComboRuntime[];
+  /**
+   * 装備の特殊効果の「1行動1回まで」上限を管理する状態 (unitId -> 発動済み specialId 集合)。
+   * takeAction() の先頭で毎回クリアする = 1つの enclosing action (コンボの追撃を含む)の中で
+   * 同じユニットの同じ特殊効果は高々1回しか発動しない。
+   * これが ON_ATTACK の bonusDamage が多段ヒット/複数対象/コンボ追撃で暴発したり、
+   * 無限に近い連鎖を起こしたりしないための安全弁 (無限ループ防止)。
+   * ON_BATTLE_START はこのクリアより前 (行動ループ開始前) に1度だけ使うので、
+   * 初期状態が空であることに依存している (問題なし: フィールド初期値が空Map)。
+   */
+  private readonly firedSpecialsThisAction = new Map<string, Set<string>>();
 
   constructor(
     allies: CombatantInput[],
@@ -150,6 +163,7 @@ class BattleRunner {
       awakening: c.awakening,
       skillUseCount: new Map(),
       ultAnnounced: false,
+      specials: c.specials,
       stat: {
         id: c.id, name: c.name, side,
         damageDealt: 0, damageTaken: 0, healing: 0, kills: 0, survived: true,
@@ -241,6 +255,7 @@ class BattleRunner {
       text: `戦闘開始！ ${this.aliveOf('ALLY').length} 対 ${this.aliveOf('ENEMY').length}`,
     });
     this.fireBattleStartCombos();
+    this.fireBattleStartSpecials();
     this.roundQuota = Math.max(1, this.units.filter((u) => u.alive).length);
     this.emit('TURN_START', { value: this.turn, text: `── ${this.turn} ターン目 ──` });
 
@@ -352,6 +367,11 @@ class BattleRunner {
    * ====================================================== */
 
   private takeAction(actor: EngineUnit): void {
+    // 装備の特殊効果「1行動1回」上限をこの行動の分だけリセットする。
+    // (コンボの追撃はこの takeAction 呼び出しの中で同期的に実行されるため、
+    //  コンボ追撃者の特殊効果もこの行動の枠を共有する = 意図した挙動)
+    this.firedSpecialsThisAction.clear();
+
     // --- 1〜2. 行動開始 + 行動不能判定 ---
     // ACTION_START は1行動につき必ず1つだけ出す (フロントが行動の区切りに使うため)。
     // 行動不能なら status にその原因を載せ、text も「動けない」実況にする。
@@ -612,8 +632,19 @@ class BattleRunner {
       // 被弾で必殺ゲージが溜まる (耐えるほど反撃の芽が出る設計)
       this.gainUlt(target, this.cfg.ultGainOnHit);
 
-      if (target.hp <= 0) { this.defeat(target, actor); break; }
+      // 装備の特殊効果 (ON_ATTACK): 追撃ダメージ・状態異常付与。
+      // 撃破判定(target.hp<=0)より先に処理することで、bonusDamage そのもので撃破した場合も
+      // 下の1箇所の defeat()/ON_KILL 経路にそのまま合流する(defeat() の二重発火が起きない)。
+      this.triggerOnAttackSpecials(actor, target);
+
+      if (target.hp <= 0) {
+        this.defeat(target, actor);
+        this.triggerOnKillSpecials(actor);
+        break;
+      }
       this.checkComboHpBelow(target);
+      // 装備の特殊効果 (ON_HIT_TAKEN): 被弾側の自己バフなど。target が生存している時のみ意味がある。
+      this.triggerOnHitTakenSpecials(target);
     }
   }
 
@@ -739,6 +770,174 @@ class BattleRunner {
       text: `${target.name} の 必殺ゲージが ${effect.amount}% 変動！`,
       ...(grouped ? { grouped: true } : {}),
     });
+  }
+
+  /* ========================================================
+   * 装備の特殊効果 (ItemSpecialEffect)
+   * ------------------------------------------------------------
+   * 設計は combo.ts / 上の「キャラクターコンボ」節と同じ思想:
+   *   - 判定 (どの特殊効果が対象か) は specials.ts の純粋関数 (specialsOf/rollSpecialChance) に任せる。
+   *   - 発動 (乱数を引く・ダメージ/状態を適用する・イベントを出す) はここ engine.ts が行う。
+   *
+   * 乱数消費順序 (1つの特殊効果につき):
+   *   1) markSpecialFired によるチェック (乱数不使用。1行動1回の上限)
+   *   2) rollSpecialChance (special.chance が100未満の時だけ rng.chance を1回消費)
+   *   3) status 付与時: applyStatus 内部の抵抗判定 (ignoreResistance=false の場合のみ、resistance>0なら1回消費)
+   *   4) bonusDamage 適用時: computeDamage 内部の 会心判定+乱数幅 で必ず2回消費
+   * この順序を変えると同シードでもログがズレるため、特殊効果の追加・改修時は必ず維持すること。
+   *
+   * CombatantInput.specials が未指定(空配列扱い)のユニットでは specialsOf が毎回空配列を返し、
+   * 上のどの手順も一切実行されない = 乱数消費が1回も増えない(既存84件のリプレイ互換性はこれで担保)。
+   * ====================================================== */
+
+  /** 1行動(takeAction 1回、コンボの追撃を含む)につき、同じユニット+同じ特殊効果は高々1回だけ発動を許す。 */
+  private markSpecialFired(unitId: string, specialId: string): boolean {
+    let fired = this.firedSpecialsThisAction.get(unitId);
+    if (!fired) {
+      fired = new Set();
+      this.firedSpecialsThisAction.set(unitId, fired);
+    }
+    if (fired.has(specialId)) return false;
+    fired.add(specialId);
+    return true;
+  }
+
+  /** 戦闘開始時: 全ユニット(味方→敵、slot昇順=this.units の並び順)の ON_BATTLE_START を1回ずつ判定する。 */
+  private fireBattleStartSpecials(): void {
+    for (const u of this.units) {
+      for (const special of specialsOf(u.specials, 'ON_BATTLE_START')) {
+        if (!this.markSpecialFired(u.id, special.id)) continue;
+        if (!rollSpecialChance(special, this.rng)) continue;
+        if (!special.status) continue;
+        // 自分自身への付与。パッシブの自己バフ(toUnit)と同じく抵抗判定はスキップする。
+        this.applySpecialStatus(special, u.id, u, true);
+      }
+    }
+  }
+
+  /** actor が target にダメージを与えた直後。追撃ダメージ・状態異常付与を試みる。 */
+  private triggerOnAttackSpecials(actor: EngineUnit, target: EngineUnit): void {
+    for (const special of specialsOf(actor.specials, 'ON_ATTACK')) {
+      if (!this.markSpecialFired(actor.id, special.id)) continue;
+      if (!rollSpecialChance(special, this.rng)) continue;
+      // 本命の一撃で既に致命傷(hp<=0)なら、追撃/付与は意味が無い(defeat()はまだ呼ばれておらず
+      // target.alive はまだ true だが、hp<=0 の相手に状態を乗せても直後の defeat() の
+      // clearAll で即座に消えるだけなので、ここで打ち切ってログを綺麗に保つ)。
+      // 撃破そのものは呼び出し元 (effectDamage) が ON_KILL として別途処理する。
+      if (target.hp <= 0) continue;
+      if (special.status) this.applySpecialStatus(special, actor.id, target, false);
+      if (special.bonusDamage) this.applySpecialBonusDamage(special, actor, target);
+    }
+  }
+
+  /** target が被弾した直後(かつ生存中)。自分自身への状態異常付与(防御バフ等)を試みる。 */
+  private triggerOnHitTakenSpecials(target: EngineUnit): void {
+    for (const special of specialsOf(target.specials, 'ON_HIT_TAKEN')) {
+      if (!this.markSpecialFired(target.id, special.id)) continue;
+      if (!rollSpecialChance(special, this.rng)) continue;
+      if (!special.status) continue;
+      this.applySpecialStatus(special, target.id, target, true);
+    }
+  }
+
+  /** actor が target を撃破した直後。自分自身への状態異常付与(与ダメバフ等)を試みる。 */
+  private triggerOnKillSpecials(actor: EngineUnit): void {
+    for (const special of specialsOf(actor.specials, 'ON_KILL')) {
+      if (!this.markSpecialFired(actor.id, special.id)) continue;
+      if (!rollSpecialChance(special, this.rng)) continue;
+      if (!special.status) continue;
+      this.applySpecialStatus(special, actor.id, actor, true);
+    }
+  }
+
+  /**
+   * 特殊効果由来の状態付与。発動可否(chance)は呼び出し元の rollSpecialChance で
+   * 判定済みなので、ここでは applyStatus に chance:100 を渡して二重に確率を掛けない。
+   * ignoreResistance=false のときだけ抵抗判定で追加の乱数を1回消費しうる(通常のデバフと同じ規約)。
+   */
+  private applySpecialStatus(
+    special: ItemSpecialEffect, sourceId: string, target: EngineUnit, ignoreResistance: boolean,
+  ): void {
+    if (!special.status) return;
+    const outcome = applyStatus(target, {
+      type: special.status,
+      duration: special.duration ?? 1,
+      potency: special.potency ?? 0,
+      sourceId,
+      chance: 100,
+      ignoreResistance,
+    }, this.rng);
+
+    if (outcome.kind === 'RESISTED') {
+      this.emit('STATUS_RESIST', {
+        sourceId,
+        targetId: target.id,
+        skillName: special.name,
+        status: special.status,
+        text: `${target.name} は 装備の特殊効果「${special.name}」を弾いた！`,
+      });
+      return;
+    }
+    if (outcome.kind === 'MISSED') return;
+
+    this.emit('STATUS_APPLY', {
+      sourceId,
+      targetId: target.id,
+      skillName: special.name,
+      status: special.status,
+      duration: outcome.status.duration,
+      value: outcome.status.potency,
+      fx: specialFx(special),
+      text: statusApplyText(target.name, special.status),
+    });
+  }
+
+  /**
+   * 特殊効果由来の追撃ダメージ (ON_ATTACK の bonusDamage)。
+   * 通常のダメージ計算 (computeDamage) をそのまま再利用する = 会心/属性相性/防御軽減/乱数幅の
+   * 規約を一切変えない。bonusDamage は power と同じ「攻撃力に対する倍率」として扱う。
+   * このダメージ自体が新たな ON_ATTACK を誘発することはない(このメソッドからは
+   * triggerOnAttackSpecials を一切呼ばないため、bonusDamage の連鎖的な暴発を構造的に防ぐ)。
+   */
+  private applySpecialBonusDamage(
+    special: ItemSpecialEffect, actor: EngineUnit, target: EngineUnit,
+  ): void {
+    if (!special.bonusDamage || special.bonusDamage <= 0) return;
+    const element = actor.element;
+    const affinity = affinityMultiplier(
+      this.affinity as Record<string, Record<string, number>>, element, target.element,
+    );
+    const res = computeDamage({
+      attackStat: this.scalingValue(actor, 'attack'),
+      power: special.bonusDamage,
+      defense: effectiveStat(target, 'defense'),
+      defenseConstant: this.cfg.defenseConstant,
+      affinity,
+      criticalRate: actor.stats.critical,
+      criticalDamage: actor.stats.criticalDamage,
+      variance: this.cfg.damageVariance,
+      rng: this.rng,
+    });
+
+    const { absorbed, through } = absorbWithShield(target, res.value);
+    target.hp = Math.max(0, target.hp - through);
+    actor.stat.damageDealt += res.value;
+    target.stat.damageTaken += through;
+
+    this.emit('DAMAGE', {
+      sourceId: actor.id,
+      targetId: target.id,
+      skillName: special.name,
+      value: res.value,
+      critical: res.critical,
+      affinity: res.affinity,
+      element,
+      fx: specialFx(special),
+      text: damageText(actor.name, special.name, target.name, res.value, res.critical, res.affinity, absorbed),
+    });
+
+    // 追撃でも被弾ゲージは通常どおり溜まる(耐えるほど反撃の芽が出る設計を踏襲)。
+    this.gainUlt(target, this.cfg.ultGainOnHit);
   }
 
   /* ========================================================

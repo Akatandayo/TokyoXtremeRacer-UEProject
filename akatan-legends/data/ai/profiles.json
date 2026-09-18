@@ -131,6 +131,20 @@
   },
 
   {
+    "id": "ai_momiji_kc_epitaph",
+    "name": "エピタフ・ウォッチャー",
+    "description": "必殺で刻んで終わらせ、危ない味方は予知で守り、平時は時飛ばしで敵の手番を刈り続ける。紅葉(幽波紋)の既定戦術。",
+    "playerSelectable": true,
+    "rules": [
+      { "priority": 10, "condition": { "type": "ULT_READY" }, "skill": "ult_momiji_kc_crimson_erase", "comment": "必殺優先: 見えた結果を刻んで即決させる" },
+      { "priority": 20, "condition": { "type": "ALLY_HP_BELOW", "value": 45 }, "skill": "sk_momiji_kc_epitaph", "comment": "味方HP45%以下: 予知でその一撃を無かったことにする(自分が対象になることも多い)" },
+      { "priority": 30, "condition": { "type": "ENEMY_COUNT_ATLEAST", "value": 3 }, "skill": "sk_momiji_kc_timeskip", "comment": "敵3体以上で時飛ばし、まとめて手番を刈る" },
+      { "priority": 40, "condition": { "type": "ENEMY_HAS_BUFF" }, "skill": "sk_momiji_kc_timeskip", "comment": "強化された敵ごと時間を消す" },
+      { "priority": 50, "condition": { "type": "ALWAYS" }, "skill": "sk_momiji_kc_timeskip", "comment": "平時は時飛ばしで手番を刈り続けるのが主軸" },
+      { "priority": 99, "condition": { "type": "ALWAYS" }, "skill": "NORMAL" }
+    ]
+  },
+  {
     "id": "ai_en_slime",
     "name": "粘性アグロ",
     "description": "単純に前へ出て、たまに足止めをかけてくる。",

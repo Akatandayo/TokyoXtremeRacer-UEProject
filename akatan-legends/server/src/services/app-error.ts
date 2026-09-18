@@ -47,3 +47,9 @@ export const partyInvalid = (message: string, details?: unknown): AppError =>
   new AppError('PARTY_INVALID', message, details);
 export const stageLocked = (message: string, details?: unknown): AppError =>
   new AppError('STAGE_LOCKED', message, details);
+export const notEnoughCurrency = (message: string, details?: unknown): AppError =>
+  new AppError('NOT_ENOUGH_CURRENCY', message, details);
+export const slotMismatch = (message: string, details?: unknown): AppError =>
+  new AppError('SLOT_MISMATCH', message, details);
+export const alreadyEquipped = (message: string, details?: unknown): AppError =>
+  new AppError('ALREADY_EQUIPPED', message, details);

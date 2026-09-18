@@ -6,7 +6,7 @@
  */
 import type {
   AffinityTable, AiProfile, Awakening, BattleLog, CharacterArt, ComboDef, Element,
-  ProgressionConfig, Rarity, Role, Side, Skill, Stats,
+  ItemSpecialEffect, ProgressionConfig, Rarity, Role, Side, Skill, Stats,
 } from '@akatan/shared';
 
 /** エンジンに渡す戦闘参加者。所持キャラ/敵の差をここで吸収する。 */
@@ -40,6 +40,13 @@ export interface CombatantInput {
    * API層は CharacterDef.tags をそのまま渡すこと。
    */
   tags?: string[];
+  /**
+   * 装備から解決済みの特殊効果。API層が EquipmentInstance.special を集めて渡す。
+   * ステータス(攻撃力・HPなど)への寄与は既に stats に合算済みなので、
+   * エンジンはここに渡された特殊効果の「発動」(戦闘中のトリガー処理)だけを担当する。
+   * 省略時は特殊効果なしとして動作し、乱数消費も一切増えない(既存の呼び出しを壊さない)。
+   */
+  specials?: ItemSpecialEffect[];
 }
 
 export interface BattleContext {

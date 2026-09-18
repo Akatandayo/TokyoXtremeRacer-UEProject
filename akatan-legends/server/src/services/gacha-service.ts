@@ -1,0 +1,314 @@
+/**
+ * ガチャ / 召喚(設計書§26〜§27)
+ * ------------------------------------------------------------
+ * サーバ権威(設計書§37): 抽選は必ずここで行う。クライアントから受け取るのは
+ * `bannerId` と `count`(1 or 10)だけで、結果・シード・レアリティは一切信用しない。
+ *
+ * 抽選順序(1回のガチャあたり):
+ *   1. コスト検証(残高不足なら NOT_ENOUGH_CURRENCY を投げ、何も変更せず終了)
+ *   2. 天井カウンタを DB から取得
+ *   3. 1回ごとに: 天井到達していれば確定レアリティ、そうでなければ rates.rarity で抽選
+ *      -> 天井到達済みでない場合、当たったレアリティが pity.rarity 以上ならカウンタを0に戻す。
+ *         天井未到達なら +1。
+ *   4. レアリティ内で pool(省略時は全キャラ) から pickup 優遇込みで1体選ぶ
+ *   5. 重複していれば CharacterDropResult.duplicate = true にして素材へ変換(drop-service と同じ規約)
+ *   6. 10連のみ: guarantee10 を満たす排出が1件も無ければ、最後の1件を強制的に guarantee10 以上へ差し替える
+ *   7. 装備バナー(banner.equipment)は上記のキャラ抽選をスキップし、装備を `count` 回生成する
+ *   8. 支払い・付与・天井カウンタ更新をすべて1トランザクションで確定する
+ */
+import type {
+  CharacterDropResult, GachaBannerDef, GachaListResponse, GachaPullResponse, GachaPullResult, Rarity,
+} from '@akatan/shared';
+import { RARITIES } from '@akatan/shared';
+import * as repo from '../db/repository.js';
+import { createRng, type Rng } from '../battle/rng.js';
+import type { GameData } from '../data/loader.js';
+import { badRequest, notFound, notEnoughCurrency } from './app-error.js';
+import { contextFromGameData, DEFAULT_ITEM_RARITY_WEIGHTS, generateEquipment } from './item-generator.js';
+import { duplicateShardMaterialId } from './drop-service.js';
+import { grantCharacter, getPlayerProfile, listCharacterViews } from './player-service.js';
+import { buildInventoryResponse } from './equipment-service.js';
+import { randomSeed } from './rng-util.js';
+
+export const VALID_PULL_COUNTS = [1, 10] as const;
+
+function rarityIdx(r: Rarity): number {
+  return RARITIES.indexOf(r);
+}
+
+/* ============================================================
+ * GET /api/gacha
+ * ========================================================== */
+
+export function getGachaList(playerId: string, data: GameData): GachaListResponse {
+  const banners = [...data.gachaBanners.values()];
+  const pityCounters = repo.listPityCounters(playerId);
+  // マスタに存在するが天井カウンタ行がまだ無いバナーは0として補う
+  for (const b of banners) if (!(b.id in pityCounters)) pityCounters[b.id] = 0;
+  const inventory = buildInventoryResponse(playerId, data);
+  return {
+    banners,
+    player: getPlayerProfile(playerId),
+    pityCounters,
+    tickets: inventory.tickets,
+  };
+}
+
+/* ============================================================
+ * コスト計算 / 検証
+ * ========================================================== */
+
+interface ResolvedCost {
+  currency: 'GOLD' | 'TICKET';
+  amount: number;
+  ticketId?: string;
+}
+
+function resolveCost(banner: GachaBannerDef, count: number): ResolvedCost {
+  if (count === 10 && banner.cost10) return banner.cost10;
+  const unit = banner.cost;
+  return { currency: unit.currency, amount: unit.amount * count, ticketId: unit.ticketId };
+}
+
+function assertAffordable(playerId: string, cost: ResolvedCost): void {
+  if (cost.currency === 'GOLD') {
+    const gold = getPlayerProfile(playerId).gold;
+    if (gold < cost.amount) {
+      throw notEnoughCurrency(`ゴールドが不足しています(必要: ${cost.amount} / 所持: ${gold})`, {
+        currency: 'GOLD', required: cost.amount, owned: gold,
+      });
+    }
+    return;
+  }
+  const ticketId = cost.ticketId ?? 'ticket_unknown';
+  const owned = repo.getMaterialCount(playerId, ticketId);
+  if (owned < cost.amount) {
+    throw notEnoughCurrency(`召喚チケットが不足しています(必要: ${cost.amount} / 所持: ${owned})`, {
+      currency: 'TICKET', ticketId, required: cost.amount, owned,
+    });
+  }
+}
+
+function pay(playerId: string, cost: ResolvedCost): void {
+  if (cost.currency === 'GOLD') {
+    repo.addGold(playerId, -cost.amount);
+  } else {
+    repo.addMaterial(playerId, cost.ticketId ?? 'ticket_unknown', -cost.amount);
+  }
+}
+
+/* ============================================================
+ * キャラクター抽選
+ * ========================================================== */
+
+function rollCharacterRarity(rng: Rng, rates: GachaBannerDef['rates']): Rarity {
+  const table = rates?.rarity ?? {};
+  const entries = RARITIES
+    .map((r) => ({ rarity: r, weight: Math.max(0, table[r] ?? 0) }))
+    .filter((e) => e.weight > 0);
+  const total = entries.reduce((s, e) => s + e.weight, 0);
+  if (total <= 0) return RARITIES[0];
+  let roll = rng.next() * total;
+  for (const e of entries) {
+    roll -= e.weight;
+    if (roll <= 0) return e.rarity;
+  }
+  return entries[entries.length - 1].rarity;
+}
+
+/** レアリティ内で pickup 優遇込みの重み付き抽選を行い、キャラ定義IDを1つ選ぶ */
+function pickCharacterDefId(
+  rng: Rng,
+  data: GameData,
+  banner: GachaBannerDef,
+  rarity: Rarity,
+): string | undefined {
+  const poolIds = banner.pool && banner.pool.length > 0
+    ? banner.pool
+    : [...data.characters.values()].map((c) => c.id);
+  const candidates = poolIds
+    .map((id) => data.characters.get(id))
+    .filter((c): c is NonNullable<typeof c> => !!c && c.rarity === rarity)
+    .sort((a, b) => a.id.localeCompare(b.id));
+  if (candidates.length === 0) return undefined;
+
+  const pickupRates = new Map((banner.pickup ?? []).map((p) => [p.defId, p.rate]));
+  const weighted = candidates.map((c) => ({
+    id: c.id,
+    // pickup.rate は「同レアリティ内での優遇率(%)」。基準重み100に対する加算的な倍率として扱う。
+    weight: 100 + (pickupRates.get(c.id) ?? 0) * 10,
+  }));
+  const total = weighted.reduce((s, w) => s + w.weight, 0);
+  let roll = rng.next() * total;
+  for (const w of weighted) {
+    roll -= w.weight;
+    if (roll <= 0) return w.id;
+  }
+  return weighted[weighted.length - 1]?.id;
+}
+
+/** 重複キャラを素材へ変換する。drop-service と同じ shard_<rarity> 規約を共有する。 */
+function grantOrConvertCharacter(
+  playerId: string,
+  data: GameData,
+  defId: string,
+  materialDeltas: Map<string, number>,
+): CharacterDropResult {
+  const def = data.characters.get(defId);
+  const displayName = def?.name ?? defId;
+  const rarity: Rarity = def?.rarity ?? 'N';
+  const alreadyOwned = def ? repo.listOwnedCharacters(playerId).some((o) => o.defId === defId) : true;
+
+  if (def && !alreadyOwned) {
+    const owned = grantCharacter(playerId, def);
+    return { defId, name: displayName, rarity, duplicate: false, uid: owned.uid };
+  }
+  const shardId = duplicateShardMaterialId(rarity);
+  materialDeltas.set(shardId, (materialDeltas.get(shardId) ?? 0) + 1);
+  if (!data.materials.has(shardId)) {
+    console.warn(`[gacha] 重複キャラ変換用の素材 '${shardId}' が未定義です(データ担当への依頼事項)。カウントだけ加算します: ${defId}`);
+  }
+  return { defId, name: displayName, rarity, duplicate: true, converted: { id: shardId, count: 1 } };
+}
+
+/* ============================================================
+ * 1回分の抽選(キャラバナー)
+ * ========================================================== */
+
+interface PullContext {
+  playerId: string;
+  rng: Rng;
+  data: GameData;
+  banner: GachaBannerDef;
+  materialDeltas: Map<string, number>;
+  /** このリクエスト内で天井が確定するたびに参照する現在カウンタ(DBへは最後にまとめて書く) */
+  pity: { counter: number };
+}
+
+function pullCharacterOnce(ctx: PullContext): GachaPullResult {
+  const { playerId, rng, data, banner, pity } = ctx;
+  let rarity: Rarity;
+  let byPity = false;
+
+  if (banner.pity && pity.counter >= banner.pity.count) {
+    rarity = banner.pity.rarity;
+    byPity = true;
+  } else {
+    rarity = rollCharacterRarity(rng, banner.rates);
+  }
+
+  if (banner.pity) {
+    if (rarityIdx(rarity) >= rarityIdx(banner.pity.rarity)) pity.counter = 0;
+    else pity.counter += 1;
+  }
+
+  const defId = pickCharacterDefId(rng, data, banner, rarity);
+  if (!defId) {
+    console.warn(`[gacha] banner '${banner.id}': rarity=${rarity} の候補キャラがいません(pool/データ未整備)`);
+    return { rarity, byPity };
+  }
+  const character = grantOrConvertCharacter(playerId, data, defId, ctx.materialDeltas);
+  return { character, rarity, byPity };
+}
+
+/* ============================================================
+ * POST /api/gacha/pull
+ * ========================================================== */
+
+export function pullGacha(
+  playerId: string,
+  data: GameData,
+  bannerId: unknown,
+  countRaw: unknown,
+): GachaPullResponse {
+  if (typeof bannerId !== 'string' || bannerId.length === 0) {
+    throw badRequest('bannerId は必須の文字列です');
+  }
+  const banner = data.gachaBanners.get(bannerId);
+  if (!banner) throw notFound(`ガチャバナーが見つかりません: ${bannerId}`);
+
+  const count = typeof countRaw === 'number' ? Math.floor(countRaw) : NaN;
+  if (!VALID_PULL_COUNTS.includes(count as 1 | 10)) {
+    throw badRequest('count は 1 または 10 のみ受け付けます');
+  }
+
+  const cost = resolveCost(banner, count);
+  // 1. 残高確認(引く前に必ず確認する。支払いと付与は後段のトランザクションでまとめて行う)
+  assertAffordable(playerId, cost);
+
+  const rng = createRng(randomSeed());
+  const materialDeltas = new Map<string, number>();
+  const results: GachaPullResult[] = [];
+
+  if (banner.equipment) {
+    // 装備バナー: キャラ抽選(rates/pity/guarantee10)は使わず、指定ドロップテーブルの
+    // 傾向を itemLevel で装備生成にそのまま渡す。天井の概念は現状の型(GachaPity.rarity が
+    // Rarity 固定)では表現できないため未実装(下記「統括への型変更要望」参照)。
+    const genCtx = contextFromGameData(data);
+    const table = data.dropTables.get(banner.equipment.dropTable);
+    const equipmentEntry = table?.entries.find((e) => e.kind === 'EQUIPMENT');
+    for (let i = 0; i < count; i += 1) {
+      const item = generateEquipment(genCtx, {
+        itemLevel: banner.equipment.itemLevel,
+        seed: randomSeed(),
+        slot: equipmentEntry?.slot,
+        rarityWeights: equipmentEntry?.rarityWeights ?? DEFAULT_ITEM_RARITY_WEIGHTS,
+      });
+      if (item) results.push({ equipment: item, rarity: item.rarity });
+      else console.warn(`[gacha] banner '${banner.id}': 装備を生成できませんでした(装備ベース未作成の可能性)`);
+    }
+  } else {
+    const pity = { counter: repo.getPityCounter(playerId, banner.id) };
+    for (let i = 0; i < count; i += 1) {
+      results.push(pullCharacterOnce({ playerId, rng, data, banner, materialDeltas, pity }));
+    }
+
+    // guarantee10: 10連の中に最低保証レアリティ以上が1件も無ければ最後の1件を強制的に差し替える
+    if (count === 10 && banner.guarantee10) {
+      const minIdx = rarityIdx(banner.guarantee10);
+      const satisfied = results.some((r) => r.character && rarityIdx(r.character.rarity) >= minIdx);
+      if (!satisfied) {
+        const forcedDefId = pickCharacterDefId(rng, data, banner, banner.guarantee10);
+        if (forcedDefId) {
+          const last = results.length - 1;
+          const character = grantOrConvertCharacter(playerId, data, forcedDefId, materialDeltas);
+          results[last] = { character, rarity: banner.guarantee10, byPity: false };
+        }
+      }
+    }
+
+    // 天井カウンタは最後にまとめてDBへ書く
+    repo.inTransaction(() => {
+      pay(playerId, cost);
+      for (const [id, delta] of materialDeltas) repo.addMaterial(playerId, id, delta);
+      repo.setPityCounter(playerId, banner.id, pity.counter);
+    });
+
+    return finishPullResponse(playerId, data, results, banner.id);
+  }
+
+  // 装備バナー: 支払い + 装備付与をまとめる
+  repo.inTransaction(() => {
+    pay(playerId, cost);
+    for (const r of results) {
+      if (r.equipment) repo.insertEquipment(playerId, r.equipment);
+    }
+  });
+
+  return finishPullResponse(playerId, data, results, banner.id);
+}
+
+function finishPullResponse(
+  playerId: string,
+  data: GameData,
+  results: GachaPullResult[],
+  bannerId: string,
+): GachaPullResponse {
+  return {
+    results,
+    player: getPlayerProfile(playerId),
+    characters: listCharacterViews(playerId, data),
+    inventory: buildInventoryResponse(playerId, data),
+    pityCounter: repo.getPityCounter(playerId, bannerId),
+  };
+}

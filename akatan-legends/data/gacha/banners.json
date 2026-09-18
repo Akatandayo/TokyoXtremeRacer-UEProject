@@ -1,0 +1,41 @@
+[
+  {
+    "id": "banner_standard_char",
+    "name": "常設キャラ召喚",
+    "description": "現在実装されている全キャラクターから抽選する常設バナー。ゴールドで何度でも引ける、育成の基本線。",
+    "cost": { "currency": "GOLD", "amount": 300 },
+    "cost10": { "currency": "GOLD", "amount": 2700 },
+    "rates": {
+      "rarity": { "N": 34, "R": 30, "SR": 20, "SSR": 12, "UR": 4 }
+    },
+    "pity": { "count": 60, "rarity": "UR" },
+    "guarantee10": "SR",
+    "art": { "primary": "#2E6E8E", "accent": "#BFEFFF" }
+  },
+  {
+    "id": "banner_pickup_momiji_kc",
+    "name": "ピックアップ召喚『刻を止める少女』",
+    "description": "孤月紅葉(幽波紋)の排出率を引き上げたピックアップバナー。召喚チケット専用で、章ボスのドロップで手に入る。",
+    "cost": { "currency": "TICKET", "amount": 1, "ticketId": "ticket_summon_pickup" },
+    "cost10": { "currency": "TICKET", "amount": 9, "ticketId": "ticket_summon_pickup" },
+    "rates": {
+      "rarity": { "N": 30, "R": 28, "SR": 22, "SSR": 14, "UR": 6 }
+    },
+    "pickup": [{ "defId": "momiji_kc", "rate": 70 }],
+    "pity": { "count": 50, "rarity": "UR" },
+    "guarantee10": "SSR",
+    "art": { "primary": "#C8102E", "accent": "#7BE08A" }
+  },
+  {
+    "id": "banner_equipment",
+    "name": "装備召喚",
+    "description": "武器・防具・装飾品のいずれかを確定で1つ排出する装備専用バナー。レアリティが高いほどアフィックスの伸びが良い。",
+    "cost": { "currency": "GOLD", "amount": 150 },
+    "cost10": { "currency": "GOLD", "amount": 1350 },
+    "rates": {
+      "rarity": { "N": 34, "R": 30, "SR": 20, "SSR": 12, "UR": 4 }
+    },
+    "equipment": { "dropTable": "dt_gacha_equipment", "itemLevel": 20 },
+    "art": { "primary": "#D8C77A", "accent": "#FFF6C9" }
+  }
+]

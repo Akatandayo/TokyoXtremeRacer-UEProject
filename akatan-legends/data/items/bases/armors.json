@@ -1,0 +1,62 @@
+[
+  {
+    "id": "arm_worn_cap",
+    "name": "使い込んだ制帽",
+    "slot": "ARMOR",
+    "minRarity": "COMMON",
+    "mainStat": "defense",
+    "mainValue": 10,
+    "mainPerLevel": 0.9,
+    "description": "型崩れした制帽。被っているだけで頭を庇う癖がつく。"
+  },
+  {
+    "id": "arm_school_uniform",
+    "name": "制式学生服",
+    "slot": "ARMOR",
+    "minRarity": "COMMON",
+    "mainStat": "hp",
+    "mainValue": 60,
+    "mainPerLevel": 5.5,
+    "description": "裏地を分厚く仕立て直した学生服。見た目は普通の制服のままにしてある。"
+  },
+  {
+    "id": "arm_trench_coat",
+    "name": "使い込んだトレンチコート",
+    "slot": "ARMOR",
+    "minRarity": "UNCOMMON",
+    "mainStat": "defense",
+    "mainValue": 14,
+    "mainPerLevel": 1.3,
+    "description": "裾に鉛の重りを縫い込んである。走るには不便だが、受けには強い。"
+  },
+  {
+    "id": "arm_kevlar_vest",
+    "name": "私物の防刃ベスト",
+    "slot": "ARMOR",
+    "minRarity": "UNCOMMON",
+    "mainStat": "defense",
+    "mainValue": 16,
+    "mainPerLevel": 1.5,
+    "description": "制服の下に隠して着込む。見つかると面倒なので、誰にも言っていない。"
+  },
+  {
+    "id": "arm_charm_robe",
+    "name": "護符纏いの外套",
+    "slot": "ARMOR",
+    "minRarity": "RARE",
+    "mainStat": "resistance",
+    "mainValue": 10,
+    "mainPerLevel": 0.9,
+    "description": "裏地一面に護符が縫い付けられている。何から守るための護符かは、着ている本人も忘れかけている。"
+  },
+  {
+    "id": "arm_null_carapace",
+    "name": "虚数装甲の欠片",
+    "slot": "ARMOR",
+    "minRarity": "EPIC",
+    "mainStat": "hp",
+    "mainValue": 130,
+    "mainPerLevel": 11,
+    "description": "廃サーバ群の奥で見つかった装甲片。存在しない数値のぶんだけ、傷を受け止める。"
+  }
+]

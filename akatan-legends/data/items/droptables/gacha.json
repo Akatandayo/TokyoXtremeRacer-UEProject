@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dt_gacha_equipment",
+    "rolls": 1,
+    "nothingWeight": 0,
+    "entries": [
+      { "kind": "EQUIPMENT", "slot": "WEAPON", "weight": 34, "rarityWeights": { "COMMON": 20, "UNCOMMON": 35, "RARE": 30, "EPIC": 13, "LEGENDARY": 2 } },
+      { "kind": "EQUIPMENT", "slot": "ARMOR", "weight": 33, "rarityWeights": { "COMMON": 20, "UNCOMMON": 35, "RARE": 30, "EPIC": 13, "LEGENDARY": 2 } },
+      { "kind": "EQUIPMENT", "slot": "ACCESSORY", "weight": 33, "rarityWeights": { "COMMON": 20, "UNCOMMON": 35, "RARE": 30, "EPIC": 13, "LEGENDARY": 2 } }
+    ]
+  }
+]

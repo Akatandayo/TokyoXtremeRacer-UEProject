@@ -12,7 +12,7 @@
  * 拡張点は computeStats() 内にコメントで明示してある。
  */
 import type {
-  CharacterDef, EnemyDef, GrowthRates, LevelUpInfo, OwnedCharacter,
+  CharacterDef, EnemyDef, EquipmentInstance, GrowthRates, LevelUpInfo, OwnedCharacter,
   ProgressionConfig, Stats, StatKey,
 } from '@akatan/shared';
 
@@ -45,19 +45,26 @@ export interface StatModifierSources {
   limitBreak?: number;
   /** Phase2: 転生ポイント割り振り */
   rebirthPoints?: Partial<Record<StatKey, number>>;
-  /** Phase2: 装備による加算(装備テーブル解決済みの値を渡す) */
+  /** Phase3: 装備による加算(EquipmentInstance.stats を集計した値を渡す) */
   equipmentFlat?: Partial<Record<StatKey, number>>;
+  /**
+   * Phase3: 装備による割合加算(EquipmentInstance.statsPercent を集計した値。単位は%)。
+   * **「装備フラット適用後の値に対する割合」として一番最後に乗算する**(下記 computeStats のコメント参照)。
+   */
+  equipmentPercent?: Partial<Record<StatKey, number>>;
 }
 
 /**
  * 最終ステータスを算出する。
- * 現時点では level と growth のみを反映する(MVP)。
  *
- * === 拡張ポイント(Phase 2 以降) ===
- *  1. 限界突破:  stat *= (1 + limitBreakRate * limitBreak)
- *  2. 転生ポイント: stat += rebirthPoints[key] * pointValue[key]
- *  3. 装備:      stat += equipmentFlat[key] (+ 割合補正)
- *  いずれも「加算 → 乗算」の順で適用する方針。順序を変えると既存バランスが崩れるので注意。
+ * === 適用順序(変更すると既存バランスが壊れるので固定すること) ===
+ *   1. base + growth * (level - 1)                    …… レベル成長
+ *   2. + rebirthPoints[key]                            …… 転生ポイント(Phase2)
+ *   3. + equipmentFlat[key]                             …… 装備の固定値加算(Phase3)
+ *   4. × (1 + limitBreakRate * limitBreak)              …… 限界突破(Phase2。現状は係数0=無効)
+ *   5. × (1 + equipmentPercent[key] / 100)              …… 装備の%加算(Phase3)
+ * 「装備の%は装備フラット適用後の値に対する割合」という仕様(docs/API.md §3)を満たすため、
+ * equipmentPercent は必ず他のすべての加算・乗算より後に適用する。
  */
 export function computeStats(
   base: Partial<Stats> | undefined,
@@ -73,20 +80,49 @@ export function computeStats(
     const perLevel = growth?.[key] ?? 0;
     let value = baseStats[key] + perLevel * (lv - 1);
 
-    // --- 拡張ポイント(2) 転生ポイント: 現状は単純加算だけ受け付ける ---
+    // --- 手順2: 転生ポイント: 現状は単純加算だけ受け付ける ---
     const rebirth = mods.rebirthPoints?.[key];
     if (typeof rebirth === 'number') value += rebirth;
 
-    // --- 拡張ポイント(3) 装備: 装備解決済みのフラット値を加算 ---
-    const equip = mods.equipmentFlat?.[key];
-    if (typeof equip === 'number') value += equip;
+    // --- 手順3: 装備(フラット): 装備解決済みの加算値を加える ---
+    const equipFlat = mods.equipmentFlat?.[key];
+    if (typeof equipFlat === 'number') value += equipFlat;
 
-    // --- 拡張ポイント(1) 限界突破: 乗算補正(現状は係数0 = 無効) ---
+    // --- 手順4: 限界突破: 乗算補正(現状は係数0 = 無効) ---
     // if (mods.limitBreak) value *= 1 + LIMIT_BREAK_RATE * mods.limitBreak;
+
+    // --- 手順5: 装備(%): 「ここまでの値」に対する割合加算。必ず最後に適用する ---
+    const equipPercent = mods.equipmentPercent?.[key];
+    if (typeof equipPercent === 'number' && equipPercent !== 0) value *= 1 + equipPercent / 100;
 
     out[key] = roundStat(key, value);
   }
   return out;
+}
+
+/**
+ * 装着中の装備一覧(スロット→uid)から equipmentFlat/equipmentPercent を集計する。
+ * `equipmentByUid` を渡さない場合は装備効果なし(呼び出し側が装備を解決したくない場面向け)。
+ */
+export function resolveEquipmentMods(
+  owned: OwnedCharacter,
+  equipmentByUid?: Map<string, EquipmentInstance>,
+): Pick<StatModifierSources, 'equipmentFlat' | 'equipmentPercent'> {
+  if (!equipmentByUid) return {};
+  const flat: Partial<Record<StatKey, number>> = {};
+  const percent: Partial<Record<StatKey, number>> = {};
+  for (const uid of Object.values(owned.equipment ?? {})) {
+    if (!uid) continue;
+    const item = equipmentByUid.get(uid);
+    if (!item) continue;
+    for (const key of STAT_KEYS) {
+      const flatV = item.stats?.[key];
+      if (typeof flatV === 'number') flat[key] = (flat[key] ?? 0) + flatV;
+      const pctV = item.statsPercent?.[key];
+      if (typeof pctV === 'number') percent[key] = (percent[key] ?? 0) + pctV;
+    }
+  }
+  return { equipmentFlat: flat, equipmentPercent: percent };
 }
 
 /** HP/攻撃などは整数、%系は小数1桁まで許容 */
@@ -98,12 +134,21 @@ function roundStat(key: StatKey, value: number): number {
   return Math.round(value);
 }
 
-/** 所持キャラの最終ステータス */
-export function computeOwnedStats(def: CharacterDef, owned: OwnedCharacter): Stats {
+/**
+ * 所持キャラの最終ステータス。
+ * `equipmentByUid` を渡すと `owned.equipment` (スロット→装備uid) を解決して
+ * 装備の効果(フラット+%)を反映する。省略時は装備なしとして計算する
+ * (装備テーブルを引く必要が無い軽量な呼び出し向け)。
+ */
+export function computeOwnedStats(
+  def: CharacterDef,
+  owned: OwnedCharacter,
+  equipmentByUid?: Map<string, EquipmentInstance>,
+): Stats {
   return computeStats(def.baseStats, def.growth, owned.level, {
     limitBreak: owned.limitBreak,
     rebirthPoints: owned.rebirthPoints,
-    // equipmentFlat: [Phase2] 装備マスタ解決後にここへ渡す
+    ...resolveEquipmentMods(owned, equipmentByUid),
   });
 }
 

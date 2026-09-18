@@ -37,6 +37,13 @@ const AI_CONDITIONS = [
 ];
 const ART_PATTERNS = ['grid', 'wave', 'burst', 'circuit', 'petal', 'void'];
 const VISIBILITIES = ['PUBLIC', 'FRIENDS', 'PRIVATE'];
+const EQUIPMENT_SLOTS = ['WEAPON', 'ARMOR', 'ACCESSORY'];
+const ITEM_RARITIES = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'];
+const SPECIAL_TRIGGERS = ['ON_ATTACK', 'ON_HIT_TAKEN', 'ON_BATTLE_START', 'ON_KILL'];
+const DROP_KINDS = ['GOLD', 'EQUIPMENT', 'MATERIAL', 'CHARACTER', 'SUMMON_TICKET'];
+const COMBO_KINDS = ['PAIR', 'TRIO', 'PARTY', 'TAG'];
+const COMBO_TRIGGER_TYPES = ['ON_SKILL_USE', 'ON_BATTLE_START', 'ON_HP_BELOW', 'ON_ALLY_DEFEATED'];
+const PORTRAITS_DIR = join(ROOT, 'client', 'public', 'portraits');
 
 /* ------------------------------------------------------------------
  * エラー収集
@@ -145,10 +152,42 @@ function checkArt(where, art, required) {
     err(where, `art.sigil は1〜2文字の記号/漢字にしてください: ${JSON.stringify(art.sigil)}`);
   }
   optionalEnum(where, art, 'pattern', ART_PATTERNS);
+  if (art.portrait !== undefined) {
+    if (typeof art.portrait !== 'string' || art.portrait.length === 0) {
+      err(where, `art.portrait は空でない文字列である必要があります: ${JSON.stringify(art.portrait)}`);
+    } else {
+      const file = join(PORTRAITS_DIR, `${art.portrait}.webp`);
+      if (!existsSync(file)) {
+        err(where, `art.portrait "${art.portrait}" の立ち絵ファイルが見つかりません: client/public/portraits/${art.portrait}.webp`);
+      }
+    }
+  }
   for (const k of Object.keys(art)) {
-    if (!['primary', 'secondary', 'accent', 'sigil', 'pattern'].includes(k)) {
+    if (!['primary', 'secondary', 'accent', 'sigil', 'pattern', 'portrait'].includes(k)) {
       err(where, `art に未知のキー "${k}" があります`);
     }
+  }
+}
+
+/** ItemSpecialEffect の検査 */
+function checkSpecialEffect(where, sp) {
+  if (typeof sp !== 'object' || sp === null) { err(where, 'ItemSpecialEffect がオブジェクトではありません'); return; }
+  requireStr(where, sp, 'id');
+  requireStr(where, sp, 'name');
+  requireStr(where, sp, 'description');
+  requireEnum(where, sp, 'trigger', SPECIAL_TRIGGERS);
+  if (sp.chance !== undefined && (typeof sp.chance !== 'number' || sp.chance < 0 || sp.chance > 100)) {
+    err(where, 'chance は 0〜100 の数値で指定してください');
+  }
+  if (sp.status !== undefined && !STATUS_TYPES.includes(sp.status)) {
+    err(where, `status の値 ${JSON.stringify(sp.status)} は不正です`);
+  }
+  if (sp.duration !== undefined && typeof sp.duration !== 'number') err(where, 'duration が数値ではありません');
+  if (sp.potency !== undefined && typeof sp.potency !== 'number') err(where, 'potency が数値ではありません');
+  if (sp.bonusDamage !== undefined && typeof sp.bonusDamage !== 'number') err(where, 'bonusDamage が数値ではありません');
+  const allowed = ['id', 'name', 'description', 'trigger', 'chance', 'status', 'duration', 'potency', 'bonusDamage'];
+  for (const k of Object.keys(sp)) {
+    if (!allowed.includes(k)) err(where, `ItemSpecialEffect に存在しないフィールド "${k}" があります`);
   }
 }
 
@@ -445,6 +484,43 @@ for (const [id, c] of characters) {
 }
 
 /* ------------------------------------------------------------------
+ * 4.5. 未実装キャラ (data/system/planned-characters.json)
+ * ------------------------------------------------------------------
+ * まだ data/characters/ に存在しないが、コンボ定義から参照されるキャラ。
+ * コンボの members/actor/performer は「実キャラ or 未実装キャラ」のどちらかで良い。
+ * ---------------------------------------------------------------- */
+const plannedCharacters = new Map();
+{
+  const rel = 'data/system/planned-characters.json';
+  const p = join(DATA, 'system', 'planned-characters.json');
+  if (existsSync(p)) {
+    const arr = loadJson(p);
+    if (arr !== null) {
+      if (!Array.isArray(arr)) {
+        err(rel, 'PlannedCharacterDef[] の配列である必要があります');
+      } else {
+        arr.forEach((c, i) => {
+          const where = `${rel}#${i}${c && c.id ? ` (${c.id})` : ''}`;
+          if (typeof c !== 'object' || c === null) { err(where, '未実装キャラ定義がオブジェクトではありません'); return; }
+          if (!requireStr(where, c, 'id')) return;
+          if (characters.has(c.id)) {
+            err(where, `id "${c.id}" は実装済みのキャラクターと衝突しています(実装済みなら planned-characters.json から削除してください)`);
+          }
+          if (plannedCharacters.has(c.id)) { err(where, `未実装キャラIDが重複しています: "${c.id}"`); return; }
+          requireStr(where, c, 'name');
+          if (c.note !== undefined && typeof c.note !== 'string') err(where, 'note が文字列ではありません');
+          const allowed = ['id', 'name', 'note'];
+          for (const k of Object.keys(c)) {
+            if (!allowed.includes(k)) err(where, `PlannedCharacterDef に存在しないフィールド "${k}" があります`);
+          }
+          plannedCharacters.set(c.id, c);
+        });
+      }
+    }
+  }
+}
+
+/* ------------------------------------------------------------------
  * 5. 敵
  * ---------------------------------------------------------------- */
 const enemies = new Map();
@@ -482,6 +558,198 @@ for (const path of listJson('enemies')) {
       if (!allowedKeys.includes(k)) err(where, `EnemyDef に存在しないフィールド "${k}" があります`);
     }
     enemies.set(e.id, e);
+  });
+}
+
+/* ------------------------------------------------------------------
+ * 5.5. 装備 / ハクスラ (data/items/**)
+ * ---------------------------------------------------------------- */
+
+// -- 5.5.1 ベースアイテム (data/items/bases/*.json) --
+const itemBases = new Map();
+for (const path of listJson('items/bases')) {
+  const rel = relative(ROOT, path);
+  const arr = loadJson(path);
+  if (arr === null) continue;
+  if (!Array.isArray(arr)) { err(rel, 'ItemBaseDef[] の配列である必要があります'); continue; }
+
+  arr.forEach((b, i) => {
+    const where = `${rel}#${i}${b && b.id ? ` (${b.id})` : ''}`;
+    if (typeof b !== 'object' || b === null) { err(where, 'ベースアイテムがオブジェクトではありません'); return; }
+    if (!requireStr(where, b, 'id')) return;
+    if (itemBases.has(b.id)) { err(where, `ベースアイテムIDが重複しています: "${b.id}"`); return; }
+    requireStr(where, b, 'name');
+    requireEnum(where, b, 'slot', EQUIPMENT_SLOTS);
+    optionalEnum(where, b, 'minRarity', ITEM_RARITIES);
+    requireEnum(where, b, 'mainStat', STAT_KEYS);
+    requireNum(where, b, 'mainValue');
+    if (b.mainPerLevel !== undefined && typeof b.mainPerLevel !== 'number') err(where, 'mainPerLevel が数値ではありません');
+    if (b.tags !== undefined && !Array.isArray(b.tags)) err(where, '"tags" が配列ではありません');
+    if (b.description !== undefined && typeof b.description !== 'string') err(where, 'description が文字列ではありません');
+    const allowed = ['id', 'name', 'slot', 'minRarity', 'mainStat', 'mainValue', 'mainPerLevel', 'tags', 'description'];
+    for (const k of Object.keys(b)) {
+      if (!allowed.includes(k)) err(where, `ItemBaseDef に存在しないフィールド "${k}" があります`);
+    }
+    itemBases.set(b.id, b);
+  });
+}
+for (const slot of EQUIPMENT_SLOTS) {
+  const count = [...itemBases.values()].filter((b) => b.slot === slot).length;
+  if (count < 4) warn('data/items/bases', `スロット "${slot}" のベースアイテムが ${count} 種しかありません(推奨: 4種以上)`);
+}
+
+// -- 5.5.2 アフィックス (data/items/affixes/*.json) --
+const affixes = new Map();
+for (const path of listJson('items/affixes')) {
+  const rel = relative(ROOT, path);
+  const arr = loadJson(path);
+  if (arr === null) continue;
+  if (!Array.isArray(arr)) { err(rel, 'AffixDef[] の配列である必要があります'); continue; }
+
+  arr.forEach((a, i) => {
+    const where = `${rel}#${i}${a && a.id ? ` (${a.id})` : ''}`;
+    if (typeof a !== 'object' || a === null) { err(where, 'アフィックスがオブジェクトではありません'); return; }
+    if (!requireStr(where, a, 'id')) return;
+    if (affixes.has(a.id)) { err(where, `アフィックスIDが重複しています: "${a.id}"`); return; }
+    requireStr(where, a, 'name');
+    requireEnum(where, a, 'kind', ['PREFIX', 'SUFFIX']);
+    optionalEnum(where, a, 'minRarity', ITEM_RARITIES);
+
+    if (!Array.isArray(a.stats) || a.stats.length === 0) {
+      err(where, '"stats" が空、または配列ではありません');
+    } else {
+      a.stats.forEach((s, j) => {
+        const sw = `${where}.stats[${j}]`;
+        if (typeof s !== 'object' || s === null) { err(sw, 'AffixStatRange がオブジェクトではありません'); return; }
+        requireEnum(sw, s, 'stat', STAT_KEYS);
+        requireNum(sw, s, 'min');
+        requireNum(sw, s, 'max');
+        if (typeof s.min === 'number' && typeof s.max === 'number' && s.min > s.max) {
+          err(sw, `min(${s.min}) が max(${s.max}) を超えています`);
+        }
+        if (s.percent !== undefined && typeof s.percent !== 'boolean') err(sw, 'percent が真偽値ではありません');
+        const allowedS = ['stat', 'min', 'max', 'percent'];
+        for (const k of Object.keys(s)) {
+          if (!allowedS.includes(k)) err(sw, `AffixStatRange に存在しないフィールド "${k}" があります`);
+        }
+      });
+    }
+
+    if (a.special !== undefined) checkSpecialEffect(`${where}.special`, a.special);
+
+    if (a.slots !== undefined) {
+      if (!Array.isArray(a.slots)) {
+        err(where, '"slots" が配列ではありません');
+      } else {
+        a.slots.forEach((s, j) => {
+          if (!EQUIPMENT_SLOTS.includes(s)) err(where, `slots[${j}] の値 ${JSON.stringify(s)} は不正です`);
+        });
+      }
+    }
+
+    const allowed = ['id', 'name', 'kind', 'minRarity', 'stats', 'special', 'slots'];
+    for (const k of Object.keys(a)) {
+      if (!allowed.includes(k)) err(where, `AffixDef に存在しないフィールド "${k}" があります`);
+    }
+    affixes.set(a.id, a);
+  });
+}
+const prefixCount = [...affixes.values()].filter((a) => a.kind === 'PREFIX').length;
+const suffixCount = [...affixes.values()].filter((a) => a.kind === 'SUFFIX').length;
+if (prefixCount < 10) warn('data/items/affixes', `PREFIX が ${prefixCount} 種しかありません(推奨: 10種以上)`);
+if (suffixCount < 10) warn('data/items/affixes', `SUFFIX が ${suffixCount} 種しかありません(推奨: 10種以上)`);
+
+// -- 5.5.3 素材 (data/items/materials.json) --
+const materials = new Map();
+for (const path of listJson('items')) {
+  const rel = relative(ROOT, path);
+  const arr = loadJson(path);
+  if (arr === null) continue;
+  if (!Array.isArray(arr)) { err(rel, 'MaterialDef[] の配列である必要があります'); continue; }
+
+  arr.forEach((m, i) => {
+    const where = `${rel}#${i}${m && m.id ? ` (${m.id})` : ''}`;
+    if (typeof m !== 'object' || m === null) { err(where, '素材がオブジェクトではありません'); return; }
+    if (!requireStr(where, m, 'id')) return;
+    if (materials.has(m.id)) { err(where, `素材IDが重複しています: "${m.id}"`); return; }
+    requireStr(where, m, 'name');
+    requireEnum(where, m, 'rarity', ITEM_RARITIES);
+    requireStr(where, m, 'description');
+    if (m.usage !== undefined && typeof m.usage !== 'string') err(where, 'usage が文字列ではありません');
+    if (m.icon !== undefined && typeof m.icon !== 'string') err(where, 'icon が文字列ではありません');
+    const allowed = ['id', 'name', 'rarity', 'description', 'usage', 'icon'];
+    for (const k of Object.keys(m)) {
+      if (!allowed.includes(k)) err(where, `MaterialDef に存在しないフィールド "${k}" があります`);
+    }
+    materials.set(m.id, m);
+  });
+}
+if (materials.size < 8) warn('data/items/materials.json', `素材が ${materials.size} 種しかありません(推奨: 8種以上)`);
+
+// -- 5.5.4 ドロップテーブル (data/items/droptables/*.json) --
+const dropTables = new Map();
+for (const path of listJson('items/droptables')) {
+  const rel = relative(ROOT, path);
+  const arr = loadJson(path);
+  if (arr === null) continue;
+  if (!Array.isArray(arr)) { err(rel, 'DropTableDef[] の配列である必要があります'); continue; }
+
+  arr.forEach((t, i) => {
+    const where = `${rel}#${i}${t && t.id ? ` (${t.id})` : ''}`;
+    if (typeof t !== 'object' || t === null) { err(where, 'ドロップテーブルがオブジェクトではありません'); return; }
+    if (!requireStr(where, t, 'id')) return;
+    if (dropTables.has(t.id)) { err(where, `ドロップテーブルIDが重複しています: "${t.id}"`); return; }
+    requireNum(where, t, 'rolls');
+    if (t.nothingWeight !== undefined && (typeof t.nothingWeight !== 'number' || t.nothingWeight < 0)) {
+      err(where, 'nothingWeight が0以上の数値ではありません');
+    }
+
+    if (!Array.isArray(t.entries) || t.entries.length === 0) {
+      err(where, '"entries" が空、または配列ではありません');
+    } else {
+      t.entries.forEach((e, j) => {
+        const ew = `${where}.entries[${j}]`;
+        if (typeof e !== 'object' || e === null) { err(ew, 'DropEntry がオブジェクトではありません'); return; }
+        if (!requireEnum(ew, e, 'kind', DROP_KINDS)) return;
+        if (typeof e.weight !== 'number' || e.weight <= 0) err(ew, 'weight が正の数値ではありません');
+        if (e.min !== undefined && typeof e.min !== 'number') err(ew, 'min が数値ではありません');
+        if (e.max !== undefined && typeof e.max !== 'number') err(ew, 'max が数値ではありません');
+        if (typeof e.min === 'number' && typeof e.max === 'number' && e.min > e.max) {
+          err(ew, `min(${e.min}) が max(${e.max}) を超えています`);
+        }
+        if (e.slot !== undefined) optionalEnum(ew, e, 'slot', EQUIPMENT_SLOTS);
+        if (e.rarityWeights !== undefined) {
+          if (typeof e.rarityWeights !== 'object' || e.rarityWeights === null) {
+            err(ew, 'rarityWeights がオブジェクトではありません');
+          } else {
+            for (const [rk, rv] of Object.entries(e.rarityWeights)) {
+              if (!ITEM_RARITIES.includes(rk)) err(ew, `rarityWeights のキー "${rk}" は不正です`);
+              else if (typeof rv !== 'number' || rv < 0) err(ew, `rarityWeights.${rk} が0以上の数値ではありません`);
+            }
+          }
+        }
+        if ((e.kind === 'MATERIAL' || e.kind === 'SUMMON_TICKET')) {
+          if (typeof e.id !== 'string' || e.id.length === 0) {
+            err(ew, `kind="${e.kind}" には id (素材ID) が必要です`);
+          } else if (!materials.has(e.id)) {
+            err(ew, `参照する素材ID "${e.id}" は data/items/materials.json に存在しません`);
+          }
+        }
+        if (e.kind === 'CHARACTER' && e.id !== undefined) {
+          if (!characters.has(e.id)) err(ew, `参照するキャラクターID "${e.id}" は存在しません`);
+        }
+        const allowed = ['kind', 'id', 'weight', 'min', 'max', 'slot', 'rarityWeights'];
+        for (const k of Object.keys(e)) {
+          if (!allowed.includes(k)) err(ew, `DropEntry に存在しないフィールド "${k}" があります`);
+        }
+      });
+    }
+
+    const allowedT = ['id', 'rolls', 'nothingWeight', 'entries'];
+    for (const k of Object.keys(t)) {
+      if (!allowedT.includes(k)) err(where, `DropTableDef に存在しないフィールド "${k}" があります`);
+    }
+    dropTables.set(t.id, t);
   });
 }
 
@@ -533,6 +801,15 @@ for (const path of listJson('dungeons')) {
     } else {
       requireNum(sw, st.rewards, 'exp');
       requireNum(sw, st.rewards, 'gold');
+      if (st.rewards.dropTable !== undefined) {
+        if (typeof st.rewards.dropTable !== 'string') {
+          err(sw, 'rewards.dropTable が文字列ではありません');
+        } else if (!dropTables.has(st.rewards.dropTable)) {
+          err(sw, `rewards.dropTable "${st.rewards.dropTable}" は data/items/droptables/ に存在しません`);
+        }
+      } else {
+        warn(sw, 'rewards.dropTable が未設定です(装備/素材/ガチャチケットがドロップしません)');
+      }
     }
 
     if (st.boss === true) {
@@ -587,6 +864,219 @@ else {
 }
 
 /* ------------------------------------------------------------------
+ * 7.5. ガチャ (data/gacha/*.json)
+ * ---------------------------------------------------------------- */
+function checkGachaCost(cw, cost) {
+  if (typeof cost !== 'object' || cost === null) { err(cw, 'コストがオブジェクトではありません'); return; }
+  requireEnum(cw, cost, 'currency', ['GOLD', 'TICKET']);
+  requireNum(cw, cost, 'amount');
+  if (cost.currency === 'TICKET') {
+    if (typeof cost.ticketId !== 'string' || cost.ticketId.length === 0) {
+      err(cw, 'currency="TICKET" には ticketId が必要です');
+    } else if (!materials.has(cost.ticketId)) {
+      err(cw, `ticketId "${cost.ticketId}" は data/items/materials.json に存在しません`);
+    }
+  }
+  const allowed = ['currency', 'amount', 'ticketId'];
+  for (const k of Object.keys(cost)) {
+    if (!allowed.includes(k)) err(cw, `コストに存在しないフィールド "${k}" があります`);
+  }
+}
+
+const gachaBanners = new Map();
+for (const path of listJson('gacha')) {
+  const rel = relative(ROOT, path);
+  const arr = loadJson(path);
+  if (arr === null) continue;
+  if (!Array.isArray(arr)) { err(rel, 'GachaBannerDef[] の配列である必要があります'); continue; }
+
+  arr.forEach((g, i) => {
+    const where = `${rel}#${i}${g && g.id ? ` (${g.id})` : ''}`;
+    if (typeof g !== 'object' || g === null) { err(where, 'ガチャバナーがオブジェクトではありません'); return; }
+    if (!requireStr(where, g, 'id')) return;
+    if (gachaBanners.has(g.id)) { err(where, `バナーIDが重複しています: "${g.id}"`); return; }
+    requireStr(where, g, 'name');
+    requireStr(where, g, 'description');
+
+    if (typeof g.cost !== 'object' || g.cost === null) {
+      err(where, '"cost" が設定されていません');
+    } else {
+      checkGachaCost(`${where}.cost`, g.cost);
+    }
+    if (g.cost10 !== undefined) checkGachaCost(`${where}.cost10`, g.cost10);
+
+    if (typeof g.rates !== 'object' || g.rates === null || typeof g.rates.rarity !== 'object' || g.rates.rarity === null) {
+      err(where, '"rates.rarity" が設定されていません');
+    } else {
+      let sum = 0;
+      for (const [rk, rv] of Object.entries(g.rates.rarity)) {
+        if (!RARITIES.includes(rk)) { err(where, `rates.rarity のキー "${rk}" は不正です`); continue; }
+        if (typeof rv !== 'number' || rv < 0) { err(where, `rates.rarity.${rk} が0以上の数値ではありません`); continue; }
+        sum += rv;
+      }
+      if (Math.abs(sum - 100) > 0.001) err(where, `rates.rarity の合計が100ではありません (合計: ${sum})`);
+    }
+
+    if (g.pool !== undefined) {
+      if (!Array.isArray(g.pool)) {
+        err(where, '"pool" が配列ではありません');
+      } else {
+        g.pool.forEach((id, j) => {
+          if (typeof id !== 'string' || !characters.has(id)) err(where, `pool[${j}] のキャラクターID "${id}" は存在しません`);
+        });
+      }
+    }
+
+    if (g.pickup !== undefined) {
+      if (!Array.isArray(g.pickup)) {
+        err(where, '"pickup" が配列ではありません');
+      } else {
+        g.pickup.forEach((p, j) => {
+          const pw = `${where}.pickup[${j}]`;
+          if (typeof p !== 'object' || p === null) { err(pw, 'pickup要素がオブジェクトではありません'); return; }
+          if (typeof p.defId !== 'string' || !characters.has(p.defId)) err(pw, `defId "${p.defId}" は存在しないキャラクターです`);
+          if (typeof p.rate !== 'number' || p.rate < 0 || p.rate > 100) err(pw, 'rate は 0〜100 の数値で指定してください');
+        });
+      }
+    }
+
+    if (g.pity !== undefined) {
+      if (typeof g.pity !== 'object' || g.pity === null) {
+        err(where, 'pity がオブジェクトではありません');
+      } else {
+        requireNum(`${where}.pity`, g.pity, 'count');
+        requireEnum(`${where}.pity`, g.pity, 'rarity', RARITIES);
+      }
+    }
+
+    if (g.guarantee10 !== undefined) optionalEnum(where, g, 'guarantee10', RARITIES);
+
+    if (g.equipment !== undefined) {
+      if (typeof g.equipment !== 'object' || g.equipment === null) {
+        err(where, 'equipment がオブジェクトではありません');
+      } else {
+        if (typeof g.equipment.dropTable !== 'string' || !dropTables.has(g.equipment.dropTable)) {
+          err(where, `equipment.dropTable "${g.equipment.dropTable}" は data/items/droptables/ に存在しません`);
+        }
+        requireNum(`${where}.equipment`, g.equipment, 'itemLevel');
+      }
+    }
+
+    if (g.art !== undefined) {
+      if (typeof g.art !== 'object' || g.art === null) {
+        err(where, 'art がオブジェクトではありません');
+      } else {
+        for (const k of ['primary', 'accent']) {
+          if (typeof g.art[k] !== 'string' || !HEX.test(g.art[k])) err(where, `art.${k} が #RRGGBB 形式のhexカラーではありません`);
+        }
+      }
+    }
+
+    const allowed = ['id', 'name', 'description', 'cost', 'cost10', 'rates', 'pool', 'pickup', 'pity', 'guarantee10', 'equipment', 'art'];
+    for (const k of Object.keys(g)) {
+      if (!allowed.includes(k)) err(where, `GachaBannerDef に存在しないフィールド "${k}" があります`);
+    }
+    gachaBanners.set(g.id, g);
+  });
+}
+if (gachaBanners.size < 3) warn('data/gacha', `ガチャバナーが ${gachaBanners.size} 件しかありません(推奨: 3件以上)`);
+
+/* ------------------------------------------------------------------
+ * 7.6. キャラクターコンボ (data/combos/*.json)
+ * ------------------------------------------------------------------
+ * members / actor / performer は「実キャラ」または「未実装キャラ
+ * (data/system/planned-characters.json)」のどちらかであれば良い。
+ * ---------------------------------------------------------------- */
+const isRealOrPlannedChar = (id) => typeof id === 'string' && (characters.has(id) || plannedCharacters.has(id));
+
+const combos = new Map();
+for (const path of listJson('combos')) {
+  const rel = relative(ROOT, path);
+  const arr = loadJson(path);
+  if (arr === null) continue;
+  if (!Array.isArray(arr)) { err(rel, 'ComboDef[] の配列である必要があります'); continue; }
+
+  arr.forEach((c, i) => {
+    const where = `${rel}#${i}${c && c.id ? ` (${c.id})` : ''}`;
+    if (typeof c !== 'object' || c === null) { err(where, 'コンボがオブジェクトではありません'); return; }
+    if (!requireStr(where, c, 'id')) return;
+    if (combos.has(c.id)) { err(where, `コンボIDが重複しています: "${c.id}"`); return; }
+    requireStr(where, c, 'name');
+    requireStr(where, c, 'description');
+    requireEnum(where, c, 'kind', COMBO_KINDS);
+
+    if (c.members !== undefined) {
+      if (!Array.isArray(c.members) || c.members.length === 0) {
+        err(where, '"members" が空、または配列ではありません');
+      } else {
+        c.members.forEach((m, j) => {
+          if (!isRealOrPlannedChar(m)) {
+            err(where, `members[${j}] "${m}" は実装済み/実装予定(planned-characters.json)のいずれのキャラクターにも存在しません`);
+          }
+        });
+      }
+    } else if (c.kind === 'PAIR' || c.kind === 'TRIO') {
+      err(where, `kind="${c.kind}" には "members" が必要です`);
+    }
+
+    if (c.requireTag !== undefined) {
+      if (typeof c.requireTag !== 'object' || c.requireTag === null
+        || typeof c.requireTag.tag !== 'string' || typeof c.requireTag.count !== 'number') {
+        err(where, 'requireTag は { tag, count } 形式である必要があります');
+      }
+    }
+    if (c.requireAllElement !== undefined) optionalEnum(where, c, 'requireAllElement', ELEMENTS);
+
+    if (typeof c.trigger !== 'object' || c.trigger === null) {
+      err(where, '"trigger" が設定されていません');
+    } else {
+      const tw = `${where}.trigger`;
+      requireEnum(tw, c.trigger, 'type', COMBO_TRIGGER_TYPES);
+      if (c.trigger.actor !== undefined && !isRealOrPlannedChar(c.trigger.actor)) {
+        err(tw, `actor "${c.trigger.actor}" は実装済み/実装予定のいずれのキャラクターにも存在しません`);
+      }
+      if (c.trigger.type === 'ON_SKILL_USE') {
+        if (c.trigger.skill === undefined && c.trigger.skillTag === undefined) {
+          err(tw, 'type="ON_SKILL_USE" には skill か skillTag のいずれかが必要です');
+        }
+        if (c.trigger.skill !== undefined && !skills.has(c.trigger.skill)) {
+          err(tw, `skill "${c.trigger.skill}" は data/skills/ に存在しません`);
+        }
+      }
+      if (c.trigger.type === 'ON_HP_BELOW' && typeof c.trigger.hpBelow !== 'number') {
+        err(tw, 'type="ON_HP_BELOW" には hpBelow が必要です');
+      }
+      if (c.trigger.cooldown !== undefined && typeof c.trigger.cooldown !== 'number') err(tw, 'cooldown が数値ではありません');
+      if (c.trigger.maxPerBattle !== undefined && typeof c.trigger.maxPerBattle !== 'number') err(tw, 'maxPerBattle が数値ではありません');
+      if (c.trigger.maxPerBattle === undefined) {
+        warn(tw, 'maxPerBattle が未設定です(無制限に発動します。意図した設計か確認してください)');
+      }
+    }
+
+    if (!Array.isArray(c.effects) || c.effects.length === 0) {
+      err(where, '"effects" が空、または配列ではありません');
+    } else {
+      c.effects.forEach((e, j) => {
+        const ew = `${where}.effects[${j}]`;
+        if (typeof e !== 'object' || e === null) { err(ew, 'ComboEffect がオブジェクトではありません'); return; }
+        if (e.performer !== undefined && !isRealOrPlannedChar(e.performer)) {
+          err(ew, `performer "${e.performer}" は実装済み/実装予定のいずれのキャラクターにも存在しません`);
+        }
+        if (e.skill !== undefined && !skills.has(e.skill)) err(ew, `skill "${e.skill}" は data/skills/ に存在しません`);
+        if (e.skill === undefined && e.effect === undefined) err(ew, 'skill か effect のいずれかが必要です');
+        if (e.effect !== undefined) {
+          if (typeof e.effect !== 'object' || e.effect === null || !EFFECT_TYPES.includes(e.effect.type)) {
+            err(ew, `effect.type の値 ${JSON.stringify(e.effect && e.effect.type)} は不正です`);
+          }
+          if (e.effect && e.effect.target !== undefined) checkTarget(ew, e.effect.target, 'effect.target');
+        }
+      });
+    }
+    combos.set(c.id, c);
+  });
+}
+
+/* ------------------------------------------------------------------
  * 8. 未使用/横断チェック
  * ---------------------------------------------------------------- */
 for (const id of aiProfiles.keys()) {
@@ -633,5 +1123,14 @@ console.log(`  キャラクター    : ${characters.size} 体  (` +
 console.log(`  敵              : ${enemies.size} 体  (うちボス ${bossCount} 体)`);
 console.log(`  AIプロファイル  : ${aiProfiles.size} 件`);
 console.log(`  チャプター      : ${chapters.size} 章 / ステージ ${stageCount} 個`);
+console.log(`  未実装キャラ    : ${plannedCharacters.size} 件`);
+console.log(`  装備ベース      : ${itemBases.size} 種  (WEAPON:${[...itemBases.values()].filter((b) => b.slot === 'WEAPON').length} ` +
+  `/ ARMOR:${[...itemBases.values()].filter((b) => b.slot === 'ARMOR').length} ` +
+  `/ ACCESSORY:${[...itemBases.values()].filter((b) => b.slot === 'ACCESSORY').length})`);
+console.log(`  アフィックス    : ${affixes.size} 種  (PREFIX:${prefixCount} / SUFFIX:${suffixCount})`);
+console.log(`  素材            : ${materials.size} 種`);
+console.log(`  ドロップテーブル: ${dropTables.size} 件`);
+console.log(`  ガチャバナー    : ${gachaBanners.size} 件`);
+console.log(`  コンボ          : ${combos.size} 件`);
 console.log(`  システム設定    : affinity.json, progression.json`);
 process.exit(0);

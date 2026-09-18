@@ -10,7 +10,7 @@ import { CharacterArtView } from '../components/CharacterArt';
 import {
   ELEMENT_LABEL, ROLE_FULL, COMBO_KIND_LABEL, statPower, formatNumber,
 } from '../utils/labels';
-import { combosOf, evaluateCombos } from '../utils/combo';
+import { combosOf, evaluateCombos, buildPlannedMap, comboMemberName } from '../utils/combo';
 
 const PARTY_SIZE = 5;
 
@@ -105,7 +105,8 @@ export function PartyScreen(): JSX.Element {
   }, [store.master]);
   const comboDefs = combosOf(store.master);
   const partyDefIds = chosen.map((c) => c.def.id);
-  const comboMatches = evaluateCombos(comboDefs, partyDefIds, charDefById);
+  const plannedById = useMemo(() => buildPlannedMap(store.master), [store.master]);
+  const comboMatches = evaluateCombos(comboDefs, partyDefIds, charDefById, plannedById);
 
   return (
     <div className="stack">

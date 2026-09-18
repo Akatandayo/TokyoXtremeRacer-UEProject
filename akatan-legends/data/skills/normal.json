@@ -104,6 +104,16 @@
     "effects": [ { "type": "DAMAGE", "power": 1.0 } ],
     "fx": "holy_bolt"
   },
+  {
+    "id": "na_momiji_kc_flurry",
+    "name": "無拍子の乱打",
+    "kind": "NORMAL",
+    "description": "呼吸の間さえ与えない拳が、瞬きのうちに二度届く。こぶし90の本領。",
+    "cooldown": 0,
+    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "effects": [ { "type": "DAMAGE", "power": 0.55, "hits": 2 } ],
+    "fx": "void_strike"
+  },
 
   {
     "id": "na_slime_tackle",

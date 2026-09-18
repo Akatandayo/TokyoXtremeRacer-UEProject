@@ -9,7 +9,7 @@ import {
   SKILL_KIND_LABEL, targetText, awakenConditionText, statPower, formatNumber,
   STAT_LABEL, ELEMENT_LABEL, ROLE_FULL, COMBO_KIND_LABEL,
 } from '../utils/labels';
-import { combosOf, evaluateCombo } from '../utils/combo';
+import { combosOf, evaluateCombo, buildPlannedMap, comboMemberName } from '../utils/combo';
 
 const SHOWN_STATS: StatKey[] = ['hp', 'attack', 'defense', 'speed', 'critical', 'criticalDamage', 'resistance', 'healing'];
 
@@ -71,6 +71,7 @@ export function CharacterDetailScreen(): JSX.Element {
     for (const d of store.master?.characters ?? []) m.set(d.id, d);
     return m;
   }, [store.master]);
+  const plannedById = useMemo(() => buildPlannedMap(store.master), [store.master]);
   const currentPartyDefIds = useMemo(
     () =>
       (store.party?.members ?? [])
@@ -227,8 +228,8 @@ export function CharacterDetailScreen(): JSX.Element {
                       </div>
                     );
                   }
-                  const match = evaluateCombo(cd, currentPartyDefIds, charDefById);
-                  const memberNames = (cd.members ?? []).map((m) => charDefById.get(m)?.name ?? m);
+                  const match = evaluateCombo(cd, currentPartyDefIds, charDefById, plannedById);
+                  const memberNames = (cd.members ?? []).map((m) => comboMemberName(m, charDefById, plannedById));
                   return (
                     <div key={cid} className="skill-card">
                       <div className="head">

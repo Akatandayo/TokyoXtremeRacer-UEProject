@@ -1,8 +1,10 @@
 /** デモモード用のプレイヤー状態 */
 import type {
   CharacterView, CharacterDef, OwnedCharacter, PlayerProfile, Party, Stats, Skill,
+  EquipmentInstance, InventoryResponse, StatKey,
 } from '@akatan/shared';
 import { MOCK_CHARACTERS, MOCK_SKILL_MAP } from './master';
+import { buildStarterInventory } from './equipment';
 
 export function expToNext(level: number): number {
   return Math.round(100 * Math.pow(level, 1.6));
@@ -26,8 +28,41 @@ export function computeStats(def: CharacterDef, level: number, rebirth = 0): Sta
   };
 }
 
+/** 装備の flat/percent ステータスをキャラの計算済みステータスへ加算する。 */
+export function applyEquipmentStats(base: Stats, equipped: EquipmentInstance[]): Stats {
+  if (equipped.length === 0) return base;
+  const out: Stats = { ...base };
+  for (const eq of equipped) {
+    for (const [k, v] of Object.entries(eq.stats)) {
+      const key = k as StatKey;
+      out[key] = (out[key] ?? 0) + (v ?? 0);
+    }
+  }
+  for (const eq of equipped) {
+    if (!eq.statsPercent) continue;
+    for (const [k, pct] of Object.entries(eq.statsPercent)) {
+      const key = k as StatKey;
+      out[key] = Math.round((out[key] ?? 0) * (1 + (pct ?? 0) / 100));
+    }
+  }
+  out.critical = Math.round(out.critical * 10) / 10;
+  out.speed = Math.round(out.speed * 10) / 10;
+  return out;
+}
+
+/** 指定キャラが現在装着している装備インスタンスを uid から解決する */
+export function equippedItemsOf(owned: OwnedCharacter): EquipmentInstance[] {
+  const slots = owned.equipment;
+  if (!slots) return [];
+  const uids = Object.values(slots).filter((u): u is string => !!u);
+  return uids
+    .map((uid) => mockState.inventory.equipment.find((e) => e.uid === uid))
+    .filter((e): e is EquipmentInstance => !!e);
+}
+
 export function buildView(def: CharacterDef, owned: OwnedCharacter): CharacterView {
-  const stats = computeStats(def, owned.level, owned.rebirth);
+  const rawStats = computeStats(def, owned.level, owned.rebirth);
+  const stats = applyEquipmentStats(rawStats, equippedItemsOf(owned));
   const pick = (id: string): Skill =>
     MOCK_SKILL_MAP.get(id) ?? {
       id, name: id, kind: 'ACTIVE', description: '(未定義スキル)', cooldown: 0,
@@ -70,6 +105,21 @@ function makeOwned(): OwnedCharacter[] {
   }));
 }
 
+const starterInventory = buildStarterInventory();
+const starterOwned = makeOwned();
+// デモ用: 灯守あかね(own_001)の武器/防具枠に初期装備を割り当てておく。
+// (装着中の比較UI・売却不可表示を初回描画から確認できるようにするため)
+if (starterInventory.equipment[0] && starterInventory.equipment[1]) {
+  const weapon = starterInventory.equipment.find((e) => e.slot === 'WEAPON');
+  const armor = starterInventory.equipment.find((e) => e.slot === 'ARMOR');
+  const akane = starterOwned.find((o) => o.defId === 'ch_akane');
+  if (akane && weapon && armor) {
+    akane.equipment = { WEAPON: weapon.uid, ARMOR: armor.uid };
+    weapon.equippedBy = akane.uid;
+    armor.equippedBy = akane.uid;
+  }
+}
+
 /** デモ用の可変ステート(モックAPIが読み書きする) */
 export const mockState = {
   player: {
@@ -80,12 +130,15 @@ export const mockState = {
     createdAt: new Date(Date.UTC(2026, 6, 20)).toISOString(),
     clearedStages: ['ch1-1', 'ch1-2', 'ch1-3'],
   } as PlayerProfile,
-  owned: makeOwned(),
+  owned: starterOwned,
   party: {
     id: 'party_main',
     name: 'メイン編成',
     members: ['own_001', 'own_002', 'own_003', 'own_005', 'own_004'],
   } as Party,
+  inventory: starterInventory as InventoryResponse,
+  /** ガチャの天井カウンタ(バナーID -> 現在の連続はずれ回数) */
+  gachaPity: {} as Record<string, number>,
 };
 
 export function mockCharacterViews(): CharacterView[] {

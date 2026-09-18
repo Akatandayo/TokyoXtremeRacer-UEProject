@@ -1,0 +1,65 @@
+[
+  {
+    "id": "mat_enhance_shard",
+    "name": "強化の欠片",
+    "rarity": "COMMON",
+    "description": "装備の強化に使う、どこにでも落ちている基本素材。",
+    "usage": "装備強化(下位)"
+  },
+  {
+    "id": "mat_enhance_crystal",
+    "name": "輝く強化結晶",
+    "rarity": "RARE",
+    "description": "内側からうっすら光る結晶。強化の上限を一段押し上げる。",
+    "usage": "装備強化(中位)"
+  },
+  {
+    "id": "mat_enhance_core",
+    "name": "至高の強化核",
+    "rarity": "LEGENDARY",
+    "description": "廃サーバ群の最深部でしか見つからない核。ボス級の敵しか落とさない。",
+    "usage": "装備強化(上位)"
+  },
+  {
+    "id": "mat_rebirth_echo",
+    "name": "転生の残響",
+    "rarity": "EPIC",
+    "description": "同じ探索者が、別の育ち方をやり直すための残響。",
+    "usage": "キャラクター転生"
+  },
+  {
+    "id": "mat_affix_reroll_dust",
+    "name": "因子の霧",
+    "rarity": "UNCOMMON",
+    "description": "装備に宿ったオプションを、もう一度別の可能性へ揺らし直す霧。",
+    "usage": "装備アフィックスの再抽選"
+  },
+  {
+    "id": "mat_dup_fragment_low",
+    "name": "探索者の欠片・並",
+    "rarity": "COMMON",
+    "description": "N〜SRの探索者が重複したときに変換される欠片。",
+    "usage": "重複キャラの変換素材(N〜SR)"
+  },
+  {
+    "id": "mat_dup_fragment_high",
+    "name": "探索者の欠片・特",
+    "rarity": "RARE",
+    "description": "SSR〜URの探索者が重複したときに変換される、色濃い欠片。",
+    "usage": "重複キャラの変換素材(SSR〜UR)"
+  },
+  {
+    "id": "ticket_summon_standard",
+    "name": "常設召喚チケット",
+    "rarity": "RARE",
+    "description": "常設キャラ召喚を1回引けるチケット。戦闘のドロップで稀に手に入る。",
+    "usage": "常設キャラ召喚バナーの対価"
+  },
+  {
+    "id": "ticket_summon_pickup",
+    "name": "ピックアップ召喚チケット",
+    "rarity": "EPIC",
+    "description": "ピックアップ召喚を1回引ける特別なチケット。章ボスのみが落とす。",
+    "usage": "ピックアップ召喚バナーの対価"
+  }
+]

@@ -5,7 +5,7 @@ import { useStore, type Screen } from '../state/store';
 import { Panel } from '../components/common';
 import { CharacterArtView } from '../components/CharacterArt';
 import { formatNumber, statPower, averageLevel, levelReadiness } from '../utils/labels';
-import { combosOf, evaluateCombos } from '../utils/combo';
+import { combosOf, evaluateCombos, buildPlannedMap } from '../utils/combo';
 
 const NAV_CARDS: { screen: Screen; icon: string; title: string; desc: string }[] = [
   { screen: 'CHARACTERS', icon: '⛩', title: 'キャラクター', desc: '所持探索者の確認と育成' },
@@ -59,9 +59,10 @@ export function HomeScreen(): JSX.Element {
     return m;
   }, [store.master]);
   const comboDefs = combosOf(store.master);
+  const plannedById = useMemo(() => buildPlannedMap(store.master), [store.master]);
   const comboMatches = useMemo(
-    () => evaluateCombos(comboDefs, partyViews.map((c) => c.def.id), charDefById),
-    [comboDefs, partyViews, charDefById],
+    () => evaluateCombos(comboDefs, partyViews.map((c) => c.def.id), charDefById, plannedById),
+    [comboDefs, partyViews, charDefById, plannedById],
   );
   const activeCombos = comboMatches.filter((m) => m.state === 'active');
   const almostCombos = comboMatches.filter((m) => m.state === 'almost');

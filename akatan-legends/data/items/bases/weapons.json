@@ -1,0 +1,64 @@
+[
+  {
+    "id": "wpn_bokuto",
+    "name": "古びた木刀",
+    "slot": "WEAPON",
+    "minRarity": "COMMON",
+    "mainStat": "attack",
+    "mainValue": 12,
+    "mainPerLevel": 1.1,
+    "tags": ["Beginner"],
+    "description": "道場の隅に転がっていた稽古用の木刀。手に馴染むぶんだけ、当たったときの重みは軽くない。"
+  },
+  {
+    "id": "wpn_iron_knuckle",
+    "name": "硬式ナックル",
+    "slot": "WEAPON",
+    "minRarity": "COMMON",
+    "mainStat": "attack",
+    "mainValue": 14,
+    "mainPerLevel": 1.2,
+    "description": "拳に仕込む鉄環。素手の間合いのまま、一撃だけ重さを足す。"
+  },
+  {
+    "id": "wpn_service_revolver",
+    "name": "使い込んだリボルバー",
+    "slot": "WEAPON",
+    "minRarity": "UNCOMMON",
+    "mainStat": "attack",
+    "mainValue": 15,
+    "mainPerLevel": 1.3,
+    "description": "何度も分解掃除された跡がある拳銃。撃鉄の感触だけは誰にも譲らない。"
+  },
+  {
+    "id": "wpn_surgical_scalpel",
+    "name": "錆びた手術刀",
+    "slot": "WEAPON",
+    "minRarity": "UNCOMMON",
+    "mainStat": "critical",
+    "mainValue": 4,
+    "mainPerLevel": 0.4,
+    "description": "医学の心得がある者だけが、急所を正確に狙える細い刃。"
+  },
+  {
+    "id": "wpn_ritual_wakizashi",
+    "name": "儀式の脇差",
+    "slot": "WEAPON",
+    "minRarity": "RARE",
+    "mainStat": "attack",
+    "mainValue": 20,
+    "mainPerLevel": 1.8,
+    "description": "何のための儀式かは伝わっていない。ただ、鞘から抜くと空気が変わる。"
+  },
+  {
+    "id": "wpn_null_transceiver",
+    "name": "分解された送受信機",
+    "slot": "WEAPON",
+    "minRarity": "EPIC",
+    "mainStat": "speed",
+    "mainValue": 10,
+    "mainPerLevel": 0.9,
+    "tags": ["Network"],
+    "description": "電子 独の私物だったという噂の機体。持たせると、動きの手前が速くなる。"
+  }
+]

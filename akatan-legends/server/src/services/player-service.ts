@@ -10,7 +10,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import type {
-  CharacterDef, CharacterView, OwnedCharacter, Party, PlayerProfile, Rarity, Skill,
+  CharacterDef, CharacterView, EquipmentInstance, OwnedCharacter, Party, PlayerProfile, Rarity, Skill,
 } from '@akatan/shared';
 import { PARTY_SIZE, RARITIES } from '@akatan/shared';
 import * as repo from '../db/repository.js';
@@ -51,16 +51,19 @@ function resolveSkill(data: GameData, id: string | undefined): Skill {
 /**
  * 所持キャラ + マスタ定義 -> CharacterView。
  * ステータスと expToNext は **サーバ側で計算した値だけ** を入れる。
+ * `equipmentByUid` を渡すと装着中の装備(Phase3)の効果を stats に反映する
+ * (省略時は装備なしとして計算する。装備を解決する必要が無い軽量な呼び出し向け)。
  */
 export function buildCharacterView(
   owned: OwnedCharacter,
   def: CharacterDef,
   data: GameData = getGameData(),
+  equipmentByUid?: Map<string, EquipmentInstance>,
 ): CharacterView {
   return {
     owned,
     def,
-    stats: computeOwnedStats(def, owned),
+    stats: computeOwnedStats(def, owned, equipmentByUid),
     expToNext: expToNext(owned.level, data.progression),
     skills: (def.skills ?? []).map((id) => resolveSkill(data, id)),
     normalAttack: resolveSkill(data, def.normalAttack),
@@ -71,19 +74,21 @@ export function buildCharacterView(
 /**
  * 所持キャラ一覧を CharacterView に変換する。
  * マスタに定義が無い(データ担当がIDを変更した等)キャラは警告して除外する。
+ * 装備は playerId の全所持装備を1回だけ取得して各キャラに引き当てる(N+1回避)。
  */
 export function listCharacterViews(
   playerId: string,
   data: GameData = getGameData(),
 ): CharacterView[] {
   const views: CharacterView[] = [];
+  const equipmentByUid = new Map(repo.listEquipment(playerId).map((e) => [e.uid, e]));
   for (const owned of repo.listOwnedCharacters(playerId)) {
     const def = data.characters.get(owned.defId);
     if (!def) {
       console.warn(`[player] 所持キャラ ${owned.uid} の定義 '${owned.defId}' がマスタにありません。表示から除外します。`);
       continue;
     }
-    views.push(buildCharacterView(owned, def, data));
+    views.push(buildCharacterView(owned, def, data, equipmentByUid));
   }
   return views;
 }

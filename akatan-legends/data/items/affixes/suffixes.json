@@ -1,0 +1,142 @@
+[
+  {
+    "id": "sx_ward",
+    "name": "の守り",
+    "kind": "SUFFIX",
+    "minRarity": "COMMON",
+    "stats": [{ "stat": "defense", "min": 6, "max": 14 }]
+  },
+  {
+    "id": "sx_vitality",
+    "name": "の活力",
+    "kind": "SUFFIX",
+    "minRarity": "COMMON",
+    "stats": [{ "stat": "hp", "min": 50, "max": 100 }]
+  },
+  {
+    "id": "sx_haste",
+    "name": "の迅速",
+    "kind": "SUFFIX",
+    "minRarity": "UNCOMMON",
+    "stats": [{ "stat": "speed", "min": 5, "max": 10 }]
+  },
+  {
+    "id": "sx_precision",
+    "name": "の精度",
+    "kind": "SUFFIX",
+    "minRarity": "UNCOMMON",
+    "stats": [{ "stat": "critical", "min": 4, "max": 8, "percent": true }]
+  },
+  {
+    "id": "sx_ruin",
+    "name": "の破壊",
+    "kind": "SUFFIX",
+    "minRarity": "UNCOMMON",
+    "stats": [{ "stat": "attack", "min": 8, "max": 16 }]
+  },
+  {
+    "id": "sx_mercy",
+    "name": "の慈悲",
+    "kind": "SUFFIX",
+    "minRarity": "UNCOMMON",
+    "stats": [{ "stat": "healing", "min": 8, "max": 15, "percent": true }]
+  },
+  {
+    "id": "sx_fortitude",
+    "name": "の頑健",
+    "kind": "SUFFIX",
+    "minRarity": "RARE",
+    "stats": [{ "stat": "resistance", "min": 6, "max": 12, "percent": true }]
+  },
+  {
+    "id": "sx_resilience",
+    "name": "の反発",
+    "kind": "SUFFIX",
+    "minRarity": "UNCOMMON",
+    "slots": ["ARMOR"],
+    "stats": [{ "stat": "defense", "min": 4, "max": 9 }],
+    "special": {
+      "id": "sp_resilience_ward",
+      "name": "反発装甲",
+      "description": "被弾すると、まれに姿勢を立て直して防御が上がる。",
+      "trigger": "ON_HIT_TAKEN",
+      "chance": 25,
+      "status": "DEF_UP",
+      "duration": 2,
+      "potency": 15
+    }
+  },
+  {
+    "id": "sx_venom",
+    "name": "の毒牙",
+    "kind": "SUFFIX",
+    "minRarity": "RARE",
+    "slots": ["WEAPON"],
+    "stats": [{ "stat": "attack", "min": 4, "max": 8 }],
+    "special": {
+      "id": "sp_venom_on_hit",
+      "name": "毒付与",
+      "description": "攻撃時、まれに傷口に毒を残す。",
+      "trigger": "ON_ATTACK",
+      "chance": 15,
+      "status": "POISON",
+      "duration": 2,
+      "potency": 18
+    }
+  },
+  {
+    "id": "sx_ambush",
+    "name": "の急襲",
+    "kind": "SUFFIX",
+    "minRarity": "RARE",
+    "stats": [{ "stat": "speed", "min": 3, "max": 7 }],
+    "special": {
+      "id": "sp_ambush_start",
+      "name": "急襲の構え",
+      "description": "戦闘開始時、初手だけ踏み込みが鋭くなる。",
+      "trigger": "ON_BATTLE_START",
+      "chance": 100,
+      "status": "ATK_UP",
+      "duration": 2,
+      "potency": 15
+    }
+  },
+  {
+    "id": "sx_finality",
+    "name": "の終焉",
+    "kind": "SUFFIX",
+    "minRarity": "EPIC",
+    "slots": ["WEAPON"],
+    "stats": [{ "stat": "criticalDamage", "min": 10, "max": 20, "percent": true }],
+    "special": {
+      "id": "sp_finality_kill",
+      "name": "終焉の余韻",
+      "description": "敵を撃破すると、その勢いのまま攻撃力が乗る。",
+      "trigger": "ON_KILL",
+      "chance": 100,
+      "status": "ATK_UP",
+      "duration": 3,
+      "potency": 25
+    }
+  },
+  {
+    "id": "sx_sovereign",
+    "name": "の王権",
+    "kind": "SUFFIX",
+    "minRarity": "MYTHIC",
+    "stats": [
+      { "stat": "attack", "min": 18, "max": 28 },
+      { "stat": "critical", "min": 6, "max": 12, "percent": true }
+    ],
+    "special": {
+      "id": "sp_sovereign_start",
+      "name": "王権の発露",
+      "description": "戦闘開始時、周囲を圧する気配だけで士気が上がる。",
+      "trigger": "ON_BATTLE_START",
+      "chance": 100,
+      "status": "ATK_UP",
+      "duration": 4,
+      "potency": 30
+    }
+  }
+]

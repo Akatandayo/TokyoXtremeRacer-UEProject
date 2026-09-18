@@ -5,9 +5,37 @@
  * から CSS グラデーション + SVG パターン + 紋章文字 でビジュアルを合成する。
  * pattern の 6種は別々の SVG として描き分ける。
  */
-import React, { useId, useMemo } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import type { CharacterArt as Art, Element, Rarity } from '@akatan/shared';
 import { ELEMENT_LABEL } from '../utils/labels';
+
+/**
+ * オフライン単体版は `window.__AKATAN_PORTRAITS__[key]` に立ち絵の data URL を
+ * 注入する(統括のビルドスクリプトが担当)。通常のWeb版ではこのオブジェクトは
+ * 存在しないので、public/portraits/<key>.webp を直接参照する。
+ */
+declare global {
+  interface Window {
+    __AKATAN_PORTRAITS__?: Record<string, string>;
+  }
+}
+
+/**
+ * 立ち絵の解決順(唯一の箇所): ① window.__AKATAN_PORTRAITS__[key] (単体版に
+ * 埋め込まれた data URL) → ② public/portraits/<key>.webp (通常のWeb版)。
+ * ②が404でも呼び出し側の <img onError> がプロシージャル描画へフォールバックする。
+ */
+export function resolvePortraitSrc(key: string): string {
+  try {
+    const injected = typeof window !== 'undefined' ? window.__AKATAN_PORTRAITS__ : undefined;
+    const hit = injected?.[key];
+    if (typeof hit === 'string' && hit.length > 0) return hit;
+  } catch {
+    /* window 未定義環境 (SSR等) は無視して②へ */
+  }
+  const base = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/' : '/';
+  return `${base}portraits/${key}.webp`;
+}
 
 export type ArtRatio = 'square' | 'portrait' | 'wide' | 'fill';
 
@@ -294,6 +322,13 @@ export function CharacterArtView({
   const a = art ?? FALLBACK;
   const kind = a.pattern ?? 'grid';
   const Pattern = PATTERNS[kind] ?? GridPattern;
+  const [imgFailed, setImgFailed] = useState(false);
+
+  // 未入手(シルエット)のキャラは、立ち絵アセットを持っていても正体を見せない
+  // (図鑑のシルエット表示と矛盾しないように、この場合は常にプロシージャル描画へ)。
+  const portraitKey = !silhouette ? a.portrait : undefined;
+  const usePortrait = !!portraitKey && !imgFailed;
+  const portraitSrc = useMemo(() => (portraitKey ? resolvePortraitSrc(portraitKey) : null), [portraitKey]);
 
   return (
     <div
@@ -301,6 +336,7 @@ export function CharacterArtView({
         'cart',
         `cart-ratio-${ratio}`,
         `cart-pat-${kind}`,
+        usePortrait ? 'cart-has-portrait' : '',
         rarity ? `rar-${rarity}` : '',
         silhouette ? 'is-silhouette' : '',
         awakened ? 'is-awakened' : '',
@@ -315,12 +351,30 @@ export function CharacterArtView({
       role="img"
       aria-label={silhouette ? '未入手キャラクター' : `${name} のキャラクター画像`}
     >
-      <div className="cart-base" />
-      <Pattern uid={uid} art={a} seedKey={`${name}|${a.sigil}|${kind}`} />
+      {usePortrait ? (
+        <>
+          <img
+            className="cart-portrait-img"
+            src={portraitSrc ?? undefined}
+            alt=""
+            draggable={false}
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+          />
+          <div className="cart-portrait-shade" />
+        </>
+      ) : (
+        <>
+          <div className="cart-base" />
+          <Pattern uid={uid} art={a} seedKey={`${name}|${a.sigil}|${kind}`} />
+        </>
+      )}
       <div className="cart-vignette" />
-      <div className="cart-sigil" style={{ fontSize: `calc(var(--sigil-size) * ${sigilScale})` }}>
-        {silhouette ? '?' : a.sigil}
-      </div>
+      {!usePortrait && (
+        <div className="cart-sigil" style={{ fontSize: `calc(var(--sigil-size) * ${sigilScale})` }}>
+          {silhouette ? '?' : a.sigil}
+        </div>
+      )}
       {!hideBadges && !silhouette && element && <span className="cart-element">{ELEMENT_LABEL[element]}</span>}
       {!hideBadges && rarity && <span className="cart-rarity">{rarity}</span>}
       {(rarity === 'SSR' || rarity === 'UR') && !silhouette && (

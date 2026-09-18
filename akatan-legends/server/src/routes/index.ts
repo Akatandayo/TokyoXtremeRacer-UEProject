@@ -5,7 +5,10 @@ import { Router } from 'express';
 import { battleRouter } from './battle.js';
 import { charactersRouter } from './characters.js';
 import { dungeonsRouter } from './dungeons.js';
+import { equipmentRouter } from './equipment.js';
+import { gachaRouter } from './gacha.js';
 import { healthRouter } from './health.js';
+import { inventoryRouter } from './inventory.js';
 import { masterRouter } from './master.js';
 import { partyRouter } from './party.js';
 import { playerRouter } from './player.js';
@@ -20,6 +23,9 @@ export function createApiRouter(): Router {
   api.use(dungeonsRouter);
   api.use(partyRouter);
   api.use(battleRouter);
+  api.use(inventoryRouter);
+  api.use(equipmentRouter);
+  api.use(gachaRouter);
   // /api 配下の未定義パスは 404 (ApiResponse 封筒で返す)
   api.use(notFoundMiddleware);
   return api;

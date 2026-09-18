@@ -5,7 +5,7 @@
  */
 import type {
   CharacterDef, EnemyDef, Skill, AiProfile, ChapterDef, Stats, Rarity,
-  Element, Role, CharacterArt, ComboDef,
+  Element, Role, CharacterArt, ComboDef, PlannedCharacterDef, MaterialDef,
 } from '@akatan/shared';
 
 function st(
@@ -17,9 +17,9 @@ function st(
 
 function art(
   primary: string, secondary: string, accent: string, sigil: string,
-  pattern: CharacterArt['pattern'],
+  pattern: CharacterArt['pattern'], portrait?: string,
 ): CharacterArt {
-  return { primary, secondary, accent, sigil, pattern };
+  return { primary, secondary, accent, sigil, pattern, portrait };
 }
 
 /* ---------------- スキル ---------------- */
@@ -48,6 +48,8 @@ export const MOCK_SKILLS: Skill[] = [
   { id: 'sk_overclock', name: 'オーバークロック', kind: 'ACTIVE', description: '自身の速度を35%上昇(3ターン)、必殺ゲージ+30%。', cooldown: 4, target: { side: 'SELF', pattern: 'SELF' }, effects: [{ type: 'STATUS', status: 'SPD_UP', duration: 3, potency: 35 }, { type: 'ULT_GAUGE', amount: 30 }], fx: 'circuit_surge', tags: ['self'] },
   { id: 'sk_null_hack', name: 'ヌルハック', kind: 'ACTIVE', description: '敵単体に攻撃力130%の虚ダメージ。55%で沈黙(2ターン)。', cooldown: 3, target: { side: 'ENEMY', pattern: 'SINGLE' }, effects: [{ type: 'DAMAGE', power: 1.3 }, { type: 'STATUS', status: 'SILENCE', duration: 2, chance: 55 }], fx: 'glitch', tags: ['void'] },
   { id: 'sk_first_aid', name: '応急手当', kind: 'ACTIVE', description: '味方単体のHPを18%回復。', cooldown: 2, target: { side: 'ALLY', pattern: 'LOWEST_HP' }, effects: [{ type: 'HEAL', power: 0.18, scaling: 'hp' }], fx: 'heal_wave', tags: ['heal'] },
+  { id: 'sk_kc_fold', name: '幽波紋・折り畳み', kind: 'ACTIVE', description: '敵単体に攻撃力165%の虚ダメージ。50%で沈黙(2ターン)。', cooldown: 3, target: { side: 'ENEMY', pattern: 'SINGLE' }, effects: [{ type: 'DAMAGE', power: 1.65 }, { type: 'STATUS', status: 'SILENCE', duration: 2, chance: 50 }], fx: 'void_fold', tags: ['void', 'control'] },
+  { id: 'sk_kc_paradox', name: '不可能図形', kind: 'ACTIVE', description: '敵全体の防御と速度を20%低下(3ターン)。', cooldown: 4, target: { side: 'ENEMY', pattern: 'ALL' }, effects: [{ type: 'STATUS', status: 'DEF_DOWN', duration: 3, potency: 20 }, { type: 'STATUS', status: 'SLOW', duration: 3, potency: 20 }], fx: 'void_bolt', tags: ['debuff', 'void'] },
 
   // 必殺技
   { id: 'ult_hinomoto', name: '炎天焦土・緋ノ大灯', kind: 'ULTIMATE', description: '敵全体に攻撃力260%の炎ダメージ。火傷(3ターン)を必ず付与。', cooldown: 0, ultCost: 100, target: { side: 'ENEMY', pattern: 'ALL' }, effects: [{ type: 'DAMAGE', power: 2.6 }, { type: 'STATUS', status: 'BURN', duration: 3 }], fx: 'ult_flame', tags: ['ult'] },
@@ -58,6 +60,7 @@ export const MOCK_SKILLS: Skill[] = [
   { id: 'ult_hazuki', name: '葉隠・千裂颶風', kind: 'ULTIMATE', description: 'ランダムな敵に攻撃力110%×5回の風ダメージ。', cooldown: 0, ultCost: 100, target: { side: 'ENEMY', pattern: 'RANDOM', count: 5 }, effects: [{ type: 'DAMAGE', power: 1.1, hits: 5 }], fx: 'ult_gale', tags: ['ult'] },
   { id: 'ult_zero', name: 'SYSTEM::PURGE', kind: 'ULTIMATE', description: '敵全体に攻撃力230%の虚ダメージ。バフを全て剥がす。', cooldown: 0, ultCost: 100, target: { side: 'ENEMY', pattern: 'ALL' }, effects: [{ type: 'DAMAGE', power: 2.3 }], fx: 'ult_glitch', tags: ['ult'] },
   { id: 'ult_nanase', name: '灯し火の祈り', kind: 'ULTIMATE', description: '味方全体を最大HP25%回復し、攻撃UP(2ターン)。', cooldown: 0, ultCost: 100, target: { side: 'ALLY', pattern: 'ALL' }, effects: [{ type: 'HEAL', power: 0.25, scaling: 'hp' }, { type: 'STATUS', status: 'ATK_UP', duration: 2, potency: 15 }], fx: 'ult_heal', tags: ['ult'] },
+  { id: 'ult_kc_collapse', name: '幽波紋・世界収束', kind: 'ULTIMATE', description: '敵全体に攻撃力310%の虚ダメージ。必ず沈黙(2ターン)を付与し、自身のクリティカル率+25%(3ターン)。', cooldown: 0, ultCost: 100, target: { side: 'ENEMY', pattern: 'ALL' }, effects: [{ type: 'DAMAGE', power: 3.1 }, { type: 'STATUS', status: 'SILENCE', duration: 2 }, { type: 'STATUS', status: 'ATK_UP', duration: 3, potency: 25, target: { side: 'SELF', pattern: 'SELF' } }], fx: 'ult_void', tags: ['ult', 'void'] },
 
   // 敵スキル
   { id: 'sk_enemy_claw', name: '爪撃', kind: 'NORMAL', description: '敵単体に攻撃力100%のダメージ。', cooldown: 0, target: { side: 'ENEMY', pattern: 'SINGLE' }, effects: [{ type: 'DAMAGE', power: 1.0 }], fx: 'slash' },
@@ -292,6 +295,30 @@ export const MOCK_CHARACTERS: CharacterDef[] = [
     art: art('#7bd67a', '#10240f', '#d6ffcf', '森', 'petal'),
   },
   {
+    id: 'ch_momiji_kc', name: '孤月 紅葉(幽波紋)', title: 'Momiji / 幽波紋の探索者', rarity: 'UR',
+    element: 'VOID', roles: ['CONTROL', 'SPECIALIST'],
+    baseStats: st(1080, 150, 82, 116, 14, 178, 22, 100),
+    growth: { hp: 56, attack: 11.8, defense: 4.6, speed: 1.3, critical: 0.16 },
+    normalAttack: 'sk_ping', skills: ['sk_kc_fold', 'sk_kc_paradox'], ultimate: 'ult_kc_collapse',
+    awakening: {
+      id: 'aw_momiji_kc', name: '幽波紋・臨界',
+      condition: { turnAtLeast: 5 },
+      statBonus: { attack: 22, resistance: 25, critical: 10 },
+      description: '5ターン経過で図形が臨界に達し、攻撃力+22% / 耐性+25% / 会心+10%。',
+      fx: 'awaken_glitch',
+    },
+    combos: ['cb_momiji_kc_hitori'],
+    defaultAi: 'ai_balanced',
+    description: 'ありえない幾何を視た探索者。世界の折り目を数える癖が抜けない。「幽波紋」は彼女自身が名付けた、その視えるものの呼び名。',
+    tags: ['幽波紋', '虚', '沈黙'],
+    trpg: {
+      source: '卓「幽波紋」', player: 'あかたん', investigator: '孤月紅葉',
+      affiliation: '無所属', visibility: 'PUBLIC',
+      note: 'もう一人の「紅葉」とは無関係。同名の別探索者(SR/炎)が別に実在する。',
+    },
+    art: art('#c94fff', '#120a20', '#7dffe6', '紋', 'void', 'momiji_kc'),
+  },
+  {
     id: 'ch_sora', name: '天沢 ソラ', title: 'Sora / 未実装', rarity: 'SR',
     element: 'WIND', roles: ['HEALER'],
     baseStats: st(1000, 92, 80, 110, 6, 150, 18, 128),
@@ -468,4 +495,37 @@ export const MOCK_COMBOS: ComboDef[] = [
     effects: [{ effect: { type: 'HEAL', power: 0.2, scaling: 'hp' } }],
     fx: 'combo_choir_light',
   },
+  {
+    // P0-4 拡張: 相方(電子 独)が未実装のPAIRコンボ。plannedCharacters による
+    // 「IDを生で出さず名前(実装予定)で見せる」表示の確認用サンプル。
+    id: 'cb_momiji_kc_hitori',
+    name: '幽波紋・二重像',
+    kind: 'PAIR',
+    description: '孤月紅葉(幽波紋)が視る図形は、もう一人の観測者がいて初めて像を結ぶ。電子 独(幽波紋)の実装を待つコンボ。',
+    members: ['ch_momiji_kc', 'ch_hitori'],
+    trigger: { type: 'ON_SKILL_USE', actor: 'ch_momiji_kc', skill: 'sk_kc_fold' },
+    effects: [{ effect: { type: 'STATUS', status: 'ATK_UP', duration: 2, potency: 20 } }],
+    fx: 'combo_void_glitch',
+  },
 ];
+
+/* ---------------- 未実装キャラ (plannedCharacters) ----------------
+ * コンボ定義が参照するが、まだキャラとして実装されていないID。
+ * UI はこれを使って「IDを生で出さず名前(実装予定)で表示する」。
+ */
+export const MOCK_PLANNED_CHARACTERS: PlannedCharacterDef[] = [
+  { id: 'ch_hitori', name: '電子 独(幽波紋)', note: '実装準備中の探索者。孤月紅葉(幽波紋)とのペアコンボが先行定義されている。' },
+  { id: 'ch_mikoto', name: '森羅 ミコト', note: '図鑑用シルエットのみ先行公開中。' },
+];
+
+/* ---------------- 素材 (ドロップ/図鑑用) ---------------- */
+export const MOCK_MATERIALS: MaterialDef[] = [
+  { id: 'mat_scrap', name: '瓦礫の欠片', rarity: 'COMMON', description: 'どこにでも落ちている金属片。強化の基礎素材。', usage: '装備強化', icon: '欠' },
+  { id: 'mat_circuit', name: '焼けた基盤', rarity: 'UNCOMMON', description: 'ノイズ生物の内部から採れる回路片。', usage: '装備強化', icon: '基' },
+  { id: 'mat_ember_core', name: '灯火の残り火', rarity: 'RARE', description: '炎属性の敵が稀に落とす、消えない火種。', usage: '装備強化 / 重複キャラ変換', icon: '炎' },
+  { id: 'mat_void_shard', name: '虚無の欠片', rarity: 'EPIC', description: '存在そのものが薄い破片。長く持つと輪郭が滲む。', usage: '装備強化 / 重複キャラ変換', icon: '虚' },
+  { id: 'mat_prism_dust', name: '虹晶の粉', rarity: 'LEGENDARY', description: 'UR装備の強化に必要な稀少素材。', usage: '装備強化(高レア)', icon: '晶' },
+  { id: 'mat_dup_n', name: '探索者の記憶片・小', rarity: 'COMMON', description: '重複したN〜Rキャラが変換される素材。', usage: '限界突破', icon: '片' },
+  { id: 'mat_dup_ssr', name: '探索者の記憶片・大', rarity: 'EPIC', description: '重複したSSR/URキャラが変換される、濃い記憶の断片。', usage: '限界突破', icon: '片' },
+];
+export const MOCK_MATERIAL_MAP = new Map(MOCK_MATERIALS.map((m) => [m.id, m]));

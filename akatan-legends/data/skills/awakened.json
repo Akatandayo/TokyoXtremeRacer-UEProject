@@ -59,6 +59,39 @@
     "tags": ["Awakened"]
   },
   {
+    "id": "sk_momiji_kc_timeskip_ex",
+    "name": "時飛ばし::刻限突破",
+    "kind": "ACTIVE",
+    "description": "刈り取る幅がもう「十数秒」では収まらない。戻ってきた頃には、勝敗の半分がついている。",
+    "cooldown": 4,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "GAUGE", "amount": -55 },
+      { "type": "DAMAGE", "power": 0.75 },
+      { "type": "STATUS", "status": "STUN", "duration": 1, "chance": 30 },
+      { "type": "GAUGE", "amount": 55, "target": { "side": "SELF", "pattern": "SELF" } }
+    ],
+    "fx": "void_erase_ex",
+    "tags": ["TimeSkip", "Control", "Awakened"]
+  },
+  {
+    "id": "ult_momiji_kc_crimson_erase_ex",
+    "name": "紅刻・完全抹消",
+    "kind": "ULTIMATE",
+    "description": "見つけた瞬間、迷いが消える。刻む先に容赦の余地を残さない、覚醒後だけの一撃。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "effects": [
+      { "type": "DAMAGE", "power": 3.5 },
+      { "type": "STATUS", "status": "STUN", "duration": 1, "chance": 95 },
+      { "type": "CLEANSE", "hits": 3 },
+      { "type": "GAUGE", "amount": -30 }
+    ],
+    "fx": "ult_void_crimson_ex",
+    "tags": ["TimeSkip", "Epitaph", "Awakened"]
+  },
+  {
     "id": "sk_amagi_grace_ex",
     "name": "恩寵の光・満",
     "kind": "ACTIVE",

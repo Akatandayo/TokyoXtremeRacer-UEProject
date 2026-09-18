@@ -257,6 +257,36 @@
   },
 
   {
+    "id": "sk_momiji_kc_timeskip",
+    "name": "時飛ばし",
+    "kind": "ACTIVE",
+    "description": "十数秒を丸ごと刈り取る。刈られた側に体感時間は無く、ただ「結果」だけが戦場に残る。",
+    "cooldown": 4,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "GAUGE", "amount": -40 },
+      { "type": "DAMAGE", "power": 0.55 },
+      { "type": "GAUGE", "amount": 45, "target": { "side": "SELF", "pattern": "SELF" } }
+    ],
+    "fx": "void_erase",
+    "tags": ["TimeSkip", "Control"]
+  },
+  {
+    "id": "sk_momiji_kc_epitaph",
+    "name": "エピタフ",
+    "kind": "ACTIVE",
+    "description": "第三の目が数秒先を見る。危ない一撃は、当たる前に「無かったこと」になる。",
+    "cooldown": 3,
+    "target": { "side": "ALLY", "pattern": "LOWEST_HP", "count": 1 },
+    "effects": [
+      { "type": "STATUS", "status": "SHIELD", "duration": 2, "potency": 22 },
+      { "type": "STATUS", "status": "SPD_UP", "duration": 3, "potency": 30, "target": { "side": "SELF", "pattern": "SELF" } },
+      { "type": "STATUS", "status": "ATK_UP", "duration": 2, "potency": 15, "target": { "side": "SELF", "pattern": "SELF" } }
+    ],
+    "fx": "void_epitaph",
+    "tags": ["Epitaph"]
+  },
+  {
     "id": "sk_amagi_grace",
     "name": "恩寵の光",
     "kind": "ACTIVE",

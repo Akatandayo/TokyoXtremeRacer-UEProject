@@ -16,9 +16,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type {
-  AffinityTable, AiProfile, ChapterDef, CharacterDef, ComboDef, EnemyDef,
+  AffinityTable, AffixDef, AiProfile, ChapterDef, CharacterDef, ComboDef, DropTableDef,
+  EnemyDef, GachaBannerDef, ItemBaseDef, MaterialDef, PlannedCharacterDef,
   ProgressionConfig, Skill, StageDef,
 } from '@akatan/shared';
+import { EQUIPMENT_SLOTS, ITEM_RARITIES } from '@akatan/shared';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -53,6 +55,27 @@ export interface GameData {
   combos: Map<string, ComboDef>;
   affinity: AffinityTable;
   progression: ProgressionConfig;
+  /* ---- Phase 3/5 (ハクスラ・ガチャ): データが空でも起動できる ---- */
+  /** 装備ベース定義 (data/items/bases/*.json) */
+  itemBases: Map<string, ItemBaseDef>;
+  /** 装備 Prefix/Suffix 定義 (data/items/affixes/*.json) */
+  affixes: Map<string, AffixDef>;
+  /** 素材定義 (data/items/materials.json)。ガチャチケットもここに含まれる(下記 ticketMaterialIds 参照) */
+  materials: Map<string, MaterialDef>;
+  /** ドロップテーブル定義 (data/items/droptables/*.json) */
+  dropTables: Map<string, DropTableDef>;
+  /** ガチャバナー定義 (data/gacha/banners.json) */
+  gachaBanners: Map<string, GachaBannerDef>;
+  /** 未実装キャラのプレースホルダ定義 (data/system/planned-characters.json) */
+  plannedCharacters: Map<string, PlannedCharacterDef>;
+  /**
+   * 「チケット」として扱う素材ID。
+   * MaterialDef 自体には種別フィールドが無いため、`gachaBanners` の
+   * `cost(10).ticketId` と `dropTables` の `SUMMON_TICKET` エントリから
+   * 実際に参照されている素材IDを収集して判定する(データ駆動、コード変更不要)。
+   * `InventoryResponse.materials` / `.tickets` の振り分けに使う。
+   */
+  ticketMaterialIds: Set<string>;
   /** 起動時に検出した不整合(落とさずここに溜める) */
   warnings: string[];
 }
@@ -167,19 +190,48 @@ function indexById<T extends { id?: unknown }>(
   }
 }
 
+function loadFromFiles<T extends { id?: unknown }>(
+  files: string[],
+  kind: string,
+  wrapperKeys: string[],
+  warnings: string[],
+): Map<string, T> {
+  const map = new Map<string, T>();
+  for (const file of files) {
+    const json = readJson(file, warnings);
+    if (json === undefined) continue;
+    indexById(normalizeToArray<T>(json, wrapperKeys), kind, file, map, warnings);
+  }
+  return map;
+}
+
 function loadCollection<T extends { id?: unknown }>(
   dir: string,
   kind: string,
   wrapperKeys: string[],
   warnings: string[],
 ): Map<string, T> {
-  const map = new Map<string, T>();
-  for (const file of listJsonFiles(dir, warnings)) {
-    const json = readJson(file, warnings);
-    if (json === undefined) continue;
-    indexById(normalizeToArray<T>(json, wrapperKeys), kind, file, map, warnings);
+  return loadFromFiles<T>(listJsonFiles(dir, warnings), kind, wrapperKeys, warnings);
+}
+
+/**
+ * 1ファイル(単体JSON) or ディレクトリ(配下の複数JSON) のどちらでも受け付ける。
+ * 「data/items/materials.json」のような単一ファイル運用と、データ担当が後から
+ * カテゴリ分けで「data/items/materials/*.json」ディレクトリ運用に変えた場合の
+ * 両方を落とさず拾うための寛容ヘルパ(既存方針の踏襲)。
+ * 見つからなくても空配列を返すだけで警告は積まない(未作成はよくある状態のため)。
+ */
+function collectJsonSources(dataDir: string, relFile: string, relDir: string, warnings: string[]): string[] {
+  const sources = new Set<string>();
+  const filePath = path.join(dataDir, relFile);
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    sources.add(filePath);
   }
-  return map;
+  const dirPath = path.join(dataDir, relDir);
+  if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
+    for (const f of listJsonFiles(dirPath, warnings)) sources.add(f);
+  }
+  return [...sources].sort();
 }
 
 /* ============================================================
@@ -263,6 +315,62 @@ function validateReferences(data: GameData): void {
       }
       if (effect.skill && !hasSkill(effect.skill)) {
         w.push(`combo '${combo.id}': effect.skill '${effect.skill}' が skills に見つかりません`);
+      }
+    }
+  }
+
+  // Phase 3/5 (ハクスラ・ガチャ): 参照切れは警告のみ・落とさない。
+  const rarityIndex = (r: string) => ITEM_RARITIES.indexOf(r as (typeof ITEM_RARITIES)[number]);
+
+  for (const affix of data.affixes.values()) {
+    if (affix.minRarity && rarityIndex(affix.minRarity) < 0) {
+      w.push(`affix '${affix.id}': minRarity '${affix.minRarity}' が不正な ItemRarity です`);
+    }
+    for (const slot of affix.slots ?? []) {
+      if (!EQUIPMENT_SLOTS.includes(slot)) {
+        w.push(`affix '${affix.id}': slots に不正な EquipmentSlot '${slot}' があります`);
+      }
+    }
+  }
+  for (const base of data.itemBases.values()) {
+    if (!EQUIPMENT_SLOTS.includes(base.slot)) {
+      w.push(`itemBase '${base.id}': slot '${base.slot}' が不正な EquipmentSlot です`);
+    }
+  }
+  for (const table of data.dropTables.values()) {
+    for (const entry of table.entries ?? []) {
+      if (entry.kind === 'MATERIAL' || entry.kind === 'SUMMON_TICKET') {
+        if (entry.id && !data.materials.has(entry.id)) {
+          w.push(`dropTable '${table.id}': ${entry.kind} '${entry.id}' が materials に見つかりません`);
+        }
+      } else if (entry.kind === 'CHARACTER') {
+        if (entry.id && !data.characters.has(entry.id) && !data.plannedCharacters.has(entry.id)) {
+          w.push(`dropTable '${table.id}': CHARACTER '${entry.id}' が characters / plannedCharacters に見つかりません`);
+        }
+      } else if (entry.kind === 'EQUIPMENT') {
+        if (entry.slot && !EQUIPMENT_SLOTS.includes(entry.slot)) {
+          w.push(`dropTable '${table.id}': EQUIPMENT エントリの slot '${entry.slot}' が不正です`);
+        }
+      }
+    }
+  }
+  for (const banner of data.gachaBanners.values()) {
+    for (const defId of banner.pool ?? []) {
+      if (!data.characters.has(defId)) {
+        w.push(`gachaBanner '${banner.id}': pool '${defId}' が characters に見つかりません`);
+      }
+    }
+    for (const pu of banner.pickup ?? []) {
+      if (!data.characters.has(pu.defId)) {
+        w.push(`gachaBanner '${banner.id}': pickup '${pu.defId}' が characters に見つかりません`);
+      }
+    }
+    if (banner.equipment?.dropTable && !data.dropTables.has(banner.equipment.dropTable)) {
+      w.push(`gachaBanner '${banner.id}': equipment.dropTable '${banner.equipment.dropTable}' が dropTables に見つかりません`);
+    }
+    for (const cost of [banner.cost, banner.cost10]) {
+      if (cost?.currency === 'TICKET' && cost.ticketId && !data.materials.has(cost.ticketId)) {
+        w.push(`gachaBanner '${banner.id}': cost.ticketId '${cost.ticketId}' が materials に見つかりません`);
       }
     }
   }
@@ -364,6 +472,46 @@ export function loadGameData(): GameData {
     loadSystemFile<Partial<ProgressionConfig>>(dataDir, 'progression.json', {}, warnings),
   );
 
+  // Phase 3 (ハクスラ): data/items/**
+  const itemBases = loadFromFiles<ItemBaseDef>(
+    collectJsonSources(dataDir, 'items/bases.json', 'items/bases', warnings),
+    'itemBase', ['bases', 'items'], warnings,
+  );
+  const affixes = loadFromFiles<AffixDef>(
+    collectJsonSources(dataDir, 'items/affixes.json', 'items/affixes', warnings),
+    'affix', ['affixes', 'items'], warnings,
+  );
+  const materials = loadFromFiles<MaterialDef>(
+    collectJsonSources(dataDir, 'items/materials.json', 'items/materials', warnings),
+    'material', ['materials', 'items'], warnings,
+  );
+  const dropTables = loadFromFiles<DropTableDef>(
+    collectJsonSources(dataDir, 'items/droptables.json', 'items/droptables', warnings),
+    'dropTable', ['dropTables', 'tables', 'items'], warnings,
+  );
+  // Phase 5 (ガチャ): data/gacha/banners.json
+  const gachaBanners = loadFromFiles<GachaBannerDef>(
+    collectJsonSources(dataDir, 'gacha/banners.json', 'gacha', warnings),
+    'gachaBanner', ['banners', 'gacha'], warnings,
+  );
+  const plannedCharacters = loadFromFiles<PlannedCharacterDef>(
+    collectJsonSources(dataDir, 'system/planned-characters.json', 'system/planned-characters', warnings),
+    'plannedCharacter', ['plannedCharacters', 'characters'], warnings,
+  );
+
+  // ticketMaterialIds はデータロード後にバナー/ドロップテーブルの参照から逆引きする
+  const ticketMaterialIds = new Set<string>();
+  for (const banner of gachaBanners.values()) {
+    for (const cost of [banner.cost, banner.cost10]) {
+      if (cost?.currency === 'TICKET' && cost.ticketId) ticketMaterialIds.add(cost.ticketId);
+    }
+  }
+  for (const table of dropTables.values()) {
+    for (const entry of table.entries ?? []) {
+      if (entry.kind === 'SUMMON_TICKET' && entry.id) ticketMaterialIds.add(entry.id);
+    }
+  }
+
   const data: GameData = {
     dataDir,
     loadedAt: new Date().toISOString(),
@@ -376,6 +524,13 @@ export function loadGameData(): GameData {
     combos,
     affinity,
     progression,
+    itemBases,
+    affixes,
+    materials,
+    dropTables,
+    gachaBanners,
+    plannedCharacters,
+    ticketMaterialIds,
     warnings,
   };
 
@@ -383,6 +538,8 @@ export function loadGameData(): GameData {
 
   if (characters.size === 0) warnings.push('キャラクターが 0 件です(data/characters/ 未作成?)');
   if (chapters.size === 0) warnings.push('チャプターが 0 件です(data/dungeons/ 未作成?)');
+  if (itemBases.size === 0) warnings.push('装備ベースが 0 件です(data/items/bases/ 未作成? ハクスラは無効化されます)');
+  if (gachaBanners.size === 0) warnings.push('ガチャバナーが 0 件です(data/gacha/banners.json 未作成? ガチャは無効化されます)');
 
   return data;
 }
@@ -422,6 +579,12 @@ export function summarizeGameData(data: GameData): Record<string, number | strin
     chapters: data.chapters.size,
     stages: data.stages.size,
     combos: data.combos.size,
+    itemBases: data.itemBases.size,
+    affixes: data.affixes.size,
+    materials: data.materials.size,
+    dropTables: data.dropTables.size,
+    gachaBanners: data.gachaBanners.size,
+    plannedCharacters: data.plannedCharacters.size,
     warnings: data.warnings.length,
   };
 }

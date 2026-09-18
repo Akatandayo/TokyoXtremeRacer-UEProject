@@ -8,6 +8,9 @@ import type {
   ApiResponse, ApiErrorCode, PlayerStateResponse, CharacterListResponse,
   MasterDataResponse, DungeonListResponse, UpdatePartyResponse,
   BattleStartResponse, UpdatePartyRequest, UpdateAiRequest, BattleStartRequest,
+  InventoryResponse, EquipRequest, EquipResponse, UnequipRequest,
+  SellEquipmentRequest, SellEquipmentResponse, GachaListResponse,
+  GachaPullRequest, GachaPullResponse, EquipmentSlot,
 } from '@akatan/shared';
 import { isMockMode } from './mode';
 import { mockApi } from '../mock';
@@ -38,6 +41,9 @@ export function describeError(err: unknown): { title: string; detail: string; co
       PARTY_EMPTY: 'パーティが空です',
       PARTY_INVALID: 'パーティ編成が不正です',
       STAGE_LOCKED: 'このステージはまだ解放されていません',
+      NOT_ENOUGH_CURRENCY: '所持GOLD/チケットが足りません',
+      SLOT_MISMATCH: 'この装備は対応する部位(スロット)が異なります',
+      ALREADY_EQUIPPED: 'すでに他のキャラクターが装着中です',
       INTERNAL: 'サーバ内部エラーが発生しました',
     };
     return {
@@ -95,6 +101,12 @@ export interface GameApi {
   updateParty(members: (string | null)[]): Promise<UpdatePartyResponse>;
   updateAi(uid: string, aiProfile: string): Promise<unknown>;
   startBattle(stageId: string, members?: (string | null)[]): Promise<BattleStartResponse>;
+  getInventory(): Promise<InventoryResponse>;
+  equip(equipmentUid: string, characterUid: string): Promise<EquipResponse>;
+  unequip(characterUid: string, slot: EquipmentSlot): Promise<EquipResponse>;
+  sellEquipment(equipmentUids: string[]): Promise<SellEquipmentResponse>;
+  getGacha(): Promise<GachaListResponse>;
+  gachaPull(bannerId: string, count: number): Promise<GachaPullResponse>;
 }
 
 const httpApi: GameApi = {
@@ -122,6 +134,26 @@ const httpApi: GameApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  },
+  getInventory: () => request<InventoryResponse>('/inventory'),
+  equip: (equipmentUid, characterUid) => {
+    const payload: EquipRequest = { equipmentUid, characterUid };
+    return request<EquipResponse>('/equipment/equip', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  unequip: (characterUid, slot) => {
+    const payload: UnequipRequest = { characterUid, slot };
+    // shared/src/api.ts には UnequipResponse の明示的な型が無いが、equip と対称の
+    // { character, inventory } 形式を返す想定でリクエストする(サーバ実装側との契約前提)。
+    return request<EquipResponse>('/equipment/unequip', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  sellEquipment: (equipmentUids) => {
+    const payload: SellEquipmentRequest = { equipmentUids };
+    return request<SellEquipmentResponse>('/equipment/sell', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  getGacha: () => request<GachaListResponse>('/gacha'),
+  gachaPull: (bannerId, count) => {
+    const payload: GachaPullRequest = { bannerId, count };
+    return request<GachaPullResponse>('/gacha/pull', { method: 'POST', body: JSON.stringify(payload) });
   },
 };
 

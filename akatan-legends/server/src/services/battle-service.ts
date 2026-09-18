@@ -16,8 +16,8 @@
  */
 import { randomUUID } from 'node:crypto';
 import type {
-  BattleLog, BattleRewards, BattleStartResponse, CharacterDef, EnemyDef,
-  OwnedCharacter, StageDef,
+  BattleLog, BattleRewards, BattleStartResponse, CharacterDef, DropResult, EnemyDef, EquipmentInstance,
+  ItemSpecialEffect, OwnedCharacter, StageDef,
 } from '@akatan/shared';
 import type { BattleContext, CombatantInput } from '../battle/contract.js';
 import * as repo from '../db/repository.js';
@@ -27,17 +27,39 @@ import { getBattleEngine } from './battle-engine.js';
 import { computeEnemyStats, computeOwnedStats, computeGoldReward, grantBattleExp } from './progression.js';
 import { listCharacterViews, getPlayerProfile } from './player-service.js';
 import { getParty, validateMembers } from './party-service.js';
+import { resolveDrops } from './drop-service.js';
+import { buildInventoryResponse } from './equipment-service.js';
 
 /* ============================================================
  * CombatantInput への変換
  * ========================================================== */
+
+/**
+ * 装着中の装備から特殊効果(ItemSpecialEffect)を集める。
+ * ステータス寄与は computeOwnedStats 側で stats に合算済みなので、ここでは
+ * 「戦闘エンジンがトリガーを判定する対象」だけを渡す(contract.ts の specials 参照)。
+ */
+function collectEquippedSpecials(
+  owned: OwnedCharacter,
+  equipmentByUid: Map<string, EquipmentInstance>,
+): ItemSpecialEffect[] {
+  const specials: ItemSpecialEffect[] = [];
+  for (const uid of Object.values(owned.equipment ?? {})) {
+    if (!uid) continue;
+    const item = equipmentByUid.get(uid);
+    if (item?.special) specials.push(item.special);
+  }
+  return specials;
+}
 
 /** 所持キャラ + マスタ定義 -> 味方 CombatantInput */
 export function toAllyCombatant(
   owned: OwnedCharacter,
   def: CharacterDef,
   slot: number,
+  equipmentByUid: Map<string, EquipmentInstance> = new Map(),
 ): CombatantInput {
+  const specials = collectEquippedSpecials(owned, equipmentByUid);
   return {
     // 戦闘中の識別子には uid をそのまま使う(報酬付与で紐付けるため)
     id: owned.uid,
@@ -48,8 +70,8 @@ export function toAllyCombatant(
     element: def.element,
     roles: def.roles ?? [],
     level: owned.level,
-    // ステータスはサーバ側で再計算した値のみ
-    stats: computeOwnedStats(def, owned),
+    // ステータスはサーバ側で再計算した値のみ(装備込み。Phase3)
+    stats: computeOwnedStats(def, owned, equipmentByUid),
     normalAttack: def.normalAttack,
     skills: def.skills ?? [],
     ultimate: def.ultimate,
@@ -61,6 +83,7 @@ export function toAllyCombatant(
     rarity: def.rarity,
     // ComboDef の TAG コンボ判定 (requireTag) に使う。CharacterDef.tags をそのまま渡す。
     tags: def.tags,
+    ...(specials.length > 0 ? { specials } : {}),
   };
 }
 
@@ -200,7 +223,8 @@ export function startBattle(
   assertStageUnlocked(playerId, stage, data);
 
   const members = resolveBattleMembers(playerId, params.members, data);
-  const allies = members.map((m) => toAllyCombatant(m.owned, m.def, m.slot));
+  const equipmentByUid = new Map(repo.listEquipment(playerId).map((e) => [e.uid, e]));
+  const allies = members.map((m) => toAllyCombatant(m.owned, m.def, m.slot, equipmentByUid));
   const enemies = buildEnemies(stage, data);
   if (enemies.length === 0) {
     throw badRequest(`ステージ '${stage.id}' に有効な敵が設定されていません`);
@@ -233,11 +257,18 @@ export function startBattle(
 
   const victory = log.result?.victory === true;
 
-  // 報酬付与とログ保存は 1 トランザクションで行う(途中失敗で片方だけ残らないように)
-  const rewards = repo.inTransaction<BattleRewards | null>(() => {
+  // 報酬付与・ドロップ抽選・ログ保存は 1 トランザクションで行う(途中失敗で一部だけ残らないように)。
+  // better-sqlite3 の transaction() は SAVEPOINT でネストできるので、resolveDrops 内部の
+  // 独自トランザクションと入れ子にしても問題ない。
+  // ドロップは Phase3(§37): **勝利時のみ**抽選する。stage.rewards.dropTable が未設定/
+  // データ未作成でも resolveDrops は空の DropResult を返すだけで安全に動く。
+  const { rewards, drops } = repo.inTransaction<{ rewards: BattleRewards | null; drops: DropResult | null }>(() => {
     const granted = victory ? grantRewards(playerId, stage, members, data, log) : null;
+    const rolledDrops = victory
+      ? resolveDrops(playerId, data, stage.rewards?.dropTable, resolveDropItemLevel(stage))
+      : null;
     repo.saveBattleLog(playerId, log);
-    return granted;
+    return { rewards: granted, drops: rolledDrops };
   });
 
   // result.rewards にも同じ内容を入れておく(クライアントのリプレイ表示用)
@@ -249,7 +280,15 @@ export function startBattle(
     player: getPlayerProfile(playerId),
     characters: listCharacterViews(playerId, data),
     stage,
+    drops,
+    inventory: buildInventoryResponse(playerId, data),
   };
+}
+
+/** ドロップの itemLevel はステージの敵レベルから決める(敵の最高レベルを採用) */
+function resolveDropItemLevel(stage: StageDef): number {
+  const levels = (stage.enemies ?? []).map((p) => Math.max(1, Math.floor(p.level || 1)));
+  return levels.length > 0 ? Math.max(...levels) : Math.max(1, Math.floor(stage.recommendedLevel || 1));
 }
 
 /**
