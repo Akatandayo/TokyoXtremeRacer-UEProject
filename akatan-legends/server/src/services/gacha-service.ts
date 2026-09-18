@@ -262,10 +262,16 @@ export function pullGacha(
   const results: GachaPullResult[] = [];
 
   if (banner.equipment) {
-    // 装備バナー: キャラ抽選(rates/pity/guarantee10)は使わず、指定ドロップテーブルの
-    // EQUIPMENT エントリ群を重み付き抽選してスロット/レアリティ傾向を決め、itemLevel は
-    // バナー設定を使う。天井の概念は現状の型(GachaPity.rarity が Rarity 固定)では
-    // 表現できないため未実装(下記「統括への型変更要望」参照)。
+    // 装備バナー: `banner.rates` / `banner.pity` / `banner.guarantee10` は
+    // (`GachaBannerDef.rates.rarity` の値域が Rarity=N〜URで、装備の ItemRarity とは
+    // 別の型のため)**意図的に一切参照しない**。実データ `banner_equipment` にも
+    // `rates.rarity` が型を満たすためだけに埋まっているが、レアリティ傾向は
+    // `equipment.dropTable`(dt_gacha_equipment)側の EQUIPMENT エントリの
+    // `rarityWeights` が実際の抽選に使われる。
+    // 抽選そのものは、指定ドロップテーブルの EQUIPMENT エントリ群を重み付き抽選して
+    // スロット/レアリティ傾向を決め、itemLevel はバナー設定を使う。天井の概念は
+    // 現状の型(GachaPity.rarity が Rarity 固定)では表現できないため未実装
+    // (下記「統括への型変更要望」参照)。
     const genCtx = contextFromGameData(data);
     const table = data.dropTables.get(banner.equipment.dropTable);
     const equipmentEntries = (table?.entries ?? []).filter((e) => e.kind === 'EQUIPMENT');

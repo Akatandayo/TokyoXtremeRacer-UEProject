@@ -135,11 +135,18 @@ try {
     b = battle.json?.data;
     if ((b?.rewards?.levelUps?.length ?? 0) > 0) levelUpSeen = true;
   }
-  after = b?.characters?.find((c) => c.owned.uid === uids[0]);
-  statGrew = (after?.stats?.hp ?? 0) > (before?.stats?.hp ?? 0);
   check('周回でレベルアップが発生する', levelUpSeen,
     levelUpSeen ? `${b?.rewards?.levelUps?.map((l) => `${l.name} Lv${l.fromLevel}→${l.toLevel}`).join(', ')}` : '13戦してもLvアップせず — EXP設計要確認');
-  check('レベルアップでステータスが伸びる', statGrew, `HP ${before?.stats?.hp} -> ${after?.stats?.hp}`);
+
+  // レベルアップしたキャラ「本人」の伸びを見る。
+  // 以前は固定で uids[0] を見ていたが、ループの終了条件は「編成の誰か」が
+  // レベルアップすれば成立するため、別のキャラが先に上がると誤って失敗していた。
+  const leveled = b?.rewards?.levelUps?.[0];
+  after = leveled ? b?.characters?.find((c) => c.owned.uid === leveled.uid) : undefined;
+  const gain = leveled?.statGain ?? {};
+  statGrew = Object.values(gain).some((v) => typeof v === 'number' && v > 0);
+  check('レベルアップでステータスが伸びる', statGrew,
+    leveled ? `${leveled.name} Lv${leveled.fromLevel}→${leveled.toLevel} / 上昇 ${JSON.stringify(gain)}` : 'レベルアップ情報なし');
 
   console.log('\n[7] 決定論 / リプレイ');
   check('BattleLog に seed が記録されている', typeof b?.log?.seed === 'number', `seed=${b?.log?.seed}`);

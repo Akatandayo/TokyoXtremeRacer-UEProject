@@ -202,19 +202,19 @@ curl -s localhost:8787/api/master
     "skills":     [ /* Skill[] */ ],
     "aiProfiles": [ /* AiProfile[] */ ],
     "chapters":   [ /* ChapterDef[] (stages 入り) */ ],
-    "combos":     [ /* ComboDef[] — 暫定フィールド。下記の注意参照 */ ]
+    "combos":     [ /* ComboDef[] */ ],
+    "materials":  [ /* MaterialDef[] — 図鑑・ドロップ演出用(第3ラウンドで追加) */ ],
+    "plannedCharacters": [ /* PlannedCharacterDef[] — 未実装キャラのプレースホルダ */ ]
   }
 }
 ```
 
-実測件数の例: `{"characters": 4, "enemies": 1, "skills": 78, "aiProfiles": 1, "chapters": 1, "combos": 0}`
+実測件数の例: `{"characters": 11, "enemies": 13, "skills": 84, "aiProfiles": 24, "chapters": 2, "combos": 7, "materials": 9, "plannedCharacters": 1}`
 
-> **注意 (P1-1 / 第2ラウンド)**: `combos` は `shared/src/api.ts` の `MasterDataResponse` 型には
-> まだ定義されていない。バックエンド担当は `shared/` を書き込み禁止のため型は追加できず、
-> 実データにだけ `combos` を足して返している(`server/src/routes/master.ts`)。
-> クライアントが `shared` の型経由で厳密に読むと `combos` は見えないので、
-> 型として正式に使うには統括に `MasterDataResponse.combos?: ComboDef[]` の追加を依頼する必要がある
-> (本ドキュメント末尾「統括への要望」参照)。
+`combos` / `materials` / `plannedCharacters` はいずれも `shared/src/api.ts` の `MasterDataResponse` に
+正式なフィールドとして定義されている(第3ラウンドで確認)。**(P1-1 解消済み)** 第2ラウンド時点では
+`combos` が型未定義だったためローカル拡張型でのキャストを使っていたが、第3ラウンドで
+`server/src/routes/master.ts` を整理し、正式な `MasterDataResponse` を直接返すようにした。
 
 ---
 
@@ -1005,33 +1005,62 @@ CREATE TABLE gacha_pity (
 
 `shared/` はバックエンド担当の書き込み禁止範囲のため、以下は実装せず要望のみ記載する。
 
-1. **`MasterDataResponse.combos?: ComboDef[]`** (`shared/src/api.ts`)
-   編成画面で「今の編成で発動するコンボ」を表示するため。現状は `GET /api/master` の
-   レスポンス実データに `combos` を型を拡張したローカル型で追加しているが(`server/src/routes/master.ts`)、
-   `shared` の型からは見えないため、フロントが正式に使うには型追加が必要。
-2. **ステージ開放フラグ** (例: `StageDef.unlocked?: boolean` または
+**(第3ラウンドで解消済み)** 第2ラウンドで要望していた `MasterDataResponse.combos?: ComboDef[]` は
+その後 `shared/src/api.ts` に正式追加されていることを確認した(`materials?` / `plannedCharacters?` も
+同時に追加済み)。第3ラウンドで `server/src/routes/master.ts` の暫定ワークアラウンド
+(ローカル拡張型でのキャスト)を廃止し、正式フィールドを直接返すよう整理した。
+
+残っている要望:
+
+1. **ステージ開放フラグ** (例: `StageDef.unlocked?: boolean` または
    `DungeonListResponse` に `unlockedStageIds: string[]` 等)
    現状は `StageDef.unlockAfter` + `clearedStages` をクライアント側で突き合わせれば
    開放判定を再現できるため必須ではないが、判定ロジックの二重管理(クライアントとサーバ)を
    避けたいなら追加を検討してほしい。挑戦拒否自体はサーバ権威で完結しているので緊急度は低い。
-3. **編成コンボ判定API用の型** (P1-2, 任意)
+2. **編成コンボ判定API用の型** (P1-2, 任意)
    「指定した5人編成で成立するコンボ一覧」を返す新エンドポイントを作る場合、
    `shared/src/api.ts` にリクエスト/レスポンス型が必要(`ActiveCombo[]` を返す想定)。
    フロントは `MasterDataResponse.combos` があればクライアント側でも判定可能なため、
    バックエンド側では今回実装していない(要望があれば追加する)。
+3. **`GachaPity.rarity` が `Rarity`(N〜UR)固定** (`shared/src/types.ts`。第3ラウンドで新規)
+   装備バナー(`GachaBannerDef.equipment` あり)には天井の概念を実装していない。
+   `GachaPity` は `rarity: Rarity` 固定のため、`ItemRarity`(COMMON〜MYTHIC)の装備には
+   使えない。装備バナーにも天井を入れたい場合、`GachaPity` を `Rarity | ItemRarity` にするか、
+   別の `EquipmentGachaPity` 型を追加してほしい。緊急度は低い(実データの `banner_equipment` は
+   現状 `pity` を設定していない)。
+4. **`EquipRequest`/`UnequipRequest` に明示的な `slot` が無い点の確認**
+   実装では「装備は自身の `EquipmentInstance.slot` にしか付けられない」前提で `SLOT_MISMATCH` を
+   (a) 装備データ自体のスロット値が壊れている場合、(b) `unequip` の `slot` パラメータが
+   `EquipmentSlot` の値でない場合、の2ケースに用いている(§2 装備エンドポイント参照)。
+   意図と違えば仕様を教えてほしい。
 
 ## 9. 他担当への依頼事項
 
-- **バトルエンジン担当**: `server/src/battle/engine.ts` が `ctx.now` / `ctx.combos` を
-  まだ参照していない(`contract.ts` の契約は更新済み)。`BattleLog.createdAt` は
-  `ctx.now` を使うよう、コンボ発動は `ctx.combos` を見るよう実装してほしい
-  (API層は両方すでに渡している)。
-- **データ担当**: `data/combos/*.json` が未作成(0件)。`data/ai/*.json` の
-  `playerSelectable` も未付与(1件も無い間は移行的に全AI許可)。`data/dungeons/*.json` の
-  `unlockAfter` もまだ設定されていない(現状は全ステージ実質開放のまま)。
-  この3点が入ると、それぞれ P0-2 / P1-3 / P0-1 の制約が実際に機能し始める。
-- **フロント担当**: `PUT /api/characters/:uid/ai` が敵/ボス専用AIを 400 で拒否するように
-  なった。クライアント側のID接頭辞フィルタに加えて、このエラーコード
-  (`BAD_REQUEST`)のハンドリングを確認してほしい。また `GET /api/master` の
-  レスポンス実データには(型未定義だが)`combos` が乗っているので、暫定的に
-  `any` キャストや実行時チェックで読める(正式な型は要望3を参照)。
+**(第3ラウンド時点で解消を確認できた第2ラウンドの依頼)**
+`server/src/battle/engine.ts` は `ctx.now` / `ctx.combos` を既に参照している
+(`createdAt: this.ctx.now ?? ''`、`comboRuntimes = ctx.combos ? qualifyCombos(...) : []`)。
+`data/ai/*.json` の `playerSelectable` は11件付与済み、`data/dungeons/*.json` の
+`unlockAfter` も全ステージに設定済みで、P0-1/P0-2/P1-3 の制約は実際に機能している
+(`tools/smoke.mjs` の §8「ステージ開放制御」も実測で成功することを確認済み)。
+
+第3ラウンドで新たに確認・お願いしたい点:
+
+- **バトルエンジン担当**: `CombatantInput.specials?: ItemSpecialEffect[]` を
+  `contract.ts` に追加してもらったのに合わせて、API層(`battle-service.ts: toAllyCombatant()`)は
+  装着中の装備の `special` を集めて渡すようにした。`engine.ts` 側の発動処理
+  (`fireBattleStartSpecials` 等、現状ビルドエラーになっている未定義メソッド)の実装が進めば、
+  装備の特殊効果(灼熱付与・凍結障壁など)が戦闘に反映されるようになる。
+- **データ担当への確認事項(統括経由で確認済みの2点を記録として残す)**:
+  1. `banner_equipment` の `rates.rarity` は型を満たすためだけに埋まっており、実装では
+     **意図的に一切参照していない**(レアリティ傾向は `equipment.dropTable` 側の
+     `EQUIPMENT` エントリの `rarityWeights` を使う。`gacha-service.ts` にコメントで明記)。
+  2. `DropEntry.kind:"CHARACTER"` で `id` 省略時は「実装済み全キャラからランダムに1体」抽選する
+     という解釈で実装し、実データ (`dt_ch1_common` 等) と整合することを確認した
+     (`drop-service.ts: pickRandomCharacterId()`)。
+  3. 重複キャラの変換素材は実データの2段階規約(`mat_dup_fragment_low`=N〜SR /
+     `mat_dup_fragment_high`=SSR〜UR)にコードを合わせた。
+- **フロント / オフライン単体版担当**: `standalone/localApi.ts` からも
+  `server/src/services/item-generator.ts` を import する構成のため、このファイルは
+  `node:crypto`(`randomUUID`)以外の Node 専用APIを使わない純粋関数として維持している
+  (`rollEquipment()` はサーバ/ブラウザのどちらでも同じ結果を返す)。今後この方針を崩す
+  変更(ファイルI/O・DB直参照など)を加える場合は、standalone 側と要相談。
