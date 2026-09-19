@@ -9,6 +9,7 @@ import type {
   EquipmentInstance, MaterialStack, MaterialDef, DropResult, EquipmentSlot,
   GachaBannerDef, GachaPullResult, PlannedCharacterDef,
   RebirthNodeDef, RebirthConfig, RebirthStatus,
+  RaidBossDef, RaidState, RaidAttemptResult, AudioConfig,
 } from './types.js';
 
 /** 全レスポンスの共通封筒 */
@@ -29,6 +30,7 @@ export type ApiErrorCode =
   | 'NOT_ENOUGH_CURRENCY'
   | 'REBIRTH_LOCKED'
   | 'NOT_ENOUGH_POINTS'
+  | 'RAID_DEFEATED'
   | 'SLOT_MISMATCH'
   | 'ALREADY_EQUIPPED'
   | 'INTERNAL';
@@ -129,6 +131,10 @@ export interface MasterDataResponse {
   rebirthNodes?: RebirthNodeDef[];
   /** 転生の基本設定 */
   rebirthConfig?: RebirthConfig;
+  /** レイドボス定義 */
+  raidBosses?: RaidBossDef[];
+  /** BGM・効果音の割り当て */
+  audio?: AudioConfig;
   /**
    * コンボ定義から参照されているが未実装のキャラ。
    * UIが「〇〇(実装予定)」と名前で表示できるようにするため。
@@ -180,6 +186,33 @@ export interface AllocateRebirthRequest {
 export interface ResetRebirthResponse {
   character: CharacterView;
   status: RebirthStatus;
+  inventory?: InventoryResponse;
+}
+
+/* ---------- レイド (設計書§28〜§29) ---------- */
+
+/** GET /api/raid */
+export interface RaidListResponse {
+  bosses: RaidBossDef[];
+  /** ボスID -> 進行状況 */
+  states: Record<string, RaidState>;
+}
+
+/** POST /api/raid/attack */
+export interface RaidAttackRequest {
+  bossId: string;
+  /** 省略時は保存済みパーティ */
+  members?: (string | null)[];
+}
+
+export interface RaidAttackResponse {
+  log: BattleLog;
+  raid: RaidAttemptResult;
+  state: RaidState;
+  player: PlayerProfile;
+  characters: CharacterView[];
+  rewards: BattleRewards | null;
+  drops?: DropResult | null;
   inventory?: InventoryResponse;
 }
 

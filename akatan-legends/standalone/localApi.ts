@@ -18,9 +18,10 @@ import type {
   GachaBannerDef, GachaListResponse, GachaPullResponse, GachaPullResult, InventoryResponse,
   ItemBaseDef, ItemRarity, LevelUpInfo, MasterDataResponse, MaterialDef, MaterialStack,
   OwnedCharacter, Party, PlannedCharacterDef, PlayerProfile, PlayerStateResponse,
-  ProgressionConfig, Rarity, RebirthConfig, RebirthNodeDef, RebirthPath, RebirthResponse,
-  RebirthStatus, RebirthStatusResponse, ResetRebirthResponse, SellEquipmentResponse,
-  Skill, StageDef, UpdatePartyResponse,
+  ProgressionConfig, Rarity, RaidAttackResponse, RaidAttemptResult, RaidBossDef,
+  RaidGimmick, RaidListResponse, RaidState, RebirthConfig, RebirthNodeDef, RebirthPath,
+  RebirthResponse, RebirthStatus, RebirthStatusResponse, ResetRebirthResponse,
+  SellEquipmentResponse, Skill, StageDef, UpdatePartyResponse, AudioConfig,
 } from '@akatan/shared';
 import { runBattle } from '../server/src/battle/index.js';
 import type { CombatantInput } from '../server/src/battle/contract.js';
@@ -106,6 +107,13 @@ const rebirthConfig: RebirthConfig = {
   requiredLevel: 60, pointsPerRebirth: 5, growthBonusPercent: 3, maxRebirth: 10,
   ...(single<RebirthConfig>('rebirth.json') ?? {}),
 };
+const raidBosses = (() => {
+  for (const [file, content] of Object.entries(jsonFiles)) {
+    if (file.includes('/data/raid/')) return asArray<RaidBossDef>(content);
+  }
+  return [] as RaidBossDef[];
+})();
+const audioConfig = single<AudioConfig>('audio.json');
 const affinity = single<AffinityTable>('affinity.json') ?? {};
 const progression: ProgressionConfig = {
   levelCap: 60,
@@ -125,6 +133,7 @@ const dropTableById = new Map(dropTables.map((d) => [d.id, d]));
 const bannerById = new Map(gachaBanners.map((b) => [b.id, b]));
 const materialById = new Map(materials.map((m) => [m.id, m]));
 const rebirthNodeById = new Map(rebirthNodes.map((n) => [n.id, n]));
+const raidBossById = new Map(raidBosses.map((b) => [b.id, b]));
 
 /** 装備生成はサーバと同じモジュール(item-generator)を共有する */
 const itemCtx: ItemGeneratorContext = contextFromGameData({
@@ -167,6 +176,8 @@ interface SaveData {
   materials?: MaterialStack[];
   /** バナーID -> 天井カウント */
   pity?: Record<string, number>;
+  /** ボスID -> レイド進行状況 */
+  raid?: Record<string, RaidState>;
 }
 
 const RARITY_ORDER: Rarity[] = ['N', 'R', 'SR', 'SSR', 'UR'];
@@ -221,6 +232,7 @@ function newSave(): SaveData {
     equipment: [],
     materials: [],
     pity: {},
+    raid: {},
   };
 }
 
@@ -238,6 +250,7 @@ function load(): SaveData {
         parsed.equipment ??= [];
         parsed.materials ??= [];
         parsed.pity ??= {};
+        parsed.raid ??= {};
         return parsed;
       }
     }
@@ -681,6 +694,40 @@ function viewOf(owned: OwnedCharacter) {
   return view;
 }
 
+
+/* ============================================================
+ * レイドバトル (設計書§28〜§29)
+ * ------------------------------------------------------------
+ * サーバ版(raid-service.ts)と同じ方針: レイドボスは巨大な共有HPプールを持ち、
+ * 1回の挑戦で味方が与えた合計ダメージをプールから引く。戦闘そのものは通常の
+ * runBattle をそのまま使う。
+ * ========================================================== */
+
+function raidStateOf(boss: RaidBossDef): RaidState {
+  state.raid ??= {};
+  const cur = state.raid[boss.id];
+  if (cur) return cur;
+  const fresh: RaidState = {
+    bossId: boss.id,
+    remainingHp: boss.totalHp,
+    totalHp: boss.totalHp,
+    attempts: 0,
+    totalDamage: 0,
+    defeated: false,
+    triggeredGimmicks: [],
+  };
+  state.raid[boss.id] = fresh;
+  return fresh;
+}
+
+/** 残りHP割合から、現在発動しているギミックを求める(hpBelow の降順で評価) */
+function activeGimmicks(boss: RaidBossDef, remainingHp: number): RaidGimmick[] {
+  const pct = boss.totalHp > 0 ? (remainingHp / boss.totalHp) * 100 : 0;
+  return [...(boss.gimmicks ?? [])]
+    .sort((a, b) => b.hpBelow - a.hpBelow)
+    .filter((g) => pct <= g.hpBelow);
+}
+
 /* ============================================================
  * 公開API (client/src/mock/index.ts と同じ形)
  * ========================================================== */
@@ -707,7 +754,8 @@ export const mockApi = {
     await delay(20);
     return {
       characters, enemies, skills, aiProfiles, chapters, combos, materials, plannedCharacters,
-      rebirthNodes, rebirthConfig,
+      rebirthNodes, rebirthConfig, raidBosses,
+      ...(audioConfig ? { audio: audioConfig } : {}),
     };
   },
 
@@ -894,6 +942,129 @@ export const mockApi = {
     state.player = { ...state.player, gold: state.player.gold + gold };
     save(state);
     return { gold, player: { ...state.player }, inventory: inventory() };
+  },
+
+  /* ---------- レイド ---------- */
+
+  async getRaid(): Promise<RaidListResponse> {
+    await delay(20);
+    const states: Record<string, RaidState> = {};
+    for (const boss of raidBosses) states[boss.id] = { ...raidStateOf(boss) };
+    save(state);
+    return { bosses: raidBosses, states };
+  },
+
+  async raidAttack(bossId: string, members?: (string | null)[]): Promise<RaidAttackResponse> {
+    await delay(60);
+    const boss = raidBossById.get(bossId);
+    if (!boss) throw new Error(`レイドボスが見つかりません: ${bossId}`);
+    const rs = raidStateOf(boss);
+    if (rs.defeated) {
+      const err = new Error('このレイドボスは既に撃破済みです。');
+      (err as Error & { code?: string }).code = 'RAID_DEFEATED';
+      throw err;
+    }
+
+    const uids = (members ?? state.party.members).filter((m): m is string => !!m);
+    const all = views();
+    const party = uids
+      .map((uid) => all.find((v) => v.owned.uid === uid))
+      .filter((v): v is CharacterView => !!v);
+    if (party.length === 0) throw new Error('パーティにキャラクターが編成されていません。');
+
+    // ボスを1体だけ作る。発動済みギミックの statBonus と unlockSkills を反映する
+    const enemyDef = enemyById.get(boss.enemyId);
+    if (!enemyDef) throw new Error(`レイドボスの敵定義が見つかりません: ${boss.enemyId}`);
+    const gimmicks = activeGimmicks(boss, rs.remainingHp);
+    const bossStats = { ...computeEnemyStats(enemyDef, boss.level) };
+    const extraSkills: string[] = [];
+    for (const g of gimmicks) {
+      for (const [k, v] of Object.entries(g.statBonus ?? {})) {
+        const key = k as keyof typeof bossStats;
+        if (typeof bossStats[key] === 'number' && typeof v === 'number') {
+          bossStats[key] = Math.round(bossStats[key] * (1 + v / 100));
+        }
+      }
+      extraSkills.push(...(g.unlockSkills ?? []));
+    }
+
+    const foe: CombatantInput = {
+      id: `raid_${boss.id}`,
+      side: 'ENEMY',
+      slot: 0,
+      name: boss.name,
+      defId: enemyDef.id,
+      element: enemyDef.element,
+      roles: enemyDef.roles,
+      level: boss.level,
+      stats: bossStats,
+      normalAttack: enemyDef.normalAttack,
+      skills: [...(enemyDef.skills ?? []), ...extraSkills],
+      ultimate: enemyDef.ultimate,
+      aiProfile: enemyDef.defaultAi,
+      art: boss.art ?? enemyDef.art,
+      tags: enemyDef.tags,
+    };
+
+    const seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
+    const log = runBattle(party.map(toAlly), [foe], {
+      skills: skillById, aiProfiles: aiById, affinity,
+      config: progression.battle, seed, stageId: `raid:${boss.id}`,
+      combos: comboById, now: new Date().toISOString(),
+    });
+
+    // この挑戦で味方が与えた合計ダメージをプールから引く
+    const damage = log.result.stats
+      .filter((s2) => s2.side === 'ALLY')
+      .reduce((a, b) => a + b.damageDealt, 0);
+    const hpBefore = rs.remainingHp;
+    const hpAfter = Math.max(0, hpBefore - damage);
+    const before = new Set(rs.triggeredGimmicks);
+    const after = activeGimmicks(boss, hpAfter);
+    const newGimmicks = after.filter((g) => !before.has(g.name));
+
+    rs.remainingHp = hpAfter;
+    rs.attempts += 1;
+    rs.totalDamage += damage;
+    rs.triggeredGimmicks = after.map((g) => g.name);
+    rs.defeated = hpAfter <= 0;
+    rs.updatedAt = new Date().toISOString();
+
+    // MVP
+    const allyStats = log.result.stats.filter((s2) => s2.side === 'ALLY');
+    const top = allyStats.slice().sort((a, b) => b.damageDealt - a.damageDealt)[0];
+
+    // 報酬: 毎回は参加報酬、撃破時は撃破報酬
+    const tableId = rs.defeated ? boss.dropTable : boss.attemptDropTable;
+    const fakeStage = {
+      id: `raid:${boss.id}`, name: boss.name,
+      enemies: [{ enemyId: boss.enemyId, level: boss.level }],
+      rewards: { exp: boss.level * 40, gold: boss.level * 25, dropTable: tableId },
+    } as StageDef;
+    const drops = rollDrops(fakeStage);
+    if (drops.gold > 0) {
+      state.player = { ...state.player, gold: state.player.gold + drops.gold };
+    }
+    const survived = new Map<string, boolean>();
+    for (const s2 of allyStats) survived.set(s2.id, s2.survived);
+    const exp = fakeStage.rewards.exp;
+    const gold = fakeStage.rewards.gold;
+    const levelUps = grantExp(uids, exp, survived);
+    state.player = { ...state.player, gold: state.player.gold + gold };
+    save(state);
+
+    const raid: RaidAttemptResult = {
+      damage, hpBefore, hpAfter, defeated: rs.defeated, newGimmicks,
+      ...(top ? { mvp: { id: top.id, name: top.name, damage: top.damageDealt } } : {}),
+    };
+    return {
+      log, raid, state: { ...rs },
+      player: { ...state.player },
+      characters: views(),
+      rewards: { exp, gold, levelUps },
+      drops,
+      inventory: inventory(),
+    };
   },
 
   /* ---------- 転生 ---------- */

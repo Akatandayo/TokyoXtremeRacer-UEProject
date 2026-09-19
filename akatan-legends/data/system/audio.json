@@ -1,0 +1,27 @@
+{
+  "_comment": "BGM・効果音の割り当て。音源を差し替えるときはここのfileを書き換えるだけでよい(コード変更不要)。ファイルは client/public/audio/ に置く。",
+  "defaults": { "bgm": 0.35, "sfx": 0.5 },
+  "bgm": {
+    "HOME":        { "file": "bgm_menu.mp3",   "volume": 0.35, "loop": true },
+    "CHARACTERS":  { "file": "bgm_menu.mp3",   "volume": 0.35, "loop": true },
+    "PARTY":       { "file": "bgm_menu.mp3",   "volume": 0.35, "loop": true },
+    "DUNGEON":     { "file": "bgm_menu.mp3",   "volume": 0.35, "loop": true },
+    "EQUIPMENT":   { "file": "bgm_menu.mp3",   "volume": 0.35, "loop": true },
+    "GACHA":       { "file": "bgm_menu.mp3",   "volume": 0.35, "loop": true },
+    "REBIRTH":     { "file": "bgm_menu.mp3",   "volume": 0.35, "loop": true },
+    "COLLECTION":  { "file": "bgm_menu.mp3",   "volume": 0.35, "loop": true },
+    "BATTLE":      { "file": "bgm_battle.mp3", "volume": 0.4,  "loop": true },
+    "RAID":        { "file": "bgm_battle.mp3", "volume": 0.4,  "loop": true }
+  },
+  "sfx": {
+    "HIT":       { "file": "sfx_hit.mp3",      "volume": 0.4 },
+    "DAMAGE":    { "file": "sfx_damage.mp3",   "volume": 0.45 },
+    "CRITICAL":  { "file": "sfx_damage.mp3",   "volume": 0.6 },
+    "SKILL":     { "file": "sfx_skill.wav",    "volume": 0.5 },
+    "ULTIMATE":  { "file": "sfx_ultimate.wav", "volume": 0.6 },
+    "AWAKEN":    { "file": "sfx_ultimate.wav", "volume": 0.55 },
+    "COMBO":     { "file": "sfx_skill.wav",    "volume": 0.55 },
+    "DEFEAT":    { "file": "sfx_damage.mp3",   "volume": 0.5 },
+    "CLICK":     { "file": "sfx_hit.mp3",      "volume": 0.25 }
+  }
+}

@@ -88,6 +88,35 @@ if (portraitKeys.length > 0) {
   console.log('  立ち絵なし(プロシージャル描画のみ)');
 }
 
+// 音源の埋め込み。
+// 立ち絵と同じく file:// では `audio/<file>` の相対参照が解決できないため、
+// client/public/audio/ の音源を data URL にして window.__AKATAN_AUDIO__ へ注入する。
+// 音源は容量が大きいので、環境変数 AKATAN_NO_AUDIO=1 で除外した軽量版も作れる。
+const audioDir = path.join(ROOT, 'client', 'public', 'audio');
+const audio = {};
+if (!process.env.AKATAN_NO_AUDIO && fs.existsSync(audioDir)) {
+  for (const file of fs.readdirSync(audioDir)) {
+    const ext = path.extname(file).toLowerCase();
+    const mime = {
+      '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
+      '.m4a': 'audio/mp4', '.webm': 'audio/webm',
+    }[ext];
+    if (!mime) continue;
+    const data = fs.readFileSync(path.join(audioDir, file)).toString('base64');
+    audio[file] = `data:${mime};base64,${data}`;
+  }
+}
+const audioKeys = Object.keys(audio);
+if (audioKeys.length > 0) {
+  const mb = (JSON.stringify(audio).length / 1024 / 1024).toFixed(1);
+  console.log(`  音源 ${audioKeys.length} 件を埋め込み (${mb} MB): ${audioKeys.join(', ')}`);
+  const inject = `<script>window.__AKATAN_AUDIO__=${JSON.stringify(audio)};</script>`;
+  if (html.includes('</head>')) html = html.replace('</head>', `${inject}\n</head>`);
+  else html = inject + html;
+} else {
+  console.log('  音源なし(無音ビルド)');
+}
+
 // 単体版は「モックデータ」ではなく data/ の本物のマスターデータで動くため、
 // クライアント側のデモモード用バナー文言を実態に合わせて差し替える。
 // (App.tsx はフロント担当の所有ファイルなので、ビルド後の文字列置換で対応している。

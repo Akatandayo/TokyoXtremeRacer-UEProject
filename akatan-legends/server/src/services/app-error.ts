@@ -24,6 +24,8 @@ const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   // 現在の状態と噛み合っていないケースなので、他のバリデーション系と揃えて 400
   REBIRTH_LOCKED: 400,
   NOT_ENOUGH_POINTS: 400,
+  // レイド: 既に撃破済みのボスへの挑戦
+  RAID_DEFEATED: 400,
   INTERNAL: 500,
 };
 

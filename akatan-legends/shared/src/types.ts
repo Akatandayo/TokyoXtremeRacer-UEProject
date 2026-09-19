@@ -946,6 +946,119 @@ export interface BattleLog {
 }
 
 /* ============================================================
+ * レイドバトル (設計書§28〜§29)
+ * ------------------------------------------------------------
+ * 実装方針: レイドボスは「巨大な共有HPプール」を持ち、1回の挑戦(=通常の戦闘)で
+ * 与えたダメージの合計がそのプールから減る。戦闘そのものは既存の runBattle を
+ * そのまま使い、戦闘エンジンには一切手を入れない(最速で入れるための判断)。
+ * 1回の挑戦では倒しきれない量のHPを持たせることで「何度も挑む」体験を作る。
+ * ========================================================== */
+
+/** HP割合をトリガーにしたボスギミック (設計書§29) */
+export interface RaidGimmick {
+  /** このHP割合(%)以下になったら発動 */
+  hpBelow: number;
+  name: string;
+  description: string;
+  /** ボス自身に付与する強化 */
+  grant?: { status: StatusType; duration: number; potency?: number }[];
+  /** ボスのステータス補正(%) */
+  statBonus?: Partial<Record<StatKey, number>>;
+  /** このギミック以降に解放されるスキルID */
+  unlockSkills?: string[];
+  fx?: string;
+}
+
+export interface RaidBossDef {
+  id: string;
+  name: string;
+  title?: string;
+  /** 戦闘で使う敵定義ID。ステータスはここから引く */
+  enemyId: string;
+  /** 戦闘時のレベル */
+  level: number;
+  /** レイド全体の共有HP。1回の挑戦では削りきれない量にする */
+  totalHp: number;
+  description: string;
+  /** HP閾値ごとのギミック。hpBelow の降順で評価する */
+  gimmicks?: RaidGimmick[];
+  /** 弱点・無効 (設計書§29) */
+  weakElements?: Element[];
+  immuneStatuses?: StatusType[];
+  /** 撃破報酬のドロップテーブルID */
+  dropTable?: string;
+  /** 挑戦1回ごとの参加報酬テーブルID */
+  attemptDropTable?: string;
+  art?: CharacterArt;
+}
+
+/** プレイヤーごとのレイド進行状況 */
+export interface RaidState {
+  bossId: string;
+  /** 残りHP */
+  remainingHp: number;
+  totalHp: number;
+  /** 挑戦回数 */
+  attempts: number;
+  /** 累計与ダメージ */
+  totalDamage: number;
+  /** 撃破済みか */
+  defeated: boolean;
+  /** 発動済みギミック名 */
+  triggeredGimmicks: string[];
+  updatedAt?: string;
+}
+
+/** 1回の挑戦の結果 */
+export interface RaidAttemptResult {
+  /** この挑戦で与えたダメージ */
+  damage: number;
+  /** 削る前の残りHP */
+  hpBefore: number;
+  /** 削った後の残りHP */
+  hpAfter: number;
+  /** この挑戦で撃破したか */
+  defeated: boolean;
+  /** この挑戦で新たに発動したギミック */
+  newGimmicks: RaidGimmick[];
+  /** MVP(最大ダメージを出した味方) */
+  mvp?: { id: string; name: string; damage: number };
+}
+
+/* ============================================================
+ * 音声 (BGM / 効果音)
+ * ------------------------------------------------------------
+ * どのシーンでどの音を鳴らすかを data/system/audio.json で管理する。
+ * 音源ファイルを差し替えるときにコードを触らなくて済むようにするため。
+ * ========================================================== */
+
+export type AudioScene =
+  | 'HOME' | 'CHARACTERS' | 'PARTY' | 'DUNGEON' | 'BATTLE' | 'RAID'
+  | 'GACHA' | 'EQUIPMENT' | 'REBIRTH' | 'COLLECTION' | 'RESULT';
+
+export type SfxKey =
+  | 'HIT' | 'DAMAGE' | 'CRITICAL' | 'SKILL' | 'ULTIMATE' | 'AWAKEN' | 'COMBO'
+  | 'DEFEAT' | 'HEAL' | 'VICTORY' | 'LOSE' | 'GACHA_PULL' | 'GACHA_RARE'
+  | 'LEVEL_UP' | 'REBIRTH' | 'CLICK' | 'DROP';
+
+export interface AudioTrack {
+  /** client/public/audio/<file> */
+  file: string;
+  /** 音量 0.0〜1.0 */
+  volume?: number;
+  loop?: boolean;
+}
+
+export interface AudioConfig {
+  /** シーン -> BGM。未定義のシーンは直前のBGMを鳴らし続ける */
+  bgm: Partial<Record<AudioScene, AudioTrack>>;
+  /** 効果音 */
+  sfx: Partial<Record<SfxKey, AudioTrack>>;
+  /** 既定音量 */
+  defaults?: { bgm: number; sfx: number };
+}
+
+/* ============================================================
  * プレイヤー
  * ========================================================== */
 
