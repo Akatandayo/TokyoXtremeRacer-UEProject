@@ -646,7 +646,8 @@ curl -s localhost:8787/api/gacha
     "banners": [ /* GachaBannerDef[] (data/gacha/banners.json) */ ],
     "player": { "...": "PlayerProfile" },
     "pityCounters": { "banner_standard_char": 3, "banner_pickup_momiji_kc": 0, "banner_equipment": 0 },
-    "tickets": [ { "id": "ticket_summon_standard", "count": 1 } ]
+    "tickets": [ { "id": "ticket_summon_standard", "count": 1 } ],
+    "exchanges": [ /* GachaTicketExchangeDef[] (data/gacha-exchange/rates.json)。§2 POST /api/gacha/exchange 参照 */ ]
   }
 }
 ```
@@ -687,6 +688,58 @@ curl -s -X POST localhost:8787/api/gacha/pull -H 'content-type: application/json
 ```json
 {"ok":false,"error":{"code":"NOT_ENOUGH_CURRENCY","message":"ゴールドが不足しています(必要: 2700 / 所持: 1000)","details":{"currency":"GOLD","required":2700,"owned":1000}}}
 ```
+
+---
+
+### POST /api/gacha/exchange
+
+`GachaExchangeRequest` → `GachaExchangeResponse`。**ガチャチケットの交換(サーバ権威 / 設計書§37)。**
+実装は `server/src/services/gacha-service.ts: exchangeGachaTickets()`。
+
+「常設ピックアップのチケットを、より貴重な限定ピックアップのチケットへ一定レートで交換する」機能。
+クライアントが送るのは `exchangeId`(`data/gacha-exchange/rates.json` の `GachaTicketExchangeDef.id`)と
+「何回分交換したいか」(`times`、省略時1)という**意図だけ**で、消費/付与枚数は必ずサーバが
+`GachaTicketExchangeDef.fromCount`/`toCount` から再計算して確定させる。クライアントが計算した枚数は
+一切信用しない。
+
+- `exchangeId` が文字列でない/空、または `times` が1以上の整数でない場合は `BAD_REQUEST`。
+- `exchangeId` が `data/gacha-exchange/rates.json` に無ければ `NOT_FOUND`。
+- 所持チケット数が `fromCount × times` に満たない場合は `NOT_ENOUGH_CURRENCY`(何も変更せずに拒否)。
+- 消費・付与は `repo.inTransaction` で1トランザクションにまとめる(`pullGacha` と同じ方針)。
+- 逆方向(限定→通常)の交換レートはデータ側に存在しない(バリデータが強制。§5-の該当箇所参照)。
+
+```bash
+curl -s -X POST localhost:8787/api/gacha/exchange -H 'content-type: application/json' \
+  -d '{"exchangeId":"exchange_pickup_to_kachoufuugetsu","times":2}'
+```
+
+実測(所持 `ticket_summon_pickup` ×7 の状態で `times:2` を実行):
+
+```json
+{
+  "ok": true,
+  "data": {
+    "exchangeId": "exchange_pickup_to_kachoufuugetsu",
+    "times": 2,
+    "consumed": { "id": "ticket_summon_pickup", "count": 6 },
+    "gained": { "id": "ticket_summon_kachoufuugetsu", "count": 2 },
+    "tickets": [
+      { "id": "ticket_summon_kachoufuugetsu", "count": 2 },
+      { "id": "ticket_summon_pickup", "count": 1 }
+    ],
+    "player": { "...": "PlayerProfile" }
+  }
+}
+```
+
+枚数不足の実測例(このあと同じ `exchangeId` を `times:1` で実行。必要3枚に対し所持1枚):
+
+```json
+{"ok":false,"error":{"code":"NOT_ENOUGH_CURRENCY","message":"交換に必要なチケットが不足しています(必要: 3 / 所持: 1)","details":{"currency":"TICKET","ticketId":"ticket_summon_pickup","required":3,"owned":1}}}
+```
+
+`GET /api/gacha` のレスポンスにも `exchanges: GachaTicketExchangeDef[]` が含まれ、
+SUMMON画面はここから所持枚数と交換後の枚数のプレビューを組み立てる(§2 GET /api/gacha参照)。
 
 ### GET /api/raid
 
@@ -898,6 +951,7 @@ grantBattleExp()`、`DEFEATED_EXP_RATE` 定数)。生存/戦闘不能の判定�
 | `data/items/materials.json` | `MaterialDef[]` (**第3ラウンドで追加**。単一ファイル/`items/materials/*.json`ディレクトリのどちらでも可) |
 | `data/items/droptables/*.json` | `DropTableDef[]` (**第3ラウンドで追加**) |
 | `data/gacha/banners.json` | `GachaBannerDef[]` (**第3ラウンドで追加**。単一ファイル/`gacha/*.json`ディレクトリのどちらでも可) |
+| `data/gacha-exchange/rates.json` | `GachaTicketExchangeDef[]` (**ガチャチケット交換機能で追加**。`data/gacha/` とは意図的に別ディレクトリ。単一ファイル/`gacha-exchange/*.json`ディレクトリのどちらでも可) |
 | `data/system/planned-characters.json` | `PlannedCharacterDef[]` (**第3ラウンドで追加**) |
 
 - **寛容なパース**: 単一オブジェクト / 配列 / `{ "items": [...] }` 等のラッパ、BOM付きJSON、
@@ -912,10 +966,11 @@ grantBattleExp()`、`DEFEATED_EXP_RATE` 定数)。生存/戦闘不能の判定�
 - ID重複は **先に読んだ定義が勝つ**(ファイル名昇順)。
 - `progression.json` が欠損/部分的でも既定値でマージされる。
 - インデックス: `characters` / `skills` / `enemies` / `aiProfiles` / `chapters` / `stages` / `combos` /
-  `itemBases` / `affixes` / `materials` / `dropTables` / `gachaBanners` / `plannedCharacters`
+  `itemBases` / `affixes` / `materials` / `dropTables` / `gachaBanners` / `gachaExchanges` / `plannedCharacters`
   (`stages` は全チャプター横断の `stageId -> {stage, chapterId}` 平坦インデックス)。
 - **`ticketMaterialIds`**(第3ラウンド追加): `MaterialDef` 自体には種別を示すフィールドが無いため、
-  `gachaBanners` の `cost(10).ticketId` と `dropTables` の `SUMMON_TICKET` エントリが参照している
+  `gachaBanners` の `cost(10).ticketId` と `dropTables` の `SUMMON_TICKET` エントリ、
+  および `gachaExchanges` の `fromTicketId`/`toTicketId` が参照している
   素材IDを収集して「チケット扱いにする素材ID集合」を作る(データ駆動、コード変更不要)。
   `InventoryResponse.materials` / `.tickets` の振り分けに使う(`equipment-service.ts: buildInventoryResponse()`)。
 - 第3ラウンド分の参照整合性チェック(警告のみ・落とさない): `AffixDef.minRarity`/`slots` の妥当性、

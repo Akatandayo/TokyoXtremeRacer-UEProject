@@ -575,3 +575,52 @@
 }
 .rate-perchar-row .rpc-name { color: var(--fg-2, #cfd8e3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rate-perchar-row .rpc-rate { font-variant-numeric: tabular-nums; color: var(--fg-1, #eaf2ff); }
+
+/* ---------- チケット交換 (EXCHANGE) ---------- */
+.ticket-exchange-list { display: grid; gap: 12px; }
+.ticket-exchange-row {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  background: var(--panel-solid);
+  display: grid;
+  gap: 6px;
+}
+.tex-rate {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.tex-rate .tex-from { color: var(--text-mid); }
+.tex-rate .tex-arrow { color: var(--gold); }
+.tex-rate .tex-to { color: var(--gold); }
+.tex-note { font-size: 11px; line-height: 1.5; }
+.tex-owned { font-size: 11px; }
+.tex-controls {
+  margin-top: 4px;
+  display: grid;
+  gap: 8px;
+  align-items: start;
+}
+.tex-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tex-stepper .btn { min-width: 34px; padding: 4px 0; }
+.tex-times { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: center; }
+.tex-preview {
+  display: grid;
+  gap: 2px;
+  font-size: 11.5px;
+}
+.tex-preview > span:first-child { font-weight: 700; }
+
+@media (max-width: 480px) {
+  .ticket-exchange-row { padding: 10px; }
+  .tex-rate { font-size: 12px; }
+  .tex-controls { gap: 6px; }
+}

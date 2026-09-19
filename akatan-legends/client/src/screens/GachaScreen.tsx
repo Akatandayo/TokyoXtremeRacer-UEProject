@@ -7,8 +7,8 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
-  GachaBannerDef, GachaPullResult, PlayerProfile, MaterialStack, Rarity, ItemRarity, CharacterArt as ArtDef,
-  CharacterDef,
+  GachaBannerDef, GachaPullResult, GachaTicketExchangeDef, PlayerProfile, MaterialStack, Rarity, ItemRarity,
+  CharacterArt as ArtDef, CharacterDef,
 } from '@akatan/shared';
 import { useStore } from '../state/store';
 import { Panel } from '../components/common';
@@ -184,6 +184,138 @@ function GachaResultCard({
   );
 }
 
+/**
+ * チケット交換の1レート分の行。
+ * 交換の成否・枚数計算は必ずサーバ(/オフライン版)側で行う(設計書§37)。
+ * ここは「何回分交換したいか」という意図を組み立てて渡すだけで、
+ * 表示している「交換後の枚数」はあくまで交換前のプレビューでしかない。
+ */
+function TicketExchangeRow({
+  exchange, tickets, materialNameOf, busy, onExchange,
+}: {
+  exchange: GachaTicketExchangeDef;
+  tickets: MaterialStack[];
+  materialNameOf: (id: string) => string;
+  busy: boolean;
+  onExchange: (exchangeId: string, times: number) => void;
+}): JSX.Element {
+  const fromName = materialNameOf(exchange.fromTicketId);
+  const toName = materialNameOf(exchange.toTicketId);
+  const fromOwned = tickets.find((t) => t.id === exchange.fromTicketId)?.count ?? 0;
+  const toOwned = tickets.find((t) => t.id === exchange.toTicketId)?.count ?? 0;
+  const maxTimes = Math.max(1, Math.floor(fromOwned / Math.max(1, exchange.fromCount)));
+
+  const [times, setTimes] = useState(1);
+  useEffect(() => {
+    setTimes((t) => Math.min(Math.max(1, t), maxTimes));
+  }, [maxTimes]);
+
+  const needed = exchange.fromCount * times;
+  const gained = exchange.toCount * times;
+  const affordable = fromOwned >= needed;
+
+  return (
+    <div className="ticket-exchange-row">
+      <div className="tex-rate">
+        <span className="tex-from">{fromName} ×{exchange.fromCount}</span>
+        <span className="tex-arrow" aria-hidden>→</span>
+        <span className="tex-to">{toName} ×{exchange.toCount}</span>
+      </div>
+      {exchange.description && <div className="muted tex-note">{exchange.description}</div>}
+      <div className="tex-owned muted">
+        所持: {fromName} {formatNumber(fromOwned)}枚 / {toName} {formatNumber(toOwned)}枚
+      </div>
+
+      <div className="tex-controls">
+        <div className="tex-stepper">
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={times <= 1}
+            onClick={() => setTimes((t) => Math.max(1, t - 1))}
+          >−</button>
+          <span className="tex-times">{times}回分</span>
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={times >= maxTimes}
+            onClick={() => setTimes((t) => Math.min(maxTimes, t + 1))}
+          >＋</button>
+        </div>
+
+        <div className="tex-preview">
+          <span>{formatNumber(needed)}枚 消費 → {formatNumber(gained)}枚 獲得</span>
+          <span className="muted">
+            交換後: {fromName} {formatNumber(Math.max(0, fromOwned - needed))}枚 / {toName} {formatNumber(toOwned + gained)}枚
+          </span>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          disabled={!affordable || busy || fromOwned === 0}
+          onClick={() => onExchange(exchange.id, times)}
+        >
+          交換する
+        </button>
+        {!affordable && (
+          <div className="afford-reason">
+            {fromName}が足りません(必要 {formatNumber(needed)} / 所持 {formatNumber(fromOwned)})
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TicketExchangePanel({
+  exchanges, tickets, materialNameOf, onExchange,
+}: {
+  exchanges: GachaTicketExchangeDef[];
+  tickets: MaterialStack[];
+  materialNameOf: (id: string) => string;
+  onExchange: (exchangeId: string, times: number) => Promise<void>;
+}): JSX.Element | null {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [err, setErr] = useState<unknown>(null);
+
+  if (exchanges.length === 0) return null;
+
+  const handle = async (exchangeId: string, times: number) => {
+    setErr(null);
+    setBusyId(exchangeId);
+    try {
+      await onExchange(exchangeId, times);
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <Panel title="EXCHANGE" jp="チケット交換 — 通常ピックアップ → 限定ピックアップ">
+      <div className="ticket-exchange-list">
+        {exchanges.map((ex) => (
+          <TicketExchangeRow
+            key={ex.id}
+            exchange={ex}
+            tickets={tickets}
+            materialNameOf={materialNameOf}
+            busy={busyId === ex.id}
+            onExchange={(id, times) => void handle(id, times)}
+          />
+        ))}
+      </div>
+      {err !== null && (
+        <div className="afford-reason" style={{ color: 'var(--danger)', marginTop: 8 }}>
+          {describeError(err).detail}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 export function GachaScreen(): JSX.Element {
   const store = useStore();
   const policy = useMemo(() => effectPolicy(store.settings), [store.settings]);
@@ -194,6 +326,7 @@ export function GachaScreen(): JSX.Element {
   const [player, setPlayer] = useState<PlayerProfile | null>(null);
   const [pityCounters, setPityCounters] = useState<Record<string, number>>({});
   const [tickets, setTickets] = useState<MaterialStack[]>([]);
+  const [exchanges, setExchanges] = useState<GachaTicketExchangeDef[]>([]);
   const [bannerId, setBannerId] = useState<string | null>(null);
 
   const [stage, setStage] = useState<Stage>('select');
@@ -212,6 +345,7 @@ export function GachaScreen(): JSX.Element {
         setPlayer(res.player);
         setPityCounters(res.pityCounters);
         setTickets(res.tickets);
+        setExchanges(res.exchanges ?? []);
         setBannerId((cur) => cur ?? res.banners[0]?.id ?? null);
       })
       .catch((e) => setLoadErr(e))
@@ -264,6 +398,14 @@ export function GachaScreen(): JSX.Element {
     } finally {
       setPulling(false);
     }
+  };
+
+  const handleExchange = async (exchangeId: string, times: number) => {
+    const res = await api().exchangeGachaTickets(exchangeId, times);
+    store.applyPlayer(res.player);
+    if (store.inventory) store.applyInventory({ ...store.inventory, tickets: res.tickets });
+    setPlayer(res.player);
+    setTickets(res.tickets);
   };
 
   // 順番開示の自動進行
@@ -371,6 +513,13 @@ export function GachaScreen(): JSX.Element {
           </div>
         )}
       </Panel>
+
+      <TicketExchangePanel
+        exchanges={exchanges}
+        tickets={tickets}
+        materialNameOf={materialNameOf}
+        onExchange={handleExchange}
+      />
 
       {stage !== 'select' && (
         <div className="gacha-overlay" role="dialog" aria-modal="true" aria-label="召喚結果">

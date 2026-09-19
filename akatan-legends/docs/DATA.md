@@ -37,6 +37,7 @@ node scripts/validate-data.mjs
 | `data/items/materials.json` | 強化・転生・重複変換・召喚チケット素材 | `MaterialDef[]` |
 | `data/items/droptables/*.json` | ドロップテーブル(`StageDef.rewards.dropTable` / `GachaBannerDef.equipment.dropTable` から参照) | `DropTableDef[]` |
 | `data/gacha/banners.json` | ガチャバナー | `GachaBannerDef[]` |
+| `data/gacha-exchange/rates.json` | ガチャチケットの交換レート(**意図的に `data/gacha/` とは別ディレクトリ**。同じ場所に置くとローダの `gachaBanners` 走査に巻き込まれてバナーとして誤読される) | `GachaTicketExchangeDef[]` |
 | `data/system/rebirth.json` | 転生の全体設定(必要Lv・獲得ポイント・コスト) | `RebirthConfig` |
 | `data/rebirth/nodes.json` | 転生ツリーの全ノード | `RebirthNodeDef[]` |
 
@@ -216,6 +217,7 @@ ch1-1 が意図的に短いのはチュートリアルだからです。
 - 装備ベース(`ItemBaseDef.mainStat` が `StatKey` か)・アフィックス(`stats[].min <= max`・`special.trigger` が既定値か)・素材・ID重複
 - ドロップテーブルが参照する素材ID/キャラID/装備スロットが妥当か、`weight` が正か、ステージの `rewards.dropTable` が実在するか
 - ガチャバナーの `rates.rarity` 合計が100か、`pool`/`pickup` のキャラIDが実在するか、`cost.ticketId` が素材として実在するか、`pity.rarity` が妥当か
+- ガチャチケット交換レート(`data/gacha-exchange/rates.json`): ID重複 / `fromTicketId`・`toTicketId` が素材として実在し互いに異なるか / `fromCount`・`toCount` が正の整数か / 同じ `from → to` の組が複数定義されていないか / **`toTicketId` の `ItemRarity` が `fromTicketId` より高いか(限定チケットの方が貴重、という設計方針を数値面で強制し、逆方向の交換を定義できないようにしている)**
 - コンボの `members`/`trigger.actor`/`effect.performer` が「実キャラ」または `data/system/planned-characters.json` の未実装キャラのどちらかとして実在するか
 - 転生ノード(`data/rebirth/nodes.json`): ID重複 / `path` が4系統のいずれか / `effects[].kind` が既定6種のいずれか / `STAT_FLAT`・`STAT_PERCENT`・`GROWTH_PERCENT` に `stat` があり `StatKey` として妥当か / `cost`・`maxRank` が正の数値か / **`requiresPathPoints` が同系統の他ノードの総コストを超えていないか(超えていれば全振りしても永久に取れないノードになる)**
 - 転生設定(`data/system/rebirth.json`): `requiredLevel` が `levelCap` 以下か / `cost`・`resetCost` の素材が実在するか、かつ**どれかのドロップテーブルから実際に入手できるか**(入手不能な素材を要求すると転生が永久に不可能になる) / **`pointsPerRebirth × maxRebirth` が全転生ノードの総コスト以上になっていないか**(以上だと最大転生時に全ノードを取り切れてしまい、設計書§19のビルド分岐が壊れる。1系統も完成できない場合は警告)
@@ -242,6 +244,7 @@ ch1-1 が意図的に短いのはチュートリアルだからです。
 - **素材**: `data/items/materials.json` に10種。強化素材3段階・転生素材2種(`mat_rebirth_echo` / `mat_rebirth_seal`、詳細は第7章)・重複キャラ変換素材2段階・アフィックス再抽選素材・召喚チケット2種(`ticket_summon_standard` / `ticket_summon_pickup`)。召喚チケットも `MaterialDef` として定義し、`GachaBannerDef.cost.ticketId` から参照する。
 - **ドロップテーブル**: 章・難易度で4種+ガチャ専用1種を用意(`dt_ch1_common` / `dt_ch1_boss` / `dt_ch2_common` / `dt_ch2_boss` / `dt_gacha_equipment`)。ボスほど装備の高レア率とキャラドロップ率を上げ、`nothingWeight` で「何も出ない」枠も必ず作っている。全ステージの `rewards.dropTable` に紐付け済み。
 - **ガチャ**: 3バナー(常設 / ピックアップ / 装備)。`rates.rarity` は合計100%になるようバリデータで検査。`pity`(天井)と `guarantee10`(10連最低保証)を設定し、重複はサーバ側で素材へ自動変換される(完全なハズレにならない)。コストは既存経済(ステージ報酬GOLD 40〜1500、初期所持1000G)と釣り合わせてある(詳細は評価報告を参照)。
+- **ガチャチケット交換**: `data/gacha-exchange/rates.json` に `GachaTicketExchangeDef[]`。「常設ピックアップのチケットを、より貴重な限定ピックアップのチケットへ一定レートで交換する」ための定義で、`fromTicketId`(消費)→`toTicketId`(付与)の片方向のみ。**意図的に `data/gacha/` とは別ディレクトリに置いている**(`server/src/data/loader.ts` の `gachaBanners` 走査・`standalone/localApi.ts` の `collect('gacha')` はどちらもディレクトリを丸ごと拾うため、同じ場所に置くと交換レートがバナーとして誤読される)。現行レートは `exchange_pickup_to_kachoufuugetsu`(`ticket_summon_pickup` ×3 → `ticket_summon_kachoufuugetsu` ×1)。3:1という数値は、`shared/src/economy.ts` の `SELL_BASE_GOLD`(EPIC:150 / LEGENDARY:400、比率約2.67)を「限定チケットの方が貴重」という前提で切り上げ、かつ両バナーの10連コスト(9枚)と揃えて「3回分のピックアップ10連 ≒ 1回分の限定10連」という感覚になるよう選んだ。バリデータ(`scripts/validate-data.mjs`)は `toTicketId` の `ItemRarity` が `fromTicketId` より高いことを必須にしており、逆方向(限定→通常)の交換は定義できない。
 - **未実装キャラを先に参照する仕組み**: `data/system/planned-characters.json` に `id`/`name`/`note` だけ登録すると、`ComboDef.members` / `trigger.actor` / `effect.performer` からその未実装キャラを参照できる。バリデータは「実キャラ or 未実装キャラ」のどちらかであれば通す。実装され次第 `data/characters/<id>.json` を追加し、`planned-characters.json` から当該エントリを削除する。
 - **立ち絵 (`art.portrait`)**: `CharacterArt.portrait` にアセットキーを入れると、`client/public/portraits/<key>.webp` を参照する(バリデータがファイル存在を読み取り専用でチェックする)。未設定のキャラは従来通りプロシージャル描画にフォールバックするため、両方式が混在してよい。
 
