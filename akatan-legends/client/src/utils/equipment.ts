@@ -25,6 +25,30 @@ export interface StatDelta {
 }
 
 /**
+ * ソート/絞り込みの対象にできる能力値。`Stats`(shared/src/types.ts)が持つ
+ * 全フィールドと一致させること。ここに無いキーは並び替え・絞り込みの選択肢に出さない。
+ */
+export const EQUIPMENT_STAT_KEYS: StatKey[] = [
+  'hp', 'attack', 'defense', 'speed', 'critical', 'criticalDamage', 'resistance', 'healing',
+];
+
+/**
+ * 一覧のソート/絞り込み用に、装備1個が持つ特定ステータスの「実効値」を返す。
+ *
+ * - `item.stats` は生成時点で mainStat + フラットaffix + ボーナス行が既に合算済みの値
+ *   (server/src/services/item-generator.ts の rollEquipment 参照)。
+ * - `item.statsPercent` は「装着したキャラの現在値に対する加算率」であり、装備単体では
+ *   基準となるキャラのステータスが定まらないため正確なフラット換算はできない
+ *   (statDeltasOf() がキャラの baseline ありきで概算しているのと同じ理由)。
+ *
+ * 一覧はキャラに依存しない並び替え/絞り込みなので、ここでは両者を単純に加算した値を
+ * 「目安の実効値」として使う。画面上の内訳表示(ItemStatsList)は従来通りflat/%を分けて見せる。
+ */
+export function equipmentStatValue(item: EquipmentInstance, key: StatKey): number {
+  return (item.stats[key] ?? 0) + (item.statsPercent?.[key] ?? 0);
+}
+
+/**
  * 装備の flat/percent ステータスを、"現在のキャラの計算済みステータス" に対する
  * 概算の増減量として展開する(装着前の比較表示専用。最終的な確定値はサーバ計算)。
  */

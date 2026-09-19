@@ -1321,6 +1321,76 @@ for (const path of listJson('gacha')) {
 if (gachaBanners.size < 3) warn('data/gacha', `ガチャバナーが ${gachaBanners.size} 件しかありません(推奨: 3件以上)`);
 
 /* ------------------------------------------------------------------
+ * 7.55. ガチャチケット交換レート (data/gacha-exchange/*.json)
+ * ------------------------------------------------------------------
+ * `data/gacha/` とは意図的に別ディレクトリにしている
+ * (server/src/data/loader.ts の gachaBanners 走査に巻き込まれてバナーとして
+ *  誤読されるのを避けるため。ローダ側のコメントと合わせてここにも明記する)。
+ *
+ * 「限定チケットの方が貴重」という設計方針を数値面でも保証するため、
+ * 通常のフィールド検査に加えて toTicketId の ItemRarity が fromTicketId 以上であることを
+ * 必須にする(= 逆方向「限定→通常」の交換を定義できないようにする)。
+ * ---------------------------------------------------------------- */
+const gachaExchanges = new Map();
+{
+  const seenPairs = new Set();
+  for (const path of listJson('gacha-exchange')) {
+    const rel = relative(ROOT, path);
+    const arr = loadJson(path);
+    if (arr === null) continue;
+    if (!Array.isArray(arr)) { err(rel, 'GachaTicketExchangeDef[] の配列である必要があります'); continue; }
+
+    arr.forEach((g, i) => {
+      const where = `${rel}#${i}${g && g.id ? ` (${g.id})` : ''}`;
+      if (typeof g !== 'object' || g === null) { err(where, '交換レートがオブジェクトではありません'); return; }
+      if (!requireStr(where, g, 'id')) return;
+      if (gachaExchanges.has(g.id)) { err(where, `交換レートIDが重複しています: "${g.id}"`); return; }
+
+      const fromOk = requireStr(where, g, 'fromTicketId');
+      const toOk = requireStr(where, g, 'toTicketId');
+      if (fromOk && toOk && g.fromTicketId === g.toTicketId) {
+        err(where, `fromTicketId と toTicketId が同じです: "${g.fromTicketId}"`);
+      }
+      if (fromOk && !materials.has(g.fromTicketId)) {
+        err(where, `fromTicketId "${g.fromTicketId}" は data/items/materials.json に存在しません`);
+      }
+      if (toOk && !materials.has(g.toTicketId)) {
+        err(where, `toTicketId "${g.toTicketId}" は data/items/materials.json に存在しません`);
+      }
+      if (fromOk && toOk && materials.has(g.fromTicketId) && materials.has(g.toTicketId)) {
+        const fromRarity = materials.get(g.fromTicketId).rarity;
+        const toRarity = materials.get(g.toTicketId).rarity;
+        if (ITEM_RARITIES.indexOf(toRarity) <= ITEM_RARITIES.indexOf(fromRarity)) {
+          err(where, `toTicketId "${g.toTicketId}"(${toRarity}) は fromTicketId "${g.fromTicketId}"(${fromRarity}) より`
+            + ' 高いレアリティである必要があります(限定チケットの方が貴重、という設計方針。逆方向の交換は作らないこと)');
+        }
+        const pairKey = `${g.fromTicketId}->${g.toTicketId}`;
+        if (seenPairs.has(pairKey)) {
+          err(where, `"${g.fromTicketId}" -> "${g.toTicketId}" の交換レートが複数定義されています`);
+        }
+        seenPairs.add(pairKey);
+      }
+
+      const fromCountOk = requireNum(where, g, 'fromCount');
+      if (fromCountOk && (g.fromCount <= 0 || !Number.isInteger(g.fromCount))) {
+        err(where, 'fromCount は正の整数である必要があります');
+      }
+      const toCountOk = requireNum(where, g, 'toCount');
+      if (toCountOk && (g.toCount <= 0 || !Number.isInteger(g.toCount))) {
+        err(where, 'toCount は正の整数である必要があります');
+      }
+      if (g.description !== undefined && typeof g.description !== 'string') err(where, 'description が文字列ではありません');
+
+      const allowed = ['id', 'fromTicketId', 'toTicketId', 'fromCount', 'toCount', 'description'];
+      for (const k of Object.keys(g)) {
+        if (!allowed.includes(k)) err(where, `GachaTicketExchangeDef に存在しないフィールド "${k}" があります`);
+      }
+      gachaExchanges.set(g.id, g);
+    });
+  }
+}
+
+/* ------------------------------------------------------------------
  * 7.6. キャラクターコンボ (data/combos/*.json)
  * ------------------------------------------------------------------
  * members / actor / performer は「実キャラ」または「未実装キャラ
@@ -1471,6 +1541,7 @@ console.log(`  素材            : ${materials.size} 種`);
 console.log(`  ドロップテーブル: ${dropTables.size} 件`);
 console.log(`  レイドボス      : ${raidBosses.size} 件`);
 console.log(`  ガチャバナー    : ${gachaBanners.size} 件`);
+console.log(`  チケット交換レート: ${gachaExchanges.size} 件`);
 console.log(`  コンボ          : ${combos.size} 件`);
 console.log(`  転生ノード      : ${rebirthNodes.size} 件  (` +
   REBIRTH_PATHS.map((p) => `${p}:${[...rebirthNodes.values()].filter((n) => n.path === p).length}`).join(' / ') + ')');

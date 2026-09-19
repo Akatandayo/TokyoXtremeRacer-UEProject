@@ -1,0 +1,10 @@
+[
+  {
+    "id": "exchange_pickup_to_kachoufuugetsu",
+    "fromTicketId": "ticket_summon_pickup",
+    "toTicketId": "ticket_summon_kachoufuugetsu",
+    "fromCount": 3,
+    "toCount": 1,
+    "description": "ピックアップ召喚チケット(紅葉ピックアップ)3枚を、花鳥風月・衝動チケット1枚に交換する。限定ピックアップの方が貴重なため、逆方向の交換はできない。"
+  }
+]

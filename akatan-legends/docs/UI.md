@@ -58,7 +58,7 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
 | CHARACTERS | 所持キャラのカードグリッド。属性・ロール・レアリティで絞り込み、4種のソート | `GET /api/player` |
 | CHARACTER DETAIL | 立ち絵(またはプロシージャル画像) / レアリティ / Lv / 転生回数 / 全ステータス / 通常攻撃・スキル・必殺技 / 覚醒条件 / **装備スロット3つ(WEAPON/ARMOR/ACCESSORY)** / コンボ(未実装キャラは「名前(実装予定)」表示) / TRPG設定 / AI戦術の変更 | `PUT /api/characters/:uid/ai` |
 | PARTY | 5枠の編成。D&D + クリック選択。属性・ロール構成と合計戦力をリアルタイム表示。発動コンボ欄も未実装キャラを名前で表示 | `PUT /api/party` |
-| **EQUIPMENT** | 所持装備一覧(スロット/レアリティ/アイテムLvで絞り込み・ソート)、装着前後の比較、売却(装着中は不可) | `GET /api/inventory`, `POST /api/equipment/{equip,unequip,sell}` |
+| **EQUIPMENT** | 所持装備一覧(スロット/レアリティ/アイテムLv/能力値で絞り込み、能力値ソートを含む)、装着前後の比較、売却(装着中は不可) | `GET /api/inventory`, `POST /api/equipment/{equip,unequip,sell}` |
 | **SUMMON** | ガチャ。バナー選択、排出率の常時公開、単発/10連、天井・重複変換演出 | `GET /api/gacha`, `POST /api/gacha/pull` |
 | DUNGEON | 章タブ、ステージカード(クリア済み✓ / 推奨戦力比較 / 敵サムネ / 報酬 / BOSS) | `GET /api/dungeons`, `POST /api/battle/start` |
 | BATTLE | `BattleLog` のタイムライン再生 + ドロップ表示。倍速 / 一時停止 / スキップ / 再生し直し | (再生のみ。計算しない) |
@@ -354,10 +354,20 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
 ### 情報設計
 
 - **一覧**: スロット(全部/武器/防具/装飾品)・レアリティ(6段階チップ)・
-  アイテムLv(下限セレクト)・**お気に入りのみ**(第6ラウンド)で絞り込み、
-  アイテムLv順/レアリティ順/スロット順/名前順でソート。カードは Prefix+ベース+Suffix
-  の合成名(`EquipmentInstance.name`)、`stats`(フラット)、`statsPercent`(%)、
-  `special`(特殊効果名)、装着中バッジ、お気に入りバッジを表示する。
+  アイテムLv(下限セレクト)・**お気に入りのみ**(第6ラウンド)・**能力値(下限値指定)**で
+  絞り込み、アイテムLv順/レアリティ順/スロット順/名前順/**能力値順**(昇順/降順トグル付き)
+  でソートする。カードは Prefix+ベース+Suffix の合成名(`EquipmentInstance.name`)、
+  `stats`(フラット)、`statsPercent`(%)、`special`(特殊効果名)、装着中バッジ、
+  お気に入りバッジを表示する。
+- **能力値での絞り込み・ソート**: 選べるステータスは `Stats`(shared/src/types.ts、
+  `StatKey` の実体)にある8種(`hp`/`attack`/`defense`/`speed`/`critical`/
+  `criticalDamage`/`resistance`/`healing`)のみ(`EQUIPMENT_STAT_KEYS`、
+  `utils/equipment.ts`)。並び替え・絞り込みの基準値は `equipmentStatValue()`
+  (`utils/equipment.ts`)が返す、その装備の `stats`(mainStat+affixのフラット合算値。
+  生成時点で確定済み)と `statsPercent`(装着キャラ基準の%加算、装備単体では正確な
+  フラット換算ができないため目安として単純加算)を足した「実効値の目安」。
+  絞り込み条件(スロット/レアリティ/Lv/お気に入り/能力値)やソート基準・方向を
+  変更すると、一覧の性能対策(後述)の表示件数は必ずリセットされる。
 - **レアリティ枠**: `ItemRarity` 6段階(`irar-COMMON`〜`irar-MYTHIC`)。COMMON〜LEGENDARY
   は色付きボーダー+グローを段階的に強め、**MYTHICだけ虹コニックグラデーションの回転枠**
   (キャラのURと同格の特別感)にして明確に差別化する。
@@ -386,7 +396,8 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
   実行後は実際のサーバ応答(`count`/`gold`/`skipped`)で結果を上書き表示する。
 - **一覧の性能(第6ラウンド)**: 装備が数百件になっても一気に描画しないよう、
   一覧は `PAGE_SIZE`(60件)ずつ表示し、残りは「もっと見る」ボタンで追加読込する。
-  スロット/レアリティ/Lv/お気に入り/ソートを変更すると表示件数はリセットされる。
+  スロット/レアリティ/Lv/お気に入り/能力値絞り込み/ソート(基準・方向)を変更すると
+  表示件数はリセットされる。
   `?mock=1&stress=N` でモックの所持装備をN件まで水増しでき、負荷再現・計測に使う
   (`client/src/mock/player.ts`)。
 - **EQUIPPED 区画**: 装備を1つ以上装着しているキャラを一覧し、スロットごとに

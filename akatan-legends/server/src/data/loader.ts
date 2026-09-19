@@ -17,7 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type {
   AffinityTable, AffixDef, AiProfile, AudioConfig, ChapterDef, CharacterDef, ComboDef, DropTableDef,
-  EnemyDef, GachaBannerDef, ItemBaseDef, MaterialDef, PlannedCharacterDef,
+  EnemyDef, GachaBannerDef, GachaTicketExchangeDef, ItemBaseDef, MaterialDef, PlannedCharacterDef,
   ProgressionConfig, RaidBossDef, RebirthConfig, RebirthNodeDef, Skill, StageDef,
 } from '@akatan/shared';
 import { EQUIPMENT_SLOTS, ITEM_RARITIES, REBIRTH_PATHS } from '@akatan/shared';
@@ -89,6 +89,12 @@ export interface GameData {
   dropTables: Map<string, DropTableDef>;
   /** ガチャバナー定義 (data/gacha/banners.json) */
   gachaBanners: Map<string, GachaBannerDef>;
+  /**
+   * ガチャチケットの交換レート定義 (data/gacha-exchange/rates.json)。
+   * `data/gacha/` と同じディレクトリを共有すると `gachaBanners` の走査(サブディレクトリも
+   * 再帰的に拾う)に巻き込まれてバナーとして誤読されるため、意図的に別ディレクトリにしている。
+   */
+  gachaExchanges: Map<string, GachaTicketExchangeDef>;
   /** 未実装キャラのプレースホルダ定義 (data/system/planned-characters.json) */
   plannedCharacters: Map<string, PlannedCharacterDef>;
   /* ---- 転生 (設計書§17〜§20, Phase2): データが空でも起動できる ---- */
@@ -407,6 +413,17 @@ function validateReferences(data: GameData): void {
       }
     }
   }
+  for (const exchange of data.gachaExchanges.values()) {
+    if (!data.materials.has(exchange.fromTicketId)) {
+      w.push(`gachaExchange '${exchange.id}': fromTicketId '${exchange.fromTicketId}' が materials に見つかりません`);
+    }
+    if (!data.materials.has(exchange.toTicketId)) {
+      w.push(`gachaExchange '${exchange.id}': toTicketId '${exchange.toTicketId}' が materials に見つかりません`);
+    }
+    if (!(exchange.fromCount > 0) || !(exchange.toCount > 0)) {
+      w.push(`gachaExchange '${exchange.id}': fromCount/toCount は正の数値である必要があります`);
+    }
+  }
 
   // 転生 (第4ラウンド): 参照切れ・不正値は警告のみ・落とさない。
   for (const node of data.rebirthNodes.values()) {
@@ -602,6 +619,11 @@ export function loadGameData(): GameData {
     collectJsonSources(dataDir, 'gacha/banners.json', 'gacha', warnings),
     'gachaBanner', ['banners', 'gacha'], warnings,
   );
+  // チケット交換レート: data/gacha-exchange/rates.json (data/gacha/ とは別ディレクトリ)
+  const gachaExchanges = loadFromFiles<GachaTicketExchangeDef>(
+    collectJsonSources(dataDir, 'gacha-exchange/rates.json', 'gacha-exchange', warnings),
+    'gachaTicketExchange', ['exchanges', 'rates'], warnings,
+  );
   const plannedCharacters = loadFromFiles<PlannedCharacterDef>(
     collectJsonSources(dataDir, 'system/planned-characters.json', 'system/planned-characters', warnings),
     'plannedCharacter', ['plannedCharacters', 'characters'], warnings,
@@ -638,6 +660,10 @@ export function loadGameData(): GameData {
       if (entry.kind === 'SUMMON_TICKET' && entry.id) ticketMaterialIds.add(entry.id);
     }
   }
+  for (const exchange of gachaExchanges.values()) {
+    if (exchange.fromTicketId) ticketMaterialIds.add(exchange.fromTicketId);
+    if (exchange.toTicketId) ticketMaterialIds.add(exchange.toTicketId);
+  }
 
   const data: GameData = {
     dataDir,
@@ -656,6 +682,7 @@ export function loadGameData(): GameData {
     materials,
     dropTables,
     gachaBanners,
+    gachaExchanges,
     plannedCharacters,
     ticketMaterialIds,
     rebirthNodes,
@@ -717,6 +744,7 @@ export function summarizeGameData(data: GameData): Record<string, number | strin
     materials: data.materials.size,
     dropTables: data.dropTables.size,
     gachaBanners: data.gachaBanners.size,
+    gachaExchanges: data.gachaExchanges.size,
     plannedCharacters: data.plannedCharacters.size,
     rebirthNodes: data.rebirthNodes.size,
     raidBosses: data.raidBosses.size,

@@ -736,6 +736,28 @@ export interface GachaBannerDef {
   art?: { primary: string; accent: string };
 }
 
+/**
+ * ガチャチケットの交換レート(設計書§37: サーバ権威)。
+ * ------------------------------------------------------------
+ * 「常設ピックアップのチケットを、より貴重な限定ピックアップのチケットへ
+ * 一定レートで交換する」ための定義。data/gacha-exchange/*.json で管理する。
+ * `fromTicketId` 側が消費され、`toTicketId` 側が付与される片方向のみの交換
+ * (逆方向 = 限定→通常 は意図的に作らない。バリデータが toTicketId のレアリティが
+ * fromTicketId 以上であることを強制する)。
+ */
+export interface GachaTicketExchangeDef {
+  id: string;
+  /** 消費するチケットの素材ID(data/items/materials.json) */
+  fromTicketId: string;
+  /** 得られるチケットの素材ID */
+  toTicketId: string;
+  /** 交換1回あたりに必要な fromTicketId の枚数 */
+  fromCount: number;
+  /** 交換1回あたりに得られる toTicketId の枚数 */
+  toCount: number;
+  description?: string;
+}
+
 /** 召喚1回の結果 */
 export interface GachaPullResult {
   /** キャラ召喚の結果 */

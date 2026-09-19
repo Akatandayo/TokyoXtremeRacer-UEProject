@@ -15,7 +15,8 @@ import type {
   AffinityTable, AffixDef, AiProfile, BattleStartResponse, CharacterDef, CharacterDropResult,
   CharacterListResponse, CharacterView, ChapterDef, ComboDef, DropEntry, DropResult,
   DropTableDef, DungeonListResponse, EnemyDef, EquipmentInstance, EquipmentSlot, EquipResponse,
-  GachaBannerDef, GachaListResponse, GachaPullResponse, GachaPullResult, InventoryResponse,
+  GachaBannerDef, GachaExchangeResponse, GachaListResponse, GachaPullResponse, GachaPullResult,
+  GachaTicketExchangeDef, InventoryResponse,
   ItemBaseDef, ItemRarity, LevelUpInfo, MasterDataResponse, MaterialDef, MaterialStack,
   OwnedCharacter, Party, PlannedCharacterDef, PlayerProfile, PlayerStateResponse,
   ProgressionConfig, Rarity, RaidAttackResponse, RaidAttemptResult, RaidBossDef,
@@ -86,6 +87,10 @@ const itemBases = collect<ItemBaseDef>('items/bases');
 const affixes = collect<AffixDef>('items/affixes');
 const dropTables = collect<DropTableDef>('items/droptables');
 const gachaBanners = collect<GachaBannerDef>('gacha');
+// チケット交換レート: data/gacha-exchange/*.json (data/gacha/ とは別ディレクトリ。
+// `collect('gacha')` は data/gacha/ 配下を丸ごと拾うため、同じ場所に置くと
+// 交換レートがバナーとして誤読される。サーバの loader.ts と同じ回避策)
+const gachaExchanges = collect<GachaTicketExchangeDef>('gacha-exchange');
 const materials: MaterialDef[] = (() => {
   for (const [file, content] of Object.entries(jsonFiles)) {
     if (file.endsWith('/data/items/materials.json')) return asArray<MaterialDef>(content);
@@ -134,6 +139,7 @@ const stageById = new Map<string, StageDef>();
 for (const ch of chapters) for (const st of ch.stages ?? []) stageById.set(st.id, st);
 const dropTableById = new Map(dropTables.map((d) => [d.id, d]));
 const bannerById = new Map(gachaBanners.map((b) => [b.id, b]));
+const exchangeById = new Map(gachaExchanges.map((e) => [e.id, e]));
 const materialById = new Map(materials.map((m) => [m.id, m]));
 const rebirthNodeById = new Map(rebirthNodes.map((n) => [n.id, n]));
 const raidBossById = new Map(raidBosses.map((b) => [b.id, b]));
@@ -156,6 +162,10 @@ for (const b of gachaBanners) {
 }
 for (const t of dropTables) {
   for (const e of t.entries ?? []) if (e.kind === 'SUMMON_TICKET' && e.id) ticketIds.add(e.id);
+}
+for (const ex of gachaExchanges) {
+  if (ex.fromTicketId) ticketIds.add(ex.fromTicketId);
+  if (ex.toTicketId) ticketIds.add(ex.toTicketId);
 }
 
 /** 重複キャラの変換先(サーバの duplicateShardMaterialId と同じ規則) */
@@ -1257,6 +1267,7 @@ export const mockApi = {
       player: { ...state.player },
       pityCounters: { ...(state.pity ?? {}) },
       tickets: inventory().tickets,
+      exchanges: gachaExchanges,
     };
   },
 
@@ -1312,6 +1323,40 @@ export const mockApi = {
       characters: views(),
       inventory: inventory(),
       pityCounter: pity,
+    };
+  },
+
+  /**
+   * チケット交換(設計書§37: サーバ権威)。サーバ版(gacha-service.exchangeGachaTickets)と
+   * 同じ規則: `GachaTicketExchangeDef` から消費/付与枚数を再計算して確定させる。
+   * オフライン版だけ違う結果になる事故を避けるため、判定はサーバと1対1で対応させている。
+   */
+  async exchangeGachaTickets(exchangeId: string, times = 1): Promise<GachaExchangeResponse> {
+    await delay(30);
+    const exchange = exchangeById.get(exchangeId);
+    if (!exchange) throw new Error(`交換レートが見つかりません: ${exchangeId}`);
+    const n = Math.max(1, Math.floor(times));
+    const needed = exchange.fromCount * n;
+    const owned = materialCount(exchange.fromTicketId);
+    if (owned < needed) {
+      const err = new Error(`交換に必要なチケットが不足しています(必要: ${needed} / 所持: ${owned})`);
+      (err as Error & { code?: string }).code = 'NOT_ENOUGH_CURRENCY';
+      throw err;
+    }
+
+    const gained = exchange.toCount * n;
+    addMaterial(exchange.fromTicketId, -needed);
+    addMaterial(exchange.toTicketId, gained);
+    state.materials = (state.materials ?? []).filter((m) => m.count > 0);
+    save(state);
+
+    return {
+      exchangeId: exchange.id,
+      times: n,
+      consumed: { id: exchange.fromTicketId, count: needed },
+      gained: { id: exchange.toTicketId, count: gained },
+      tickets: inventory().tickets,
+      player: { ...state.player },
     };
   },
 } satisfies GameApi;

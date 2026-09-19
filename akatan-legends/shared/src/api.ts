@@ -7,7 +7,7 @@ import type {
   CharacterView, ChapterDef, StageDef, BattleLog, BattleRewards,
   PlayerProfile, Party, AiProfile, Skill, EnemyDef, CharacterDef, ComboDef,
   EquipmentInstance, MaterialStack, MaterialDef, DropResult, EquipmentSlot,
-  GachaBannerDef, GachaPullResult, PlannedCharacterDef,
+  GachaBannerDef, GachaPullResult, GachaTicketExchangeDef, PlannedCharacterDef,
   RebirthNodeDef, RebirthConfig, RebirthStatus,
   RaidBossDef, RaidState, RaidAttemptResult, AudioConfig, ItemRarity,
 } from './types.js';
@@ -119,6 +119,31 @@ export interface GachaListResponse {
   /** バナーID -> 現在の天井カウント */
   pityCounters: Record<string, number>;
   tickets: MaterialStack[];
+  /** ガチャチケットの交換レート(data/gacha-exchange/*.json)。省略時は交換不可 */
+  exchanges?: GachaTicketExchangeDef[];
+}
+
+/* ---------- POST /api/gacha/exchange ---------- */
+/**
+ * チケット交換(設計書§37: サーバ権威)。クライアントが送るのは「どのレートを」
+ * 「何回分」交換したいかという意図だけで、消費/付与枚数は必ずサーバが
+ * `GachaTicketExchangeDef` から計算して確定させる。
+ */
+export interface GachaExchangeRequest {
+  exchangeId: string;
+  /** 交換したい回数。省略時は1 */
+  times?: number;
+}
+export interface GachaExchangeResponse {
+  exchangeId: string;
+  times: number;
+  /** 消費したチケット */
+  consumed: MaterialStack;
+  /** 得たチケット */
+  gained: MaterialStack;
+  /** 交換後の所持チケット一覧 */
+  tickets: MaterialStack[];
+  player: PlayerProfile;
 }
 
 /* ---------- POST /api/gacha/pull ---------- */

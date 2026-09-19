@@ -3,7 +3,9 @@
  * `GET /api/inventory` / `POST /api/equipment/{equip,unequip,sell}`
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import type { EquipmentInstance, EquipmentSlot, ItemRarity, CharacterView } from '@akatan/shared';
+import type {
+  EquipmentInstance, EquipmentSlot, ItemRarity, CharacterView, StatKey,
+} from '@akatan/shared';
 import { ITEM_RARITIES } from '@akatan/shared';
 import { useStore } from '../state/store';
 import { Panel, ElementChip, RarityBadge } from '../components/common';
@@ -16,11 +18,22 @@ import {
 } from '../utils/labels';
 import {
   equipmentOf, equippedItemsOf, combinedDelta, formatSigned, statDeltasOf, estimateBulkSell,
+  equipmentStatValue, EQUIPMENT_STAT_KEYS,
 } from '../utils/equipment';
 
 const SLOTS: EquipmentSlot[] = ['WEAPON', 'ARMOR', 'ACCESSORY'];
 const RARITIES: ItemRarity[] = ['MYTHIC', 'LEGENDARY', 'EPIC', 'RARE', 'UNCOMMON', 'COMMON'];
-type SortKey = 'itemLevel' | 'rarity' | 'name' | 'slot';
+type SortKey = 'itemLevel' | 'rarity' | 'name' | 'slot' | StatKey;
+
+/** ソート対象が能力値かどうか(能力値のときだけ昇順/降順トグルを効かせる) */
+function isStatSort(key: SortKey): key is StatKey {
+  return (EQUIPMENT_STAT_KEYS as string[]).includes(key);
+}
+
+/** 能力値の絞り込み下限に「%」を付けるべきキーか(critical/criticalDamage/resistance/healingは%表示の値) */
+function isPercentStat(key: StatKey): boolean {
+  return key === 'critical' || key === 'criticalDamage' || key === 'resistance' || key === 'healing';
+}
 
 /** 装備が数百件になっても一覧描画が重くならないよう、一度に描画する件数を制限する */
 const PAGE_SIZE = 60;
@@ -137,6 +150,11 @@ export function EquipmentScreen(): JSX.Element {
   const [minLevel, setMinLevel] = useState(0);
   const [favOnly, setFavOnly] = useState(false);
   const [sort, setSort] = useState<SortKey>('itemLevel');
+  /** 能力値ソート時のみ有効(降順=高い順がデフォルト) */
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  /** 能力値での絞り込み: 空文字なら絞り込みなし */
+  const [statFilterKey, setStatFilterKey] = useState<StatKey | ''>('');
+  const [statFilterMin, setStatFilterMin] = useState('');
   const [sellMode, setSellMode] = useState(false);
   const [sellSet, setSellSet] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -166,15 +184,23 @@ export function EquipmentScreen(): JSX.Element {
 
   const list = useMemo(() => {
     const items = inv?.equipment ?? [];
+    const statMin = statFilterKey !== '' && statFilterMin !== '' ? Number(statFilterMin) : null;
     const filtered = items.filter((it) => {
       if (slotFilter && it.slot !== slotFilter) return false;
       if (rarityFilter && it.rarity !== rarityFilter) return false;
       if (it.itemLevel < minLevel) return false;
       if (favOnly && !it.favorite) return false;
+      if (statFilterKey !== '' && statMin !== null && !Number.isNaN(statMin)) {
+        if (equipmentStatValue(it, statFilterKey) < statMin) return false;
+      }
       return true;
     });
     const sorted = [...filtered];
     sorted.sort((a, b) => {
+      if (isStatSort(sort)) {
+        const diff = equipmentStatValue(a, sort) - equipmentStatValue(b, sort);
+        return sortDir === 'asc' ? diff : -diff;
+      }
       switch (sort) {
         case 'rarity': return ITEM_RARITY_ORDER[b.rarity] - ITEM_RARITY_ORDER[a.rarity];
         case 'name': return a.name.localeCompare(b.name, 'ja');
@@ -183,13 +209,13 @@ export function EquipmentScreen(): JSX.Element {
       }
     });
     return sorted;
-  }, [inv, slotFilter, rarityFilter, minLevel, favOnly, sort]);
+  }, [inv, slotFilter, rarityFilter, minLevel, favOnly, statFilterKey, statFilterMin, sort, sortDir]);
 
   // フィルタ/並び替えが変わったら表示件数をリセットする(「もっと見る」の積み上げが
   // 別の絞り込み結果に引き継がれて大量描画になるのを防ぐ)
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [slotFilter, rarityFilter, minLevel, favOnly, sort, sellMode]);
+  }, [slotFilter, rarityFilter, minLevel, favOnly, statFilterKey, statFilterMin, sort, sortDir, sellMode]);
 
   const visibleList = useMemo(() => list.slice(0, visibleCount), [list, visibleCount]);
   const hasMore = list.length > visibleList.length;
@@ -337,7 +363,7 @@ export function EquipmentScreen(): JSX.Element {
     <div className="stack">
       <Panel
         title="EQUIPMENT"
-        jp={`所持装備 ${inv?.equipment.length ?? 0}件 — スロット/レアリティ/アイテムレベル/お気に入りで絞り込み`}
+        jp={`所持装備 ${inv?.equipment.length ?? 0}件 — スロット/レアリティ/アイテムレベル/能力値/お気に入りで絞り込み・能力値でソート`}
         right={
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
             <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="並び替え">
@@ -345,7 +371,23 @@ export function EquipmentScreen(): JSX.Element {
               <option value="rarity">レアリティ順</option>
               <option value="slot">スロット順</option>
               <option value="name">名前順</option>
+              <optgroup label="能力値順(affix込みの実効値)">
+                {EQUIPMENT_STAT_KEYS.map((k) => (
+                  <option key={k} value={k}>{STAT_LABEL[k]}順</option>
+                ))}
+              </optgroup>
             </select>
+            {isStatSort(sort) && (
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+                aria-label={sortDir === 'desc' ? '降順(高い順)。クリックで昇順に切替' : '昇順(低い順)。クリックで降順に切替'}
+                title="能力値の昇順/降順を切り替え"
+              >
+                {sortDir === 'desc' ? '▼ 高い順' : '▲ 低い順'}
+              </button>
+            )}
             <button
               className={`btn btn-sm ${bulkOpen ? 'btn-danger' : 'btn-ghost'}`}
               onClick={() => { setBulkOpen((v) => !v); setBulkConfirming(false); setBulkErr(null); }}
@@ -385,6 +427,41 @@ export function EquipmentScreen(): JSX.Element {
           >
             ★ お気に入りのみ
           </button>
+        </div>
+        <div className="filter-bar">
+          <select
+            value={statFilterKey}
+            onChange={(e) => setStatFilterKey(e.target.value as StatKey | '')}
+            aria-label="能力値で絞り込み"
+          >
+            <option value="">能力値で絞り込み(なし)</option>
+            {EQUIPMENT_STAT_KEYS.map((k) => (
+              <option key={k} value={k}>{STAT_LABEL[k]}{isPercentStat(k) ? '(%)' : ''}</option>
+            ))}
+          </select>
+          {statFilterKey !== '' && (
+            <>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={statFilterMin}
+                onChange={(e) => setStatFilterMin(e.target.value)}
+                placeholder="以上"
+                aria-label={`${STAT_LABEL[statFilterKey]}の下限値`}
+                style={{ width: 84 }}
+              />
+              <span className="muted" style={{ fontSize: 11 }}>
+                以上{isPercentStat(statFilterKey) ? '(%)' : ''}
+              </span>
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                onClick={() => { setStatFilterKey(''); setStatFilterMin(''); }}
+              >
+                解除
+              </button>
+            </>
+          )}
         </div>
         <div className="filter-bar">
           <button className={`chip-toggle ${rarityFilter === null ? 'is-on' : ''}`} onClick={() => setRarityFilter(null)}>全レアリティ</button>

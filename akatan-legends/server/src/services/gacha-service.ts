@@ -17,7 +17,8 @@
  *   8. 支払い・付与・天井カウンタ更新をすべて1トランザクションで確定する
  */
 import type {
-  CharacterDropResult, DropEntry, GachaBannerDef, GachaListResponse, GachaPullResponse, GachaPullResult, Rarity,
+  CharacterDropResult, DropEntry, GachaBannerDef, GachaExchangeResponse, GachaListResponse,
+  GachaPullResponse, GachaPullResult, Rarity,
 } from '@akatan/shared';
 import { RARITIES } from '@akatan/shared';
 import * as repo from '../db/repository.js';
@@ -64,6 +65,7 @@ export function getGachaList(playerId: string, data: GameData): GachaListRespons
     player: getPlayerProfile(playerId),
     pityCounters,
     tickets: inventory.tickets,
+    exchanges: [...data.gachaExchanges.values()],
   };
 }
 
@@ -328,6 +330,61 @@ export function pullGacha(
   });
 
   return finishPullResponse(playerId, data, results, banner.id);
+}
+
+/* ============================================================
+ * POST /api/gacha/exchange
+ * ------------------------------------------------------------
+ * チケット交換(設計書§37: サーバ権威)。クライアントは `exchangeId` と
+ * 「何回分交換したいか」(`times`)という意図だけを送る。消費/付与枚数は
+ * 必ずここで `GachaTicketExchangeDef`(data/gacha-exchange/rates.json)から
+ * 再計算して確定させ、所持数不足は pullGacha と同じ NOT_ENOUGH_CURRENCY で拒否する。
+ * ========================================================== */
+
+export function exchangeGachaTickets(
+  playerId: string,
+  data: GameData,
+  exchangeIdRaw: unknown,
+  timesRaw: unknown,
+): GachaExchangeResponse {
+  if (typeof exchangeIdRaw !== 'string' || exchangeIdRaw.length === 0) {
+    throw badRequest('exchangeId は必須の文字列です');
+  }
+  const exchange = data.gachaExchanges.get(exchangeIdRaw);
+  if (!exchange) throw notFound(`交換レートが見つかりません: ${exchangeIdRaw}`);
+
+  let times = 1;
+  if (timesRaw !== undefined) {
+    if (typeof timesRaw !== 'number' || !Number.isInteger(timesRaw) || timesRaw < 1) {
+      throw badRequest('times は1以上の整数で指定してください');
+    }
+    times = timesRaw;
+  }
+
+  const needed = exchange.fromCount * times;
+  const owned = repo.getMaterialCount(playerId, exchange.fromTicketId);
+  if (owned < needed) {
+    throw notEnoughCurrency(
+      `交換に必要なチケットが不足しています(必要: ${needed} / 所持: ${owned})`,
+      { currency: 'TICKET', ticketId: exchange.fromTicketId, required: needed, owned },
+    );
+  }
+
+  const gained = exchange.toCount * times;
+  repo.inTransaction(() => {
+    repo.addMaterial(playerId, exchange.fromTicketId, -needed);
+    repo.addMaterial(playerId, exchange.toTicketId, gained);
+  });
+
+  const inventory = buildInventoryResponse(playerId, data);
+  return {
+    exchangeId: exchange.id,
+    times,
+    consumed: { id: exchange.fromTicketId, count: needed },
+    gained: { id: exchange.toTicketId, count: gained },
+    tickets: inventory.tickets,
+    player: getPlayerProfile(playerId),
+  };
 }
 
 function finishPullResponse(

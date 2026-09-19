@@ -10,7 +10,8 @@ import type {
   BattleStartResponse, UpdatePartyRequest, UpdateAiRequest, BattleStartRequest,
   InventoryResponse, EquipRequest, EquipResponse, UnequipRequest,
   SellEquipmentRequest, SellEquipmentResponse, GachaListResponse,
-  GachaPullRequest, GachaPullResponse, EquipmentSlot, ItemRarity,
+  GachaPullRequest, GachaPullResponse, GachaExchangeRequest, GachaExchangeResponse,
+  EquipmentSlot, ItemRarity,
   FavoriteEquipmentRequest, FavoriteEquipmentResponse, BulkSellRequest, BulkSellResponse,
   RebirthStatusResponse, RebirthResponse, ResetRebirthResponse, AllocateRebirthRequest,
   RaidListResponse, RaidAttackRequest, RaidAttackResponse,
@@ -117,6 +118,8 @@ export interface GameApi {
   sellEquipmentBulk(maxRarity: ItemRarity, belowItemLevel?: number): Promise<BulkSellResponse>;
   getGacha(): Promise<GachaListResponse>;
   gachaPull(bannerId: string, count: number): Promise<GachaPullResponse>;
+  /** ガチャチケットの交換(設計書§37: サーバ権威)。枚数計算は必ずサーバ/オフライン版のロジック側で行う */
+  exchangeGachaTickets(exchangeId: string, times?: number): Promise<GachaExchangeResponse>;
   /** 転生 (設計書§17〜§20) */
   getRebirthStatus(uid: string): Promise<RebirthStatusResponse>;
   rebirth(uid: string): Promise<RebirthResponse>;
