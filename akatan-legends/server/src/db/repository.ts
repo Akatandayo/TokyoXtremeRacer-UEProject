@@ -10,7 +10,7 @@
  */
 import type {
   BattleLog, EquipmentInstance, EquipmentSlot, ItemSpecialEffect, MaterialStack,
-  OwnedCharacter, Party, PlayerProfile, RaidState, StatKey,
+  OwnedCharacter, Party, PlayerProfile, PvpPartySnapshot, PvpRoomStatus, RaidState, StatKey,
 } from '@akatan/shared';
 import { PARTY_SIZE } from '@akatan/shared';
 import { getDb, type Db } from './index.js';
@@ -744,6 +744,136 @@ export function saveRaidState(playerId: string, state: RaidState, db: Db = getDb
     state.clears ?? 0,
     JSON.stringify(state.triggeredGimmicks ?? []),
     state.updatedAt ?? new Date().toISOString(),
+  );
+}
+
+/* ============================================================
+ * PvP部屋 (あいことば対戦)
+ * ------------------------------------------------------------
+ * SQL はこのファイルに集約する方針(ファイル冒頭コメント参照)。
+ * ビジネスロジック(検証・シード導出・runBattle 実行)は services/pvp-service.ts に置く。
+ * ========================================================== */
+
+export interface PvpRoomRow {
+  id: string;
+  passphrase: string;
+  status: PvpRoomStatus;
+  hostPlayerId: string;
+  hostParty: PvpPartySnapshot;
+  guestPlayerId: string | null;
+  guestParty: PvpPartySnapshot | null;
+  seed: number | null;
+  log: BattleLog | null;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+}
+
+interface PvpRoomSqlRow {
+  id: string;
+  passphrase: string;
+  status: string;
+  host_player_id: string;
+  host_party: string;
+  guest_player_id: string | null;
+  guest_party: string | null;
+  seed: number | null;
+  log_json: string | null;
+  created_at: string;
+  updated_at: string;
+  expires_at: string;
+}
+
+function toPvpRoomRow(row: PvpRoomSqlRow): PvpRoomRow {
+  return {
+    id: row.id,
+    passphrase: row.passphrase,
+    status: row.status === 'READY' ? 'READY' : 'WAITING',
+    hostPlayerId: row.host_player_id,
+    hostParty: parseJson<PvpPartySnapshot>(row.host_party, { members: [] }),
+    guestPlayerId: row.guest_player_id,
+    guestParty: row.guest_party ? parseJson<PvpPartySnapshot | null>(row.guest_party, null) : null,
+    seed: row.seed,
+    log: row.log_json ? parseJson<BattleLog | null>(row.log_json, null) : null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    expiresAt: row.expires_at,
+  };
+}
+
+/** 失効した部屋(WAITINGでもREADYでも)を削除する。呼び出し側が定期的に呼ぶ想定。 */
+export function purgeExpiredPvpRooms(now: string, db: Db = getDb()): number {
+  const info = db.prepare('DELETE FROM pvp_rooms WHERE expires_at < ?').run(now);
+  return info.changes;
+}
+
+/** 指定あいことばで、まだ相手を待っている(失効していない)部屋を最新順で1件探す */
+export function findWaitingPvpRoomByPassphrase(
+  passphrase: string,
+  now: string,
+  db: Db = getDb(),
+): PvpRoomRow | null {
+  const row = db
+    .prepare(
+      `SELECT * FROM pvp_rooms
+        WHERE passphrase = ? AND status = 'WAITING' AND expires_at >= ?
+        ORDER BY created_at DESC LIMIT 1`,
+    )
+    .get(passphrase, now) as PvpRoomSqlRow | undefined;
+  return row ? toPvpRoomRow(row) : null;
+}
+
+export function findPvpRoomById(id: string, db: Db = getDb()): PvpRoomRow | null {
+  const row = db.prepare('SELECT * FROM pvp_rooms WHERE id = ?').get(id) as PvpRoomSqlRow | undefined;
+  return row ? toPvpRoomRow(row) : null;
+}
+
+/** 新規部屋を作成する(申告者が host になり WAITING で待つ) */
+export function insertPvpRoom(
+  params: {
+    id: string; passphrase: string; hostPlayerId: string; hostParty: PvpPartySnapshot;
+    createdAt: string; expiresAt: string;
+  },
+  db: Db = getDb(),
+): void {
+  db.prepare(
+    `INSERT INTO pvp_rooms
+       (id, passphrase, status, host_player_id, host_party, created_at, updated_at, expires_at)
+     VALUES (?, ?, 'WAITING', ?, ?, ?, ?, ?)`,
+  ).run(
+    params.id, params.passphrase, params.hostPlayerId, JSON.stringify(params.hostParty),
+    params.createdAt, params.createdAt, params.expiresAt,
+  );
+}
+
+/** host が待機中に編成を更新する(同一トークンが再入室した場合。マッチングは進めない) */
+export function updatePvpRoomHostParty(
+  id: string,
+  hostParty: PvpPartySnapshot,
+  updatedAt: string,
+  db: Db = getDb(),
+): void {
+  db.prepare('UPDATE pvp_rooms SET host_party = ?, updated_at = ? WHERE id = ?')
+    .run(JSON.stringify(hostParty), updatedAt, id);
+}
+
+/** guest が参加し、戦闘が確定した瞬間に1回だけ呼ぶ(WAITING -> READY) */
+export function resolvePvpRoom(
+  id: string,
+  params: {
+    guestPlayerId: string; guestParty: PvpPartySnapshot; seed: number; log: BattleLog;
+    updatedAt: string; expiresAt: string;
+  },
+  db: Db = getDb(),
+): void {
+  db.prepare(
+    `UPDATE pvp_rooms
+        SET status = 'READY', guest_player_id = ?, guest_party = ?, seed = ?, log_json = ?,
+            updated_at = ?, expires_at = ?
+      WHERE id = ?`,
+  ).run(
+    params.guestPlayerId, JSON.stringify(params.guestParty), params.seed, JSON.stringify(params.log),
+    params.updatedAt, params.expiresAt, id,
   );
 }
 

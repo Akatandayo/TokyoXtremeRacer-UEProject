@@ -12,6 +12,7 @@ import { inventoryRouter } from './inventory.js';
 import { masterRouter } from './master.js';
 import { partyRouter } from './party.js';
 import { playerRouter } from './player.js';
+import { pvpRouter } from './pvp.js';
 import { raidRouter } from './raid.js';
 import { rebirthRouter } from './rebirth.js';
 import { notFoundMiddleware } from './_helpers.js';
@@ -30,6 +31,7 @@ export function createApiRouter(): Router {
   api.use(equipmentRouter);
   api.use(gachaRouter);
   api.use(raidRouter);
+  api.use(pvpRouter);
   // /api 配下の未定義パスは 404 (ApiResponse 封筒で返す)
   api.use(notFoundMiddleware);
   return api;

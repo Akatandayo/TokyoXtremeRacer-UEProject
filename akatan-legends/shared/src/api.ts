@@ -11,6 +11,7 @@ import type {
   RebirthNodeDef, RebirthConfig, RebirthStatus,
   RaidBossDef, RaidState, RaidAttemptResult, AudioConfig, ItemRarity,
 } from './types.js';
+import type { PvpPartySnapshot, PvpRoomView } from './pvp.js';
 
 /** 全レスポンスの共通封筒 */
 export type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: ApiError };
@@ -297,5 +298,21 @@ export interface BattleStartResponse {
   /** ドロップ後の所持品 */
   inventory?: InventoryResponse;
 }
+
+/* ---------- PvP (あいことば対戦) ----------
+ * 信頼境界の注意点は shared/src/pvp.ts の先頭コメントと docs/API.md を参照。
+ */
+export interface PvpJoinRequest {
+  /** あいことば(前後空白は除去。PVP_PASSPHRASE_MAX_LENGTH 文字まで) */
+  passphrase: string;
+  /** クライアント申告の編成スナップショット(サーバが検証する) */
+  party: PvpPartySnapshot;
+}
+
+/** POST /api/pvp/join のレスポンス。相手が既に待っていれば即座に READY で返る */
+export type PvpJoinResponse = PvpRoomView;
+
+/** GET /api/pvp/rooms/:roomId のレスポンス(待機中のポーリング用) */
+export type PvpStatusResponse = PvpRoomView;
 
 export const API_BASE = '/api';

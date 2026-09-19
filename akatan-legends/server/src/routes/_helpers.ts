@@ -25,12 +25,29 @@ export function sendError(res: Response, err: AppError): void {
   res.status(err.status).json(body);
 }
 
+/** X-Akatan-Player ヘッダの許容文字数上限(異常に長いトークンで DB 行が膨らむのを防ぐ) */
+const PLAYER_TOKEN_MAX_LENGTH = 128;
+/** クライアント生成トークンとして許容する文字種(英数字・ハイフン・アンダースコアのみ) */
+const PLAYER_TOKEN_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
 /**
  * 現在のプレイヤーIDを解決する。
- * MVP は認証なしで 'local' 固定。将来はここでセッション/トークンを見る。
+ * 通常の(1人用の)画面は今まで通り 'local' 固定で動く。
+ *
+ * PvP(あいことば対戦)だけは2人を区別する必要があるため、クライアントが
+ * `X-Akatan-Player` ヘッダでブラウザ生成の永続トークンを送ってくると、
+ * それをプレイヤーIDとして使う。
+ * **ヘッダが無い/不正な場合は必ず 'local' にフォールバックする**
+ * (既存の全画面・全テストが 'local' 固定を前提にしているため、ここを壊さないことが最優先)。
  */
-export function currentPlayerId(_req: Request): string {
-  return LOCAL_PLAYER_ID;
+export function currentPlayerId(req: Request): string {
+  const raw = req.header('X-Akatan-Player');
+  if (typeof raw !== 'string') return LOCAL_PLAYER_ID;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0 || trimmed.length > PLAYER_TOKEN_MAX_LENGTH) return LOCAL_PLAYER_ID;
+  if (!PLAYER_TOKEN_PATTERN.test(trimmed)) return LOCAL_PLAYER_ID;
+  // 'local' そのものを名乗られても実害は無い(元々の既定値と同じ)のでそのまま許可する。
+  return trimmed;
 }
 
 /** 同期/非同期どちらのハンドラでも例外をエラーミドルウェアへ委譲する */

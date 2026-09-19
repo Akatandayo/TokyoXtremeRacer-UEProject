@@ -194,6 +194,37 @@ const MIGRATIONS: ((db: Db) => void)[] = [
       db.exec('ALTER TABLE equipment ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0');
     }
   },
+
+  // --- v6 -> v7 (オンラインPvP: あいことば対戦) ---
+  //   - pvp_rooms: あいことば単位のマッチング部屋。
+  //     host が先に入って待機(status=WAITING)、guest が同じあいことばで入った瞬間に
+  //     runBattle を1回だけ実行して結果を固定する(status=READY)。
+  //     host_party/guest_party/log_json はクライアント申告スナップショットや戦闘ログを
+  //     JSON で丸ごと保存する(他テーブルの equipment/materials と同じ方針)。
+  //     expires_at で一定時間後に失効させ、古い部屋が残り続けないようにする
+  //     (server/src/services/pvp-service.ts の purgeExpiredPvpRooms 参照)。
+  (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS pvp_rooms (
+        id               TEXT PRIMARY KEY,
+        passphrase       TEXT NOT NULL,
+        status           TEXT NOT NULL,
+        host_player_id   TEXT NOT NULL,
+        host_party       TEXT NOT NULL,
+        guest_player_id  TEXT,
+        guest_party      TEXT,
+        seed             INTEGER,
+        log_json         TEXT,
+        created_at       TEXT NOT NULL,
+        updated_at       TEXT NOT NULL,
+        expires_at       TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_pvp_rooms_passphrase_status
+        ON pvp_rooms(passphrase, status);
+      CREATE INDEX IF NOT EXISTS idx_pvp_rooms_expires
+        ON pvp_rooms(expires_at);
+    `);
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
