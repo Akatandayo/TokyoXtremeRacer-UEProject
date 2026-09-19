@@ -190,6 +190,10 @@ const httpApi: GameApi = {
     const payload: GachaPullRequest = { bannerId, count };
     return request<GachaPullResponse>('/gacha/pull', { method: 'POST', body: JSON.stringify(payload) });
   },
+  exchangeGachaTickets: (exchangeId, times) => {
+    const payload: GachaExchangeRequest = times !== undefined ? { exchangeId, times } : { exchangeId };
+    return request<GachaExchangeResponse>('/gacha/exchange', { method: 'POST', body: JSON.stringify(payload) });
+  },
   getRebirthStatus: (uid) => request<RebirthStatusResponse>(`/characters/${encodeURIComponent(uid)}/rebirth`),
   rebirth: (uid) => request<RebirthResponse>(`/characters/${encodeURIComponent(uid)}/rebirth`, { method: 'POST' }),
   allocateRebirth: (uid, nodeId, ranks) => {

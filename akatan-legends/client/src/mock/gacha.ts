@@ -5,7 +5,8 @@
  * ここで代役を務める。演出レビュー用であり、排出率の数値自体に意味は無い。
  */
 import type {
-  GachaBannerDef, GachaPullResult, Rarity, ItemRarity, CharacterDropResult,
+  GachaBannerDef, GachaExchangeResponse, GachaPullResult, GachaTicketExchangeDef,
+  Rarity, ItemRarity, CharacterDropResult,
 } from '@akatan/shared';
 import { RARITY_ORDER } from '../utils/labels';
 import { ApiClientError } from '../api/client';
@@ -69,6 +70,49 @@ export const MOCK_BANNERS: GachaBannerDef[] = [
 ];
 
 export const MOCK_BANNER_MAP = new Map(MOCK_BANNERS.map((b) => [b.id, b]));
+
+/**
+ * デモモード用のチケット交換レート。実データ(data/gacha-exchange/rates.json)と
+ * 同じ 3:1 のレートを、デモの起動時所持チケット(`buildStarterInventory` の
+ * `ticket_standard` ×5 / `ticket_momiji_kc` ×1)で確認できるようにしている。
+ */
+export const MOCK_TICKET_EXCHANGES: GachaTicketExchangeDef[] = [
+  {
+    id: 'mock_exchange_standard_to_momiji',
+    fromTicketId: 'ticket_standard',
+    toTicketId: 'ticket_momiji_kc',
+    fromCount: 3,
+    toCount: 1,
+    description: '常設召喚チケット3枚を、ピックアップ召喚チケット1枚に交換する(デモ用レート)。',
+  },
+];
+export const MOCK_TICKET_EXCHANGE_MAP = new Map(MOCK_TICKET_EXCHANGES.map((e) => [e.id, e]));
+
+export function exchangeMockTickets(exchangeId: string, times: number): GachaExchangeResponse {
+  const exchange = MOCK_TICKET_EXCHANGE_MAP.get(exchangeId);
+  if (!exchange) throw new ApiClientError('NOT_FOUND', `交換レートが見つかりません: ${exchangeId}`);
+  const n = Number.isInteger(times) && times >= 1 ? times : 1;
+  const needed = exchange.fromCount * n;
+  const stack = mockState.inventory.tickets.find((t) => t.id === exchange.fromTicketId);
+  const owned = stack?.count ?? 0;
+  if (owned < needed) {
+    throw new ApiClientError(
+      'NOT_ENOUGH_CURRENCY',
+      `交換に必要なチケットが不足しています(必要: ${needed} / 所持: ${owned})`,
+    );
+  }
+  const gained = exchange.toCount * n;
+  addMaterial(mockState.inventory.tickets, exchange.fromTicketId, -needed);
+  addMaterial(mockState.inventory.tickets, exchange.toTicketId, gained);
+  return {
+    exchangeId: exchange.id,
+    times: n,
+    consumed: { id: exchange.fromTicketId, count: needed },
+    gained: { id: exchange.toTicketId, count: gained },
+    tickets: mockState.inventory.tickets.map((t) => ({ ...t })),
+    player: { ...mockState.player },
+  };
+}
 
 function rollGradeRarity(banner: GachaBannerDef): Rarity {
   const entries = Object.entries(banner.rates.rarity ?? {}) as [Rarity, number][];

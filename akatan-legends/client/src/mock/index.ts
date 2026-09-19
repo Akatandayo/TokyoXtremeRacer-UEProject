@@ -6,7 +6,7 @@ import type {
   PlayerStateResponse, CharacterListResponse, MasterDataResponse,
   DungeonListResponse, UpdatePartyResponse, BattleStartResponse, StageDef,
   InventoryResponse, EquipResponse, SellEquipmentResponse, GachaListResponse,
-  GachaPullResponse, EquipmentSlot, CharacterView, ItemRarity,
+  GachaPullResponse, GachaExchangeResponse, EquipmentSlot, CharacterView, ItemRarity,
   FavoriteEquipmentResponse, BulkSellResponse,
   RebirthStatusResponse, RebirthResponse, ResetRebirthResponse,
   RaidListResponse, RaidAttackResponse,
@@ -19,7 +19,7 @@ import {
 import { mockState, mockCharacterViews, expToNext } from './player';
 import { generateMockBattle } from './battle';
 import { rollMockDrops, mockSellPrice } from './equipment';
-import { MOCK_BANNERS, pullBanner } from './gacha';
+import { MOCK_BANNERS, MOCK_TICKET_EXCHANGES, exchangeMockTickets, pullBanner } from './gacha';
 import {
   MOCK_REBIRTH_CONFIG, MOCK_REBIRTH_NODES,
   getMockRebirthStatus, performMockRebirth, allocateMockRebirth, resetMockRebirth,
@@ -269,6 +269,7 @@ export const mockApi = {
       player: { ...mockState.player },
       pityCounters,
       tickets: mockState.inventory.tickets.map((t) => ({ ...t })),
+      exchanges: MOCK_TICKET_EXCHANGES,
     };
   },
 
@@ -282,6 +283,11 @@ export const mockApi = {
       inventory: cloneInventory(),
       pityCounter,
     };
+  },
+
+  async exchangeGachaTickets(exchangeId: string, times = 1): Promise<GachaExchangeResponse> {
+    await delay(140);
+    return exchangeMockTickets(exchangeId, times);
   },
 
   // ---------- 転生 (設計書§17〜§20, P4-1) ----------
