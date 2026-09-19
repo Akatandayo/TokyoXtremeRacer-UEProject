@@ -9,7 +9,7 @@ import type {
   EquipmentInstance, MaterialStack, MaterialDef, DropResult, EquipmentSlot,
   GachaBannerDef, GachaPullResult, PlannedCharacterDef,
   RebirthNodeDef, RebirthConfig, RebirthStatus,
-  RaidBossDef, RaidState, RaidAttemptResult, AudioConfig,
+  RaidBossDef, RaidState, RaidAttemptResult, AudioConfig, ItemRarity,
 } from './types.js';
 
 /** 全レスポンスの共通封筒 */
@@ -71,6 +71,36 @@ export interface UnequipRequest {
 }
 /** 取り外しのレスポンスは装着と同じ形(更新後のキャラ + 所持品) */
 export type UnequipResponse = EquipResponse;
+
+/* ---------- POST /api/equipment/favorite ---------- */
+export interface FavoriteEquipmentRequest {
+  equipmentUids: string[];
+  favorite: boolean;
+}
+export interface FavoriteEquipmentResponse {
+  inventory: InventoryResponse;
+}
+
+/* ---------- POST /api/equipment/sell-bulk ---------- */
+/**
+ * レアリティを指定して一括売却する。装備数が増えすぎて動作が重くなるのを
+ * 防ぐための整理機能。装着中とお気に入りは必ず除外される。
+ */
+export interface BulkSellRequest {
+  /** このレアリティ以下をすべて売る(COMMON〜MYTHIC の序列で判定) */
+  maxRarity: ItemRarity;
+  /** 指定するとこのアイテムレベル未満だけを対象にする */
+  belowItemLevel?: number;
+}
+export interface BulkSellResponse {
+  /** 売却した数 */
+  count: number;
+  gold: number;
+  /** 装着中・お気に入りで除外した数 */
+  skipped: number;
+  player: PlayerProfile;
+  inventory: InventoryResponse;
+}
 
 /* ---------- POST /api/equipment/sell ---------- */
 export interface SellEquipmentRequest {

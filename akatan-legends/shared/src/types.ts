@@ -23,6 +23,10 @@ export type Role = (typeof ROLES)[number];
 export const STATUS_TYPES = [
   'POISON', 'BURN', 'FREEZE', 'STUN', 'SILENCE', 'BLEED', 'SLOW', 'DEF_DOWN', 'ATK_DOWN',
   'ATK_UP', 'DEF_UP', 'SPD_UP', 'SHIELD', 'REGEN', 'TAUNT',
+  /** HPが一切減らない(ダメージを0にする)。強力なので必ず duration で制限すること */
+  'INVULNERABLE',
+  /** バフ・デバフを一切受け付けない */
+  'IMMUNE',
 ] as const;
 export type StatusType = (typeof STATUS_TYPES)[number];
 
@@ -118,6 +122,16 @@ export interface SkillEffect {
   target?: SkillTarget;
   /** 属性上書き(省略時は使用者の属性) */
   element?: Element;
+  /**
+   * true なら、対象が弱点とする属性でダメージを与える(変幻自在の表現)。
+   * element の指定より優先される。
+   */
+  adaptElement?: boolean;
+  /**
+   * INVULNERABLE / IMMUNE を「N回行動するまで」で切りたい場合の行動回数。
+   * duration(ターン)ではなく自身の行動回数で数えたいスキル用。
+   */
+  actionDuration?: number;
 }
 
 export interface Skill {
@@ -137,6 +151,11 @@ export interface Skill {
   fx?: string;
   /** タグ (コンボ条件などで参照) */
   tags?: string[];
+  /**
+   * true なら effects の中からランダムに1つだけを適用する。
+   * 「4つの能力からランダムに使える」ような技のための仕組み。
+   */
+  randomEffect?: boolean;
 }
 
 /* ============================================================
@@ -593,6 +612,11 @@ export interface EquipmentInstance {
   seed?: number;
   /** 装備しているキャラのuid。未装備なら undefined */
   equippedBy?: string;
+  /**
+   * お気に入り。true の装備は一括売却の対象から必ず外れる。
+   * 掘った当たり装備を誤って売らないための保険。
+   */
+  favorite?: boolean;
   obtainedAt?: string;
 }
 
@@ -1081,6 +1105,11 @@ export interface AudioConfig {
   bgm: Partial<Record<AudioScene, AudioTrack>>;
   /** 効果音 */
   sfx: Partial<Record<SfxKey, AudioTrack>>;
+  /**
+   * スキルID -> 専用の効果音。ここに定義があるスキルは、汎用の SKILL / ULTIMATE
+   * より優先してこの音が鳴る。特定の技に固有のボイスや効果音を当てるための仕組み。
+   */
+  skillSfx?: Record<string, AudioTrack>;
   /** 既定音量 */
   defaults?: { bgm: number; sfx: number };
 }
