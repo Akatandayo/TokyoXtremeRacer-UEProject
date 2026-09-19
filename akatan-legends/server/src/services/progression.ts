@@ -16,6 +16,7 @@ import type {
   ProgressionConfig, RebirthNodeDef, RebirthPath, Stats, StatKey,
 } from '@akatan/shared';
 import { REBIRTH_PATHS } from '@akatan/shared';
+import type { RebirthCombatMods } from '../battle/contract.js';
 
 export const STAT_KEYS: StatKey[] = [
   'hp', 'attack', 'defense', 'speed', 'critical', 'criticalDamage', 'resistance', 'healing',
@@ -189,30 +190,22 @@ export function resolveRebirthStatMods(
  * ステータスではない転生効果(SKILL_POWER / GAUGE_START / ULT_GAUGE_START)の集計。
  * computeStats の対象外なので、戦闘エンジンへ渡すための値をここで用意する。
  *
- * TODO(戦闘エンジン担当と要調整): `server/src/battle/contract.ts` の `CombatantInput` に
- * これらを受け取るフィールドが無いため、現時点では `toAllyCombatant`(battle-service.ts)
- * から実際に渡す先が無い。フィールド名が決まったら `toAllyCombatant` の該当箇所
- * (TODOコメントあり)に接続すること。
+ * 型は `server/src/battle/contract.ts` の `RebirthCombatMods` が唯一の定義。
+ * 以前ここに同名の別定義があり、フィールド名が contract 側と食い違っていた
+ * (gaugeStartPercent / ultGaugeStartPercent vs gaugeStart / ultGaugeStart)。
+ * contract 側は全フィールド省略可のため代入は型エラーにならず、GAUGE_START と
+ * ULT_GAUGE_START が黙って無効化されていた。二重定義しないこと。
  */
-export interface RebirthCombatMods {
-  /** スキル威力への割合加算(%)の合計 */
-  skillPowerPercent: number;
-  /** 戦闘開始時の行動ゲージ(%)の合計 */
-  gaugeStartPercent: number;
-  /** 戦闘開始時の必殺ゲージ(%)の合計 */
-  ultGaugeStartPercent: number;
-}
-
 export function resolveRebirthCombatMods(
   nodes: Record<string, number> | undefined,
   nodeDefs: Map<string, RebirthNodeDef> | undefined,
-): RebirthCombatMods {
-  const mods: RebirthCombatMods = { skillPowerPercent: 0, gaugeStartPercent: 0, ultGaugeStartPercent: 0 };
+): Required<RebirthCombatMods> {
+  const mods: Required<RebirthCombatMods> = { skillPowerPercent: 0, gaugeStart: 0, ultGaugeStart: 0 };
   forEachRebirthEffect(nodes, nodeDefs, (effect, rank) => {
     const amount = effect.value * rank;
     if (effect.kind === 'SKILL_POWER') mods.skillPowerPercent += amount;
-    else if (effect.kind === 'GAUGE_START') mods.gaugeStartPercent += amount;
-    else if (effect.kind === 'ULT_GAUGE_START') mods.ultGaugeStartPercent += amount;
+    else if (effect.kind === 'GAUGE_START') mods.gaugeStart += amount;
+    else if (effect.kind === 'ULT_GAUGE_START') mods.ultGaugeStart += amount;
   });
   return mods;
 }

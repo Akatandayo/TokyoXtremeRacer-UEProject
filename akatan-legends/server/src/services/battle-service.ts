@@ -20,6 +20,7 @@ import type {
   ItemSpecialEffect, OwnedCharacter, RebirthNodeDef, StageDef,
 } from '@akatan/shared';
 import type { BattleContext, CombatantInput } from '../battle/contract.js';
+import type { RebirthCombatMods } from '../battle/contract.js';
 import * as repo from '../db/repository.js';
 import { getGameData, type GameData } from '../data/loader.js';
 import { badRequest, notFound, partyEmpty, partyInvalid, stageLocked } from './app-error.js';
@@ -59,6 +60,16 @@ function collectEquippedSpecials(
  * `rebirthNodeDefs` / `rebirthGrowthBonusPercent` を渡すと転生ノードの STAT_FLAT/STAT_PERCENT/
  * GROWTH_PERCENT が `stats` に反映される(Phase2 §18)。省略時は転生なしとして計算する。
  */
+/**
+ * 転生補正がすべて0なら「補正なし」と同じ。エンジンは rebirthMods 未指定のとき
+ * 乱数を一切消費せず従来と同一のログを出すので、転生していないプレイヤーの
+ * リプレイ互換を保つためフィールド自体を付けない。
+ */
+function hasRebirthMods(m: RebirthCombatMods | undefined): boolean {
+  if (!m) return false;
+  return Boolean(m.skillPowerPercent || m.gaugeStart || m.ultGaugeStart);
+}
+
 export function toAllyCombatant(
   owned: OwnedCharacter,
   def: CharacterDef,
@@ -69,12 +80,10 @@ export function toAllyCombatant(
 ): CombatantInput {
   const specials = collectEquippedSpecials(owned, equipmentByUid);
   // 転生ノードの SKILL_POWER/GAUGE_START/ULT_GAUGE_START はステータスではないため
-  // computeOwnedStats の対象外。ここで集計しておくが、CombatantInput (contract.ts) には
-  // まだ受け口が無いため実際には渡せていない。
-  // TODO(戦闘エンジン担当と要調整): contract.ts にフィールドが追加されたら
-  // 下記 combatMods をここで CombatantInput に接続すること(docs/API.md §9 参照)。
+  // computeOwnedStats の対象外。CombatantInput.rebirthMods としてエンジンへ直接渡す。
+  // (contract.ts に受け口が無かった頃の名残で長く未接続のままになっており、
+  //  該当ノード9件がサーバ側でだけ無効になっていた。オフライン版は接続済みだった)
   const combatMods = resolveRebirthCombatMods(owned.rebirthNodes, rebirthNodeDefs);
-  // combatMods は接続待ち(上記TODO)。CombatantInput 拡張後にここへ渡す。
   return {
     // 戦闘中の識別子には uid をそのまま使う(報酬付与で紐付けるため)
     id: owned.uid,
@@ -99,6 +108,9 @@ export function toAllyCombatant(
     // ComboDef の TAG コンボ判定 (requireTag) に使う。CharacterDef.tags をそのまま渡す。
     tags: def.tags,
     ...(specials.length > 0 ? { specials } : {}),
+    // 補正が空のときはフィールド自体を付けない。エンジンは未指定なら乱数を一切消費せず
+    // 従来と同一のログを出すため、転生していないプレイヤーの再現性が保たれる。
+    ...(hasRebirthMods(combatMods) ? { rebirthMods: combatMods } : {}),
   };
 }
 

@@ -359,7 +359,9 @@ function toAlly(view: CharacterView, slot: number): CombatantInput {
     ...(specials.length > 0 ? { specials } : {}),
     ...(() => {
       const mods = resolveRebirthCombatMods(view.owned.rebirthNodes, rebirthNodeById);
-      return mods && Object.keys(mods).length > 0 ? { rebirthMods: mods } : {};
+      // 値がすべて0なら付けない(未指定と同じログになり、リプレイ互換が保たれる)
+      const any = mods.skillPowerPercent || mods.gaugeStart || mods.ultGaugeStart;
+      return any ? { rebirthMods: mods } : {};
     })(),
   };
 }
