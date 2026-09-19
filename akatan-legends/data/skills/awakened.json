@@ -92,6 +92,38 @@
     "tags": ["TimeSkip", "Epitaph", "Awakened"]
   },
   {
+    "id": "sk_hitori_stand_disc_extract_ex",
+    "name": "一手、遅かったな。::天国行き",
+    "kind": "ACTIVE",
+    "description": "抜くだけでは終わらない。抜いた場所に、行き先まで書き込んでいく。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "effects": [
+      { "type": "DAMAGE", "power": 1.75 },
+      { "type": "STATUS", "status": "SILENCE", "duration": 3, "chance": 85 },
+      { "type": "STATUS", "status": "ATK_DOWN", "duration": 3, "potency": 30, "chance": 75 }
+    ],
+    "fx": "dark_disc_extract_ex",
+    "tags": ["White snake", "幽波紋", "DISC", "Control", "Awakened"]
+  },
+  {
+    "id": "ult_hitori_stand_heaven_ex",
+    "name": "人は【天国】に行かなければならない。::完全遂行",
+    "kind": "ULTIMATE",
+    "description": "紅葉が見つけてくれた、その事実だけで迷いが消える。今度こそ、誰も取りこぼさない。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 3.2 },
+      { "type": "STATUS", "status": "SILENCE", "duration": 3, "chance": 90 },
+      { "type": "STATUS", "status": "DEF_DOWN", "duration": 3, "potency": 30, "chance": 85 },
+      { "type": "STATUS", "status": "STUN", "duration": 1, "chance": 40 }
+    ],
+    "fx": "ult_dark_heaven_ex",
+    "tags": ["White snake", "幽波紋", "Heaven", "Awakened"]
+  },
+  {
     "id": "sk_amagi_grace_ex",
     "name": "恩寵の光・満",
     "kind": "ACTIVE",

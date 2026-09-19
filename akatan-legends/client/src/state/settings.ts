@@ -17,6 +17,12 @@ export interface Settings {
   logLines: number;
   /** 戦闘終了後に自動でリザルトを開く */
   autoResult: boolean;
+  /** BGM音量 (0.0〜1.0) */
+  bgmVolume: number;
+  /** 効果音音量 (0.0〜1.0) */
+  sfxVolume: number;
+  /** 音声を全てミュート */
+  audioMuted: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -27,6 +33,9 @@ export const DEFAULT_SETTINGS: Settings = {
   screenShake: true,
   logLines: 40,
   autoResult: true,
+  bgmVolume: 0.7,
+  sfxVolume: 0.8,
+  audioMuted: false,
 };
 
 const KEY = 'akatan.settings';

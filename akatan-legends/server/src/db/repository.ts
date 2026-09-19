@@ -10,7 +10,7 @@
  */
 import type {
   BattleLog, EquipmentInstance, EquipmentSlot, ItemSpecialEffect, MaterialStack,
-  OwnedCharacter, Party, PlayerProfile, StatKey,
+  OwnedCharacter, Party, PlayerProfile, RaidState, StatKey,
 } from '@akatan/shared';
 import { PARTY_SIZE } from '@akatan/shared';
 import { getDb, type Db } from './index.js';
@@ -599,6 +599,78 @@ export function setPityCounter(playerId: string, bannerId: string, counter: numb
     `INSERT INTO gacha_pity (player_id, banner_id, counter) VALUES (?, ?, ?)
      ON CONFLICT(player_id, banner_id) DO UPDATE SET counter = excluded.counter`,
   ).run(playerId, bannerId, Math.max(0, Math.floor(counter || 0)));
+}
+
+/* ============================================================
+ * レイドバトル (第5ラウンド。設計書§28〜§29)
+ * ========================================================== */
+
+interface RaidStateRow {
+  player_id: string;
+  boss_id: string;
+  remaining_hp: number;
+  total_hp: number;
+  attempts: number;
+  total_damage: number;
+  defeated: number;
+  triggered_gimmicks: string | null;
+  updated_at: string;
+}
+
+function toRaidState(row: RaidStateRow): RaidState {
+  return {
+    bossId: row.boss_id,
+    remainingHp: row.remaining_hp,
+    totalHp: row.total_hp,
+    attempts: row.attempts,
+    totalDamage: row.total_damage,
+    defeated: row.defeated === 1,
+    triggeredGimmicks: parseJson<string[]>(row.triggered_gimmicks, []),
+    updatedAt: row.updated_at,
+  };
+}
+
+/** 未挑戦(行が無い)なら null を返す。呼び出し側で初期状態(remainingHp = totalHp)を組み立てること。 */
+export function findRaidState(playerId: string, bossId: string, db: Db = getDb()): RaidState | null {
+  const row = db
+    .prepare('SELECT * FROM raid_states WHERE player_id = ? AND boss_id = ?')
+    .get(playerId, bossId) as RaidStateRow | undefined;
+  return row ? toRaidState(row) : null;
+}
+
+/** playerId が挑戦済みの全ボスの進行状況(ボスID -> RaidState) */
+export function listRaidStates(playerId: string, db: Db = getDb()): Map<string, RaidState> {
+  const rows = db
+    .prepare('SELECT * FROM raid_states WHERE player_id = ?')
+    .all(playerId) as RaidStateRow[];
+  return new Map(rows.map((r) => [r.boss_id, toRaidState(r)]));
+}
+
+/** 作成 or 更新(冪等)。挑戦のたびにこれを呼んで進行状況を丸ごと書き戻す。 */
+export function saveRaidState(playerId: string, state: RaidState, db: Db = getDb()): void {
+  db.prepare(
+    `INSERT INTO raid_states
+       (player_id, boss_id, remaining_hp, total_hp, attempts, total_damage, defeated, triggered_gimmicks, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(player_id, boss_id) DO UPDATE SET
+       remaining_hp = excluded.remaining_hp,
+       total_hp = excluded.total_hp,
+       attempts = excluded.attempts,
+       total_damage = excluded.total_damage,
+       defeated = excluded.defeated,
+       triggered_gimmicks = excluded.triggered_gimmicks,
+       updated_at = excluded.updated_at`,
+  ).run(
+    playerId,
+    state.bossId,
+    state.remainingHp,
+    state.totalHp,
+    state.attempts,
+    state.totalDamage,
+    state.defeated ? 1 : 0,
+    JSON.stringify(state.triggeredGimmicks ?? []),
+    state.updatedAt ?? new Date().toISOString(),
+  );
 }
 
 /* ============================================================

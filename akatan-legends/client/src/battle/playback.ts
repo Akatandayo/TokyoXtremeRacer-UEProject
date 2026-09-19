@@ -492,6 +492,8 @@ export interface PlaybackOptions {
   logLines: number;
   initialSpeed: Speed;
   onFinish?: () => void;
+  /** イベントが実際に再生された(スキップ中ではない)瞬間に呼ばれる。効果音の再生に使う。 */
+  onEvent?: (ev: BattleEvent) => void;
 }
 
 export interface PlaybackApi {
@@ -508,7 +510,7 @@ export interface PlaybackApi {
 }
 
 export function useBattlePlayback(log: BattleLog, opts: PlaybackOptions): PlaybackApi {
-  const { policy, logLines, initialSpeed, onFinish } = opts;
+  const { policy, logLines, initialSpeed, onFinish, onEvent } = opts;
   const [state, setState] = useState<PlaybackState>(() => initialState(log));
   const [speed, setSpeed] = useState<Speed>(initialSpeed);
   const [paused, setPaused] = useState(false);
@@ -518,9 +520,11 @@ export function useBattlePlayback(log: BattleLog, opts: PlaybackOptions): Playba
 
   const optsRef = useRef({ policy, speed, logLines });
   optsRef.current = { policy, speed, logLines };
-  // onFinish の identity 変化で再生タイマーが再スケジュールされないよう ref に逃がす
+  // onFinish/onEvent の identity 変化で再生タイマーが再スケジュールされないよう ref に逃がす
   const onFinishRef = useRef(onFinish);
   onFinishRef.current = onFinish;
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
 
   // ログが差し替わったらリセット
   useEffect(() => {
@@ -530,13 +534,14 @@ export function useBattlePlayback(log: BattleLog, opts: PlaybackOptions): Playba
     setPaused(false);
   }, [log]);
 
-  // 1) カーソル位置のイベントを適用する
+  // 1) カーソル位置のイベントを適用する(実際に再生された時だけ効果音も鳴らす)
   useEffect(() => {
     if (state.cursor >= events.length) return;
     if (appliedRef.current >= state.cursor) return;
     appliedRef.current = state.cursor;
     const ev = events[state.cursor]!;
     setState((s) => applyEvent(s, ev, optsRef.current));
+    onEventRef.current?.(ev);
   }, [state.cursor, events]);
 
   // 2) 次のイベントへ進める(種類ごとの「間」を取る)

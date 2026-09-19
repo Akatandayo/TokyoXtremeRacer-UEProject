@@ -254,5 +254,50 @@
       { "type": "GAUGE", "amount": -50 }
     ],
     "fx": "ult_void"
+  },
+
+  {
+    "id": "sk_boss_hitori_stand_disc_rip",
+    "name": "DISC強奪",
+    "kind": "ACTIVE",
+    "description": "レイド級の幽波紋が、一人分のDISCを丸ごと引き抜く。抜かれた技はもう出せない。",
+    "cooldown": 3,
+    "target": { "side": "ENEMY", "pattern": "SINGLE" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.0 },
+      { "type": "STATUS", "status": "SILENCE", "duration": 2, "chance": 70 },
+      { "type": "STATUS", "status": "ATK_DOWN", "duration": 3, "potency": 30, "chance": 75 }
+    ],
+    "fx": "dark_disc_extract"
+  },
+  {
+    "id": "sk_boss_hitori_stand_crucify",
+    "name": "総員磔刑",
+    "kind": "ACTIVE",
+    "description": "命令DISCを戦場全員に叩き込む。動けと言われるまで、誰も動けない。",
+    "cooldown": 4,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 1.6 },
+      { "type": "STATUS", "status": "STUN", "duration": 1, "chance": 40 },
+      { "type": "STATUS", "status": "DEF_DOWN", "duration": 3, "potency": 25, "chance": 70 }
+    ],
+    "fx": "dark_bind_crucifix"
+  },
+  {
+    "id": "ult_boss_hitori_stand_heaven",
+    "name": "人は【天国】に行かなければならない。",
+    "kind": "ULTIMATE",
+    "description": "戦場そのものを【天国】に書き換える、レイド個体だけの規模の一撃。生きて帰るには、それ相応の備えがいる。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 3.4 },
+      { "type": "STATUS", "status": "SILENCE", "duration": 3, "chance": 85 },
+      { "type": "STATUS", "status": "DEF_DOWN", "duration": 3, "potency": 35, "chance": 80 },
+      { "type": "GAUGE", "amount": -35 }
+    ],
+    "fx": "ult_dark_heaven"
   }
 ]

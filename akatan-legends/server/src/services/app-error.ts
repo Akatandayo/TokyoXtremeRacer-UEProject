@@ -65,3 +65,6 @@ export const rebirthLocked = (message: string, details?: unknown): AppError =>
 /** 転生ポイント割り振り時のポイント不足 */
 export const notEnoughPoints = (message: string, details?: unknown): AppError =>
   new AppError('NOT_ENOUGH_POINTS', message, details);
+/** レイド(第5ラウンド): 既に撃破済みのボスへの挑戦を拒否する */
+export const raidDefeated = (message: string, details?: unknown): AppError =>
+  new AppError('RAID_DEFEATED', message, details);

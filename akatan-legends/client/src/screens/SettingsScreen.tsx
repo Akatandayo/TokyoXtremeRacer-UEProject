@@ -103,6 +103,52 @@ export function SettingsScreen(): JSX.Element {
         </div>
       </Panel>
 
+      <Panel title="AUDIO" jp="BGM・効果音">
+        <div className="settings-row">
+          <div>
+            <div className="label">ミュート</div>
+            <div className="hint">BGM・効果音をすべて消音します。</div>
+          </div>
+          <Switch checked={s.audioMuted} onChange={(v) => store.updateSettings({ audioMuted: v })} label={s.audioMuted ? 'ON' : 'OFF'} />
+        </div>
+
+        <div className="settings-row">
+          <div>
+            <div className="label">BGM音量</div>
+            <div className="hint">現在 {Math.round(s.bgmVolume * 100)}%</div>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={Math.round(s.bgmVolume * 100)}
+            onChange={(e) => store.updateSettings({ bgmVolume: Number(e.target.value) / 100 })}
+            aria-label="BGM音量"
+          />
+        </div>
+
+        <div className="settings-row">
+          <div>
+            <div className="label">効果音音量</div>
+            <div className="hint">現在 {Math.round(s.sfxVolume * 100)}%</div>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={Math.round(s.sfxVolume * 100)}
+            onChange={(e) => store.updateSettings({ sfxVolume: Number(e.target.value) / 100 })}
+            aria-label="効果音音量"
+          />
+        </div>
+
+        <div className="muted" style={{ fontSize: 11 }}>
+          ブラウザの自動再生制限により、画面のどこかを一度クリック/タップするまで音は鳴りません。
+        </div>
+      </Panel>
+
       <Panel title="DEMO" jp="モックモード (サーバ不要のデモ)">
         <div className="settings-row">
           <div>

@@ -324,3 +324,27 @@ base + growth × 59(転生前Lv60時点) = base + growth × 1.03 × (L - 1)
 - **バックエンド**: 転生API(レベルリセット・成長率再計算・`OwnedCharacter.rebirthNodes`/`rebirthPointsAvailable` の更新・`RebirthStatus` の算出)は本ラウンドで並行実装中と認識。データ側は `RebirthConfig`/`RebirthNodeDef[]` の形で確定させたので、そのまま読み込んで問題ない。
 - **フロント**: 転生画面で `pathPoints` ごとの内訳(系統別の投資量)を表示できると、「今どの系統に何ポイント入れているか」がプレイヤーに伝わりやすい。ノードの `requiresPathPoints`/`requiresRebirth` を満たしていない場合の理由表示も欲しい。
 - **既存の覚醒データとの混同注意**: `awakening`(`data/characters/*.json`)は戦闘中の一時的な強化、転生ノードは永続強化。両方とも `STAT_PERCENT` 的な効果を持つため、実装時に加算順序(基礎ステータス→転生→装備→覚醒、など)を揃えておくとバグが出にくい。
+
+## 8. 第5ラウンド: 新キャラ「電子 独(幽波紋)」とレイドボス
+
+### 8-1. `hitori_stand`(電子 独(幽波紋))
+
+- `id: "hitori_stand"`。`data/system/planned-characters.json` から参照されていたIDと一致させ、実装完了に伴い同ファイルからエントリを削除した(現在は `[]`)。
+- 既存の `hitori`(SSR / VOID / 架空設定)とは**別個体**。ユーザー本人の探索者としてキャラシートの数値(STR7 / CON10 / POW16 / DEX18 / APP16 / SIZ10 / INT16 / EDU11 / HP10 / MP16)を素直に反映し、`baseStats.hp`(540)と `defense`(34)をUR最低クラスに、`speed`(148)を最速級(ただし `momiji_kc` の150は超えない)に振っている。
+- スキル名はユーザー指定のものをそのまま採用: `normalAttack`=「拳銃」、アクティブ=「一手、遅かったな。」(DISC抽出=ダメージ+SILENCE+ATK_DOWN)/「アンタは磔刑だ...!!」(拘束=STUN+DEF_DOWN+継続ダメージ)、`ultimate`=「人は【天国】に行かなければならない。」、覚醒=「【天国】を夢見て。」。
+- 覚醒条件は `withAlly: "momiji_kc"`(孤月紅葉が編成にいること)+ `hpBelow: 40` の組み合わせ。対になるペアコンボ `kc_epitaph_link`(「引き合う引力」)は `hitori_stand` の実装により実際に成立するようになった(`trigger.skill` は `momiji_kc` 側の既存スキルIDを参照しており、修正不要だった)。
+
+### 8-2. レイドボス `raid_hitori_stand`
+
+- `data/raid/bosses.json` を新設。敵定義は `data/enemies/bosses.json` の `boss_raid_hitori_stand`(既存のどのボスより明確に強い attack/defense/speed。かつ `baseStats.hp` を260,000という桁にして、レベル40換算でも通常パーティが1回の戦闘中に討ち切れない値にしている。理由: 戦闘エンジンは「片方の陣営が全滅したら終了」する仕様なので、ボス側の戦闘内HPが低すぎると1回の挑戦がボスの早期撃破で打ち切られ、`RaidBossDef.totalHp` から引かれるダメージが頭打ちになってしまう)。
+- `totalHp: 2,000,000`。「適正パーティが1回の挑戦で与えるダメージ」を防御軽減式(`mitigation = def/(def+K)`, K=300, ボス防御491時点で約62%軽減)から逆算した概算値(1回あたり数万ダメージ想定)の20〜40倍程度になるよう設定。バランスの厳密な検証はしていない(今回はスコープ外)。
+- `gimmicks` は §29 の例に沿って3段階(80%: DISCシールド展開 / 50%: 全方位展開でATK上昇 / 20%: 【天国】暴走でATK・SPD・会心ダメージ上昇)。`grant` フィールドは定義しているが、`raid-service.ts` 側は現状 `statBonus`/`unlockSkills` のみ反映し `grant` は未対応(コード側コメントで明記済み・§28実装の既知の制限)。
+- `weakElements: ["LIGHT"]` / `immuneStatuses: ["SILENCE"]`。
+- 撃破報酬 `dt_raid_hitori_stand_defeat` に `kind: "CHARACTER", id: "hitori_stand"` を重み1(全体重み126分の1 × rolls5)で追加。参加報酬 `dt_raid_hitori_stand_attempt` には `hitori_stand` を含めていない。
+
+### 8-3. `hitori_stand` を「レイド限定」にするための対応
+
+`hitori_stand` を通常のガチャ/ダンジョンから排出しないようにするため、以下を実施した:
+
+- **ガチャ**: `banner_standard_char` と `banner_pickup_momiji_kc` は `pool` が未指定だと `gacha-service.ts` が「全実装済みキャラ」にフォールバックする仕様だったため、両バナーに明示的な `pool`(`hitori_stand` を除く既存11キャラ)を追加した。
+- **既知の未解決の漏れ(要バックエンド対応)**: `server/src/services/drop-service.ts` の `pickRandomCharacterId()` は、`kind: "CHARACTER"` かつ `id` 省略のドロップエントリで「実装済み全キャラからランダム1体」を選ぶ(`data.characters.keys()` をソートして `rng.pick`)。`data/items/droptables/chapter1.json`(`dt_ch1_common`/`dt_ch1_boss`)と `chapter2.json`(`dt_ch2_common`/`dt_ch2_boss`)がこの「id省略」形式を使っているため、**`hitori_stand` の実装により、通常のダンジョン周回でも(低確率だが)排出され得る状態になっている**。この関数にはキャラ単位の除外機構が無く、データ側(`data/**`)だけでは対処できない。`CharacterDef` に `raidExclusive` 等のフラグを追加して `pickRandomCharacterId` 側でフィルタする対応をバックエンド担当に依頼したい(`spawn_task` でタスク登録を試みたがツールがタイムアウトしたため、ここに明記しておく)。

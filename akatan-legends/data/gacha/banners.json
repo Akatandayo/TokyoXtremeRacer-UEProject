@@ -8,6 +8,10 @@
     "rates": {
       "rarity": { "N": 34, "R": 30, "SR": 20, "SSR": 12, "UR": 4 }
     },
+    "pool": [
+      "amagi", "enji", "hitori", "hokuto", "kurogane", "momiji", "momiji_kc",
+      "rin", "sazanami", "shizuku", "yomi"
+    ],
     "pity": { "count": 60, "rarity": "UR" },
     "guarantee10": "SR",
     "art": { "primary": "#2E6E8E", "accent": "#BFEFFF" }
@@ -21,6 +25,10 @@
     "rates": {
       "rarity": { "N": 30, "R": 28, "SR": 22, "SSR": 14, "UR": 6 }
     },
+    "pool": [
+      "amagi", "enji", "hitori", "hokuto", "kurogane", "momiji", "momiji_kc",
+      "rin", "sazanami", "shizuku", "yomi"
+    ],
     "pickup": [{ "defId": "momiji_kc", "rate": 70 }],
     "pity": { "count": 50, "rarity": "UR" },
     "guarantee10": "SSR",

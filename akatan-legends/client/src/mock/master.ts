@@ -70,6 +70,12 @@ export const MOCK_SKILLS: Skill[] = [
   { id: 'sk_enemy_howl', name: '威嚇咆哮', kind: 'ACTIVE', description: '敵全体の攻撃力を20%低下(2ターン)。', cooldown: 3, target: { side: 'ENEMY', pattern: 'ALL' }, effects: [{ type: 'STATUS', status: 'ATK_DOWN', duration: 2, potency: 20 }], fx: 'roar' },
   { id: 'ult_enemy_kirin', name: '雷帝顕現', kind: 'ULTIMATE', description: '敵全体に攻撃力300%の風ダメージ。気絶を付与。', cooldown: 0, ultCost: 100, target: { side: 'ENEMY', pattern: 'ALL' }, effects: [{ type: 'DAMAGE', power: 3.0 }, { type: 'STATUS', status: 'STUN', duration: 1, chance: 40 }], fx: 'ult_thunder' },
   { id: 'ult_enemy_void', name: '虚無回帰', kind: 'ULTIMATE', description: '敵全体に攻撃力280%の虚ダメージ。', cooldown: 0, ultCost: 100, target: { side: 'ENEMY', pattern: 'ALL' }, effects: [{ type: 'DAMAGE', power: 2.8 }], fx: 'ult_void' },
+
+  // レイドボス専用スキル (P5)
+  { id: 'sk_raid_hollow_slash', name: '虚断ち', kind: 'ACTIVE', description: '敵単体に攻撃力150%の闇ダメージ。防御力を20%低下(2ターン)。', cooldown: 2, target: { side: 'ENEMY', pattern: 'HIGHEST_ATK' }, effects: [{ type: 'DAMAGE', power: 1.5 }, { type: 'STATUS', status: 'DEF_DOWN', duration: 2, potency: 20 }], fx: 'dark_bolt' },
+  { id: 'ult_raid_hollow', name: '虚王降臨', kind: 'ULTIMATE', description: '敵全体に攻撃力260%の闇ダメージ。', cooldown: 0, ultCost: 100, target: { side: 'ENEMY', pattern: 'ALL' }, effects: [{ type: 'DAMAGE', power: 2.6 }], fx: 'ult_void' },
+  { id: 'sk_raid_null_firewall', name: 'ファイアウォール展開', kind: 'ACTIVE', description: '自身の防御力を30%上昇(3ターン)。', cooldown: 3, target: { side: 'SELF', pattern: 'SELF' }, effects: [{ type: 'STATUS', status: 'DEF_UP', duration: 3, potency: 30 }], fx: 'guard_up' },
+  { id: 'ult_raid_null', name: 'SYSTEM::ZERO', kind: 'ULTIMATE', description: '敵全体に攻撃力300%の虚ダメージ。沈黙を付与。', cooldown: 0, ultCost: 100, target: { side: 'ENEMY', pattern: 'ALL' }, effects: [{ type: 'DAMAGE', power: 3.0 }, { type: 'STATUS', status: 'SILENCE', duration: 2, chance: 50 }], fx: 'ult_glitch' },
 ];
 
 /* ---------------- AIプロファイル ---------------- */
@@ -320,6 +326,32 @@ export const MOCK_CHARACTERS: CharacterDef[] = [
     art: art('#c94fff', '#120a20', '#7dffe6', '紋', 'void', 'momiji_kc'),
   },
   {
+    // P5-3: レイド限定ドロップキャラ。既存の SSR/VOID「電子 独」(id: hitori, 別キャラ) とは
+    // 別物であることを id/名前/属性/レアリティすべてで明確に区別する。
+    id: 'ch_hitori_stand', name: '電子 独(幽波紋)', title: 'Hitori Stand / もう一人の観測者', rarity: 'UR',
+    element: 'DARK', roles: ['CONTROL', 'SPECIALIST'],
+    baseStats: st(1020, 158, 90, 120, 18, 182, 26, 100),
+    growth: { hp: 54, attack: 12.0, defense: 5.0, speed: 1.4, critical: 0.2 },
+    normalAttack: 'sk_ping', skills: ['sk_null_hack', 'sk_shadow_bind'], ultimate: 'ult_zero',
+    awakening: {
+      id: 'aw_hitori_stand', name: '【天国】接続',
+      condition: { turnAtLeast: 5 },
+      statBonus: { attack: 24, critical: 14, resistance: 20 },
+      description: '5ターン経過で電子の世界の向こう側と繋がり、攻撃力+24% / 会心+14% / 耐性+20%。',
+      fx: 'awaken_glitch',
+    },
+    combos: ['cb_momiji_kc_hitori'],
+    defaultAi: 'ai_balanced',
+    description: 'もう一人の「独」。孤月紅葉(幽波紋)が視る図形の、向こう側の観測者。電子の世界の裏側から現れ、紅葉が時を刈り取った刹那にだけ呼応する。データ担当により実装中の探索者。',
+    tags: ['幽波紋', 'Network', 'レイド限定'],
+    trpg: {
+      source: '卓「幽波紋」', player: 'あかたん', investigator: '独(幽波紋)',
+      affiliation: '無所属', visibility: 'PUBLIC',
+      note: '身内CoCの「電子 独」(SSR/VOID)とは同名の別探索者。混同注意。',
+    },
+    art: art('#7a3cff', '#0c0818', '#4df0ff', '独', 'circuit', 'hitori_stand'),
+  },
+  {
     id: 'ch_sora', name: '天沢 ソラ', title: 'Sora / 未実装', rarity: 'SR',
     element: 'WIND', roles: ['HEALER'],
     baseStats: st(1000, 92, 80, 110, 6, 150, 18, 128),
@@ -398,6 +430,28 @@ export const MOCK_ENEMIES: EnemyDef[] = [
     defaultAi: 'ai_ult_first', boss: true,
     description: '世界の穴を開け続ける者。顔は誰にも思い出せない。',
     art: art('#ff4fd8', '#100420', '#78fff2', '虚', 'void'),
+  },
+
+  // ---- レイドボス (P5): 設計書§28〜§29。RaidBossDef.enemyId から参照される ----
+  {
+    id: 'en_raid_hollow', name: '虚王ヴァルド(再構成)', element: 'DARK', roles: ['ATTACKER'],
+    baseStats: st(2600, 150, 90, 118, 15, 168, 40, 100),
+    growth: { hp: 130, attack: 9.0, defense: 5.5, speed: 1.0 },
+    normalAttack: 'sk_hex', skills: ['sk_raid_hollow_slash', 'sk_curse_mark'], ultimate: 'ult_raid_hollow',
+    defaultAi: 'ai_ult_first', boss: true,
+    description: '第2章ボス・虚王ヴァルドが廃サーバの奥で再構成された姿。共有HPを持ち、何度も挑んで少しずつ削るレイド入門級。',
+    tags: ['Boss', 'Raid'],
+    art: art('#2a1b33', '#0c0710', '#e85dff', '深', 'void'),
+  },
+  {
+    id: 'en_raid_null', name: 'ヌル・デーモン(肥大化)', element: 'VOID', roles: ['SPECIALIST'],
+    baseStats: st(3600, 180, 130, 128, 18, 175, 50, 100),
+    growth: { hp: 160, attack: 11.0, defense: 6.8, speed: 1.2 },
+    normalAttack: 'sk_ping', skills: ['sk_raid_null_firewall', 'sk_null_hack'], ultimate: 'ult_raid_null',
+    defaultAi: 'ai_ult_first', boss: true,
+    description: '第2章最終ボス・ヌル・デーモンが自己修復の限界を超えて肥大化した姿。段階的に硬くなるレイド上級。',
+    tags: ['Boss', 'Raid', 'Final'],
+    art: art('#1a1730', '#070610', '#00e5ff', '終', 'circuit'),
   },
 ];
 
@@ -497,15 +551,14 @@ export const MOCK_COMBOS: ComboDef[] = [
     fx: 'combo_choir_light',
   },
   {
-    // P0-4 拡張: 相方(電子 独)が未実装のPAIRコンボ。plannedCharacters による
-    // 「IDを生で出さず名前(実装予定)で見せる」表示の確認用サンプル。
+    // P5-3: 実装完了。孤月紅葉(幽波紋) × 電子 独(幽波紋) のペアコンボ「引き合う引力」相当。
     id: 'cb_momiji_kc_hitori',
-    name: '幽波紋・二重像',
+    name: '引き合う引力',
     kind: 'PAIR',
-    description: '孤月紅葉(幽波紋)が視る図形は、もう一人の観測者がいて初めて像を結ぶ。電子 独(幽波紋)の実装を待つコンボ。',
-    members: ['ch_momiji_kc', 'ch_hitori'],
+    description: '紅葉が「時飛ばし」で戦場ごと時を刈り取った刹那、独(幽波紋)が電子の世界の向こう側から呼応する。パラレルの紅葉が、それでも執念で見つけ出した独と噛み合った瞬間だけ成立する連携。',
+    members: ['ch_momiji_kc', 'ch_hitori_stand'],
     trigger: { type: 'ON_SKILL_USE', actor: 'ch_momiji_kc', skill: 'sk_kc_fold' },
-    effects: [{ effect: { type: 'STATUS', status: 'ATK_UP', duration: 2, potency: 20 } }],
+    effects: [{ performer: 'ch_hitori_stand', skill: 'sk_null_hack' }],
     fx: 'combo_void_glitch',
   },
 ];
@@ -515,7 +568,6 @@ export const MOCK_COMBOS: ComboDef[] = [
  * UI はこれを使って「IDを生で出さず名前(実装予定)で表示する」。
  */
 export const MOCK_PLANNED_CHARACTERS: PlannedCharacterDef[] = [
-  { id: 'ch_hitori', name: '電子 独(幽波紋)', note: '実装準備中の探索者。孤月紅葉(幽波紋)とのペアコンボが先行定義されている。' },
   { id: 'ch_mikoto', name: '森羅 ミコト', note: '図鑑用シルエットのみ先行公開中。' },
 ];
 

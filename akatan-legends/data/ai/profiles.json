@@ -552,6 +552,48 @@
     ]
   },
   {
+    "id": "ai_hitori_stand_disc",
+    "name": "ホワイトスネイクAI",
+    "description": "必殺で【天国】を刻み、弱った相手や強化された相手からDISCを抜き、押されたら磔刑で立て直す。独(幽波紋)の既定戦術。",
+    "playerSelectable": true,
+    "rules": [
+      {
+        "priority": 10,
+        "condition": { "type": "ULT_READY" },
+        "skill": "ult_hitori_stand_heaven",
+        "comment": "必殺優先"
+      },
+      {
+        "priority": 20,
+        "condition": { "type": "ENEMY_HP_BELOW", "value": 35 },
+        "skill": "sk_hitori_stand_disc_extract",
+        "comment": "弱った相手のDISCを抜いてトドメ"
+      },
+      {
+        "priority": 30,
+        "condition": { "type": "ENEMY_HAS_BUFF" },
+        "skill": "sk_hitori_stand_disc_extract",
+        "comment": "強化された敵からDISCごと抜き取る"
+      },
+      {
+        "priority": 40,
+        "condition": { "type": "SELF_HP_BELOW", "value": 60 },
+        "skill": "sk_hitori_stand_crucifixion",
+        "comment": "HP10・防御が低い独。押されたら磔刑で足止めして立て直す"
+      },
+      {
+        "priority": 50,
+        "condition": { "type": "ALWAYS" },
+        "skill": "sk_hitori_stand_disc_extract"
+      },
+      {
+        "priority": 99,
+        "condition": { "type": "ALWAYS" },
+        "skill": "NORMAL"
+      }
+    ]
+  },
+  {
     "id": "ai_en_slime",
     "name": "粘性アグロ",
     "description": "単純に前へ出て、たまに足止めをかけてくる。",
@@ -966,6 +1008,48 @@
         "condition": {
           "type": "ALWAYS"
         },
+        "skill": "NORMAL"
+      }
+    ]
+  },
+  {
+    "id": "ai_boss_hitori_stand_raid",
+    "name": "幽波紋レイド個体AI",
+    "description": "必殺で【天国】を全体に叩き込み、削られたら総員磔刑で場を止め、敵が揃っていれば磔刑、それ以外は単体からDISCを奪い続けるレイド専用AI。",
+    "rules": [
+      {
+        "priority": 10,
+        "condition": { "type": "ULT_READY" },
+        "skill": "ult_boss_hitori_stand_heaven",
+        "comment": "必殺優先: 全体大ダメージ+沈黙+防御ダウン"
+      },
+      {
+        "priority": 20,
+        "condition": { "type": "SELF_HP_BELOW", "value": 45 },
+        "skill": "sk_boss_hitori_stand_crucify",
+        "comment": "自身HP45%以下で全体を磔刑にして立て直す"
+      },
+      {
+        "priority": 30,
+        "condition": { "type": "ENEMY_COUNT_ATLEAST", "value": 3 },
+        "skill": "sk_boss_hitori_stand_crucify",
+        "comment": "相手が揃っているときは全体で足止め"
+      },
+      {
+        "priority": 40,
+        "condition": { "type": "ENEMY_HAS_BUFF" },
+        "skill": "sk_boss_hitori_stand_disc_rip",
+        "comment": "強化された相手のDISCを狙って奪う"
+      },
+      {
+        "priority": 50,
+        "condition": { "type": "ALWAYS" },
+        "skill": "sk_boss_hitori_stand_disc_rip",
+        "comment": "平時は単体を確実に削る"
+      },
+      {
+        "priority": 99,
+        "condition": { "type": "ALWAYS" },
         "skill": "NORMAL"
       }
     ]

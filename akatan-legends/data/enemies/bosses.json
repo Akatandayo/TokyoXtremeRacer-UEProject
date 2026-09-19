@@ -137,5 +137,56 @@
       "sigil": "零",
       "pattern": "circuit"
     }
+  },
+  {
+    "id": "boss_raid_hitori_stand",
+    "name": "電子 独(幽波紋)",
+    "element": "DARK",
+    "roles": [
+      "CONTROL",
+      "SPECIALIST"
+    ],
+    "baseStats": {
+      "hp": 260000,
+      "attack": 850,
+      "defense": 140,
+      "speed": 130,
+      "critical": 25,
+      "criticalDamage": 190,
+      "resistance": 55,
+      "healing": 100
+    },
+    "growth": {
+      "hp": 4000,
+      "attack": 55,
+      "defense": 9,
+      "speed": 1.4,
+      "critical": 0.3,
+      "criticalDamage": 0.4,
+      "resistance": 0.6
+    },
+    "normalAttack": "na_boss_hitori_stand_barrage",
+    "skills": [
+      "sk_boss_hitori_stand_disc_rip",
+      "sk_boss_hitori_stand_crucify"
+    ],
+    "ultimate": "ult_boss_hitori_stand_heaven",
+    "defaultAi": "ai_boss_hitori_stand_raid",
+    "boss": true,
+    "description": "レイドにのみ現れる、幽波紋《ホワイトスネイク》の歪に肥大した個体。プレイヤーが操作する独本人とは別の、異世界を渡り歩く中で「取りこぼされた可能性」が寄り集まって出来た影のようなもの。攻撃力・HP・速度のいずれも既存のどのボスより明確に上回り、DISCを抜く一撃と全体拘束で編成をまとめて止めにかかる。1回の挑戦では到底削りきれない体力を持ち、何度も挑んで少しずつ削っていくことを前提に設計されている。",
+    "tags": [
+      "Boss",
+      "Raid",
+      "White snake",
+      "幽波紋",
+      "DISC"
+    ],
+    "art": {
+      "primary": "#3D1466",
+      "secondary": "#0A0512",
+      "accent": "#B266FF",
+      "sigil": "蛇",
+      "pattern": "void"
+    }
   }
 ]

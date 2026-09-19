@@ -36,6 +36,7 @@
 | `NOT_ENOUGH_CURRENCY` | 400 | **実装済み(第3ラウンド対応)。** ガチャのコスト(GOLD/チケット)が所持数を上回る |
 | `SLOT_MISMATCH` | 400 | **実装済み(第3ラウンド対応)。** 装備データ自体の `slot` が不正、または `POST /api/equipment/unequip` の `slot` が `EquipmentSlot` の値でない |
 | `ALREADY_EQUIPPED` | 400 | **実装済み(第3ラウンド対応)。** 他キャラが装着中の装備を別キャラへ装着しようとした/装着中の装備を売却しようとした |
+| `RAID_DEFEATED` | 400 | **実装済み(第5ラウンド対応)。** 既に撃破済みのレイドボスへ挑戦しようとした |
 | `INTERNAL` | 500 | サーバ内部エラー。**スタックはサーバログのみ**、レスポンスには出さない |
 
 バリデーションは zod を使わず自前実装 (`server/src/routes/_helpers.ts`)。
@@ -67,6 +68,7 @@ MVP では認証を作らず、固定の `player_id = 'local'` を使う。
 | **戦闘勝利時のドロップ** | サーバ(**第3ラウンド**。勝利時のみ抽選) | `services/drop-service.ts: resolveDrops()` |
 | **ガチャの抽選結果・天井・払い戻し** | サーバ(**第3ラウンド**。1トランザクションで残高確認→支払い→付与) | `services/gacha-service.ts: pullGacha()` |
 | **装備込みの最終ステータス** | サーバ(装備フラット→%の順で適用) | `services/progression.ts: computeStats() / resolveEquipmentMods()` |
+| **レイドの共有HP・ギミック発動・撃破判定** | サーバ(**第5ラウンド**。挑戦のたびに永続化) | `services/raid-service.ts: attackRaidBoss()` |
 
 `POST /api/battle/start` がクライアントから受け取るのは **`stageId` と編成の `uid` だけ**。
 編成に含まれる `uid` は必ず DB でそのプレイヤーの所持キャラかを検証し、保存済みパーティ経由の場合も
@@ -622,6 +624,29 @@ curl -s -X POST localhost:8787/api/gacha/pull -H 'content-type: application/json
 {"ok":false,"error":{"code":"NOT_ENOUGH_CURRENCY","message":"ゴールドが不足しています(必要: 2700 / 所持: 1000)","details":{"currency":"GOLD","required":2700,"owned":1000}}}
 ```
 
+### GET /api/raid
+
+`RaidListResponse`。レイドボス一覧 + プレイヤーごとの進行状況(`RaidState`)。
+未挑戦のボスは DB に行が無いので `remainingHp = totalHp` の初期状態をその場で組み立てて返す
+(GET では書き込みを行わない)。実装は `server/src/services/raid-service.ts: getRaidListResponse()`。
+
+```bash
+curl -s localhost:8787/api/raid
+```
+
+### POST /api/raid/attack
+
+`RaidAttackRequest` → `RaidAttackResponse`。**§10「レイドバトル」参照。**
+
+```bash
+curl -s -X POST localhost:8787/api/raid/attack -H 'content-type: application/json' \
+  -d '{"bossId":"raid_hitori_stand"}'
+```
+
+- 撃破済みボスへの挑戦は `RAID_DEFEATED`(400)。
+- `bossId` がマスタに無い場合は `NOT_FOUND`。
+- `members` 省略時は保存済みパーティを使う(`battle-service.resolveBattleMembers()` と共通)。
+
 ---
 
 ## 3. ハクスラ / ガチャ (第3ラウンド)
@@ -969,6 +994,31 @@ CREATE TABLE gacha_pity (
   マイナス方向(ガチャ/装備コストの消費)でも0未満にはならない安全弁。
 - `gacha_pity` は `(playerId, bannerId)` 単位でカウンタを永続化し、プロセス再起動をまたいで保持される。
 
+### v3 → v4 マイグレーション(第5ラウンド: レイドバトル)
+
+```sql
+CREATE TABLE raid_states (
+  player_id           TEXT NOT NULL,
+  boss_id             TEXT NOT NULL,
+  remaining_hp        REAL NOT NULL,   -- 共有HPプールの残量
+  total_hp             REAL NOT NULL,  -- 挑戦開始時点の totalHp を保持(後からマスタの値を変えても既存進行が壊れない)
+  attempts             INTEGER NOT NULL DEFAULT 0,
+  total_damage          REAL NOT NULL DEFAULT 0,
+  defeated               INTEGER NOT NULL DEFAULT 0,
+  triggered_gimmicks      TEXT,        -- JSON string[] (発動済みギミック名)
+  updated_at                TEXT NOT NULL,
+  PRIMARY KEY (player_id, boss_id),
+  FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+```
+
+- 未挑戦(行が無い)状態は `repo.findRaidState()` が `null` を返すだけで、`GET /api/raid` 側が
+  `remainingHp = totalHp` の初期状態をその場で組み立てる(§2 参照)。行は初回の `POST /api/raid/attack` で
+  初めて作られる。
+- `raid-service.ts: attackRaidBoss()` が1回の挑戦で行うこと(すべて1トランザクション):
+  状態の保存(`repo.saveRaidState()`)→ EXP/ゴールド付与 → 参加報酬抽選(`attemptDropTable`)→
+  (このターンで撃破したときだけ)撃破報酬抽選(`dropTable`)。
+
 ---
 
 ## 7. 戦闘エンジンとの結合
@@ -1064,3 +1114,69 @@ CREATE TABLE gacha_pity (
   `node:crypto`(`randomUUID`)以外の Node 専用APIを使わない純粋関数として維持している
   (`rollEquipment()` はサーバ/ブラウザのどちらでも同じ結果を返す)。今後この方針を崩す
   変更(ファイルI/O・DB直参照など)を加える場合は、standalone 側と要相談。
+- **データ担当(第5ラウンド)**: 実装中に `data/raid/bosses.json` /
+  `data/items/droptables/raid.json` がデータ担当側の作業と衝突し、こちらが最初に置いた
+  サンプルデータ(`raid_vald_reborn` / `raid_null_awakened` 等)がデータ担当の
+  `raid_hitori_stand`(実装済みキャラ `hitori_stand` を使うレイド限定ボス)に上書きされた。
+  最終的にはデータ担当版で問題なく動作することを確認済み(§10参照)なので対応不要だが、
+  同じディレクトリを複数担当が同時に編集する運用だと今後も起こり得るので共有しておく。
+
+---
+
+## 10. レイドバトル (第5ラウンド。設計書 §28〜§29)
+
+### 設計方針
+
+レイドボスは「巨大な共有HPプール」(`RaidBossDef.totalHp`)を持つ。**1回の挑戦は
+通常の戦闘(`battle-service.startBattle` と全く同じ組み立て)をそのまま `runBattle` に
+流すだけ**で、その戦闘で味方が与えた合計ダメージ(`BattleResult.stats` の `side:'ALLY'` の
+`damageDealt` 合計)を共有HPプールから引く。**戦闘エンジン(`server/src/battle/**`)には
+一切手を入れていない。** 1回では削りきれない量の `totalHp` を持たせることで
+「何度も挑む」体験を作る。実装は `server/src/services/raid-service.ts`。
+
+### 味方の組み立て(装備・転生・コンボを反映)
+
+`battle-service.ts` の `resolveBattleMembers()` / `toAllyCombatant()` をそのまま再利用している。
+装備・転生ノード・コンボはすべて通常戦闘と同じ経路で反映されるため、レイド専用の特別扱いは無い。
+
+### ボスの組み立てとギミック
+
+ボスは `RaidBossDef.enemyId` + `level` から `toEnemyCombatant()` で1体だけ作る
+(雑魚は付けない。最速で入れるための判断)。挑戦開始時点の残りHP割合(`hpBefore / totalHp`)で
+発動済みの `RaidGimmick`(`hpBelow` 以下で発動)を求め、その `statBonus`(%)をボスの
+最終ステータスへ乗算し、`unlockSkills` があればボスの `skills` へ追加する。
+
+- **`grant`(状態異常の直接付与)は今回は未対応。** `CombatantInput` に「戦闘開始時に
+  付与する状態異常」の受け口が無いため(`contract.ts` は FROZEN)。
+  `raid-service.ts: applyGimmicksToBoss()` にコメントで TODO を残してある。
+  対応する場合はバトルエンジン担当と `contract.ts` の拡張を相談すること。
+- 挑戦後、削った後のHP割合で新たに閾値を跨いだギミックを `newGimmicks` として返し、
+  `RaidState.triggeredGimmicks`(発動済みギミック名の配列)に積み上げていく。
+
+### 報酬
+
+- **毎回**: `attemptDropTable` の参加報酬(勝敗を問わず抽選する。ボスを削りきれなくても
+  何かは持ち帰れるようにするため)。
+- **撃破時のみ**: そのターンで撃破した(`hpAfter <= 0` に到達した)ときだけ `dropTable` の
+  撃破報酬を追加で抽選する。両方の `DropResult` は `raid-service.ts: mergeDropResults()` で
+  1つにまとめてレスポンスに載せる。
+- **EXP/ゴールド**: ボス定義に個別の値が無いため、`exp ≈ boss.level × 35` /
+  `gold ≈ boss.level × 20`(通常ステージ報酬の大まかな水準を参考にした簡易係数。
+  バランス調整は今回のスコープ外なので雑な固定係数のままにしてある)。
+
+### 状態の永続化
+
+`raid_states` テーブル(§6 参照)へ `(playerId, bossId)` 単位でUPSERTする。
+状態の保存・EXP/ゴールド付与・ドロップ付与はすべて `repo.inTransaction()` の中で行うため、
+途中で例外が起きても中途半端な状態が残らない。
+
+### 実機確認(`AKATAN_DATA_DIR` で一時ディレクトリを指した検証データ)
+
+本番の `data/raid/bosses.json`(`totalHp` が非常に大きい終盤ボス)とは別に、
+`totalHp` を小さくしたテストデータで確認した:
+1. 挑戦を繰り返すと `remainingHp` が減り、`hpBelow` の閾値を跨ぐたびに `newGimmicks` が
+   1回だけ発火し、`triggeredGimmicks` に積み上がる。
+2. 撃破すると `RaidState.defeated = true` になり、以後の挑戦は `RAID_DEFEATED` で拒否される。
+3. 撃破報酬(`dropTable`)からキャラクタードロップ(`hitori_stand`)を実際に付与できることを確認
+   (初回は新規付与、2回目以降は `mat_dup_fragment_high` への重複変換。`drop-service.ts` の
+   既存ロジックをそのまま再利用しており、レイド専用の分岐は無い)。

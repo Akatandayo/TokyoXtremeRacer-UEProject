@@ -454,5 +454,47 @@
       }
     ],
     "fx": "void_bolt"
+  },
+  {
+    "id": "na_hitori_stand_pistol",
+    "name": "拳銃",
+    "kind": "NORMAL",
+    "description": "装弾数15発、成功率46。狙いはいつも、迷いなく一点。",
+    "cooldown": 0,
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.62,
+        "hits": 2
+      }
+    ],
+    "fx": "dark_gunshot",
+    "tags": [
+      "White snake",
+      "幽波紋"
+    ]
+  },
+  {
+    "id": "na_boss_hitori_stand_barrage",
+    "name": "弾幕",
+    "kind": "NORMAL",
+    "description": "15発が空になるまで、引き金を戻さない。",
+    "cooldown": 0,
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.78,
+        "hits": 2
+      }
+    ],
+    "fx": "dark_gunshot"
   }
 ]

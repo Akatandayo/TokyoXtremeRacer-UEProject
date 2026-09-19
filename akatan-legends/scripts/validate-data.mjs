@@ -757,6 +757,126 @@ for (const path of listJson('items/droptables')) {
 }
 
 /* ------------------------------------------------------------------
+ * 5.7. レイドボス (data/raid/bosses.json) (設計書§28〜§29)
+ * ------------------------------------------------------------------
+ * RaidBossDef は enemyId 経由で data/enemies/ のステータス/スキルを流用する
+ * だけの薄いラッパーなので、ここでは以下だけを検査する:
+ *   - enemyId が実在するか
+ *   - totalHp が正の数値か (1回の挑戦では削りきれない想定の共有HPプール)
+ *   - gimmicks[].hpBelow が 0〜100 か、降順で並んでいるか(推奨)
+ *   - dropTable / attemptDropTable が実在するか
+ * ---------------------------------------------------------------- */
+const raidBosses = new Map();
+for (const path of listJson('raid')) {
+  const rel = relative(ROOT, path);
+  const arr = loadJson(path);
+  if (arr === null) continue;
+  if (!Array.isArray(arr)) { err(rel, 'RaidBossDef[] の配列である必要があります'); continue; }
+
+  arr.forEach((b, i) => {
+    const where = `${rel}#${i}${b && b.id ? ` (${b.id})` : ''}`;
+    if (typeof b !== 'object' || b === null) { err(where, 'レイドボスがオブジェクトではありません'); return; }
+    if (!requireStr(where, b, 'id')) return;
+    if (raidBosses.has(b.id)) { err(where, `レイドボスIDが重複しています: "${b.id}"`); return; }
+    requireStr(where, b, 'name');
+    if (b.title !== undefined && typeof b.title !== 'string') err(where, 'title が文字列ではありません');
+    requireStr(where, b, 'description');
+
+    if (requireStr(where, b, 'enemyId') && !enemies.has(b.enemyId)) {
+      err(where, `enemyId "${b.enemyId}" は data/enemies/ に存在しません`);
+    }
+
+    requireNum(where, b, 'level');
+    if (typeof b.totalHp !== 'number' || b.totalHp <= 0) {
+      err(where, 'totalHp が正の数値ではありません(1回の挑戦では削りきれない量にすること)');
+    }
+
+    if (b.gimmicks !== undefined) {
+      if (!Array.isArray(b.gimmicks)) {
+        err(where, '"gimmicks" が配列ではありません');
+      } else {
+        let prevHp = Infinity;
+        b.gimmicks.forEach((g, j) => {
+          const gw = `${where}.gimmicks[${j}]`;
+          if (typeof g !== 'object' || g === null) { err(gw, 'RaidGimmick がオブジェクトではありません'); return; }
+          if (typeof g.hpBelow !== 'number' || g.hpBelow < 0 || g.hpBelow > 100) {
+            err(gw, 'hpBelow は 0〜100 の数値である必要があります');
+          } else {
+            if (g.hpBelow > prevHp) {
+              warn(gw, `gimmicks は hpBelow の降順を推奨します(前: ${prevHp} / 今: ${g.hpBelow})。実装は降順で評価する前提です`);
+            }
+            prevHp = g.hpBelow;
+          }
+          requireStr(gw, g, 'name');
+          requireStr(gw, g, 'description');
+          if (g.grant !== undefined) {
+            if (!Array.isArray(g.grant)) {
+              err(gw, '"grant" が配列ではありません');
+            } else {
+              g.grant.forEach((gr, k) => {
+                if (!STATUS_TYPES.includes(gr.status)) err(gw, `grant[${k}].status の値 ${JSON.stringify(gr.status)} は不正です`);
+                if (typeof gr.duration !== 'number') err(gw, `grant[${k}].duration が数値ではありません`);
+              });
+            }
+          }
+          if (g.statBonus !== undefined) {
+            for (const k of Object.keys(g.statBonus)) {
+              if (!STAT_KEYS.includes(k)) err(gw, `statBonus に未知のキー "${k}" があります`);
+            }
+          }
+          if (g.unlockSkills !== undefined) {
+            if (!Array.isArray(g.unlockSkills)) {
+              err(gw, '"unlockSkills" が配列ではありません');
+            } else {
+              g.unlockSkills.forEach((sid, k) => {
+                if (!skills.has(sid)) err(gw, `unlockSkills[${k}] "${sid}" は data/skills/ に存在しません`);
+              });
+            }
+          }
+          const allowedG = ['hpBelow', 'name', 'description', 'grant', 'statBonus', 'unlockSkills', 'fx'];
+          for (const k of Object.keys(g)) {
+            if (!allowedG.includes(k)) err(gw, `RaidGimmick に存在しないフィールド "${k}" があります`);
+          }
+        });
+      }
+    }
+
+    if (b.weakElements !== undefined) {
+      if (!Array.isArray(b.weakElements)) {
+        err(where, '"weakElements" が配列ではありません');
+      } else {
+        b.weakElements.forEach((el, j) => { if (!ELEMENTS.includes(el)) err(where, `weakElements[${j}] の値 ${JSON.stringify(el)} は不正です`); });
+      }
+    }
+    if (b.immuneStatuses !== undefined) {
+      if (!Array.isArray(b.immuneStatuses)) {
+        err(where, '"immuneStatuses" が配列ではありません');
+      } else {
+        b.immuneStatuses.forEach((s, j) => { if (!STATUS_TYPES.includes(s)) err(where, `immuneStatuses[${j}] の値 ${JSON.stringify(s)} は不正です`); });
+      }
+    }
+
+    if (b.dropTable !== undefined) {
+      if (typeof b.dropTable !== 'string') err(where, 'dropTable が文字列ではありません');
+      else if (!dropTables.has(b.dropTable)) err(where, `dropTable "${b.dropTable}" は data/items/droptables/ に存在しません`);
+    }
+    if (b.attemptDropTable !== undefined) {
+      if (typeof b.attemptDropTable !== 'string') err(where, 'attemptDropTable が文字列ではありません');
+      else if (!dropTables.has(b.attemptDropTable)) err(where, `attemptDropTable "${b.attemptDropTable}" は data/items/droptables/ に存在しません`);
+    }
+
+    checkArt(where, b.art, false);
+
+    const allowedKeys = ['id', 'name', 'title', 'enemyId', 'level', 'totalHp', 'description',
+      'gimmicks', 'weakElements', 'immuneStatuses', 'dropTable', 'attemptDropTable', 'art'];
+    for (const k of Object.keys(b)) {
+      if (!allowedKeys.includes(k)) err(where, `RaidBossDef に存在しないフィールド "${k}" があります`);
+    }
+    raidBosses.set(b.id, b);
+  });
+}
+
+/* ------------------------------------------------------------------
  * 5.6. 転生 (data/system/rebirth.json / data/rebirth/nodes.json)
  * ------------------------------------------------------------------
  * 設計書§19 の「同じキャラでも転生によって異なる方向へ育成できる」を
@@ -1306,6 +1426,7 @@ console.log(`  装備ベース      : ${itemBases.size} 種  (WEAPON:${[...itemB
 console.log(`  アフィックス    : ${affixes.size} 種  (PREFIX:${prefixCount} / SUFFIX:${suffixCount})`);
 console.log(`  素材            : ${materials.size} 種`);
 console.log(`  ドロップテーブル: ${dropTables.size} 件`);
+console.log(`  レイドボス      : ${raidBosses.size} 件`);
 console.log(`  ガチャバナー    : ${gachaBanners.size} 件`);
 console.log(`  コンボ          : ${combos.size} 件`);
 console.log(`  転生ノード      : ${rebirthNodes.size} 件  (` +

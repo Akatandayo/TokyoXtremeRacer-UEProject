@@ -7,6 +7,7 @@
  * 第3ラウンドで正式な型フィールドとして返すよう整理した。
  * `materials` / `plannedCharacters` は図鑑・ドロップ演出でクライアントが参照できるよう追加(§3)。
  * 第4ラウンドで `rebirthNodes` / `rebirthConfig`(転生画面のツリー表示用)を追加。
+ * 第5ラウンドで `raidBosses`(レイド一覧・図鑑表示用) / `audio`(BGM・効果音割り当て)を追加。
  */
 import { Router } from 'express';
 import type { MasterDataResponse } from '@akatan/shared';
@@ -28,6 +29,8 @@ masterRouter.get('/master', handler((_req, res) => {
     plannedCharacters: [...data.plannedCharacters.values()],
     rebirthNodes: [...data.rebirthNodes.values()],
     rebirthConfig: data.rebirthConfig,
+    raidBosses: [...data.raidBosses.values()],
+    audio: data.audio,
   };
   sendOk(res, body);
 }));

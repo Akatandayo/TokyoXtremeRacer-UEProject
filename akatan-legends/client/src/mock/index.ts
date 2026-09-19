@@ -8,6 +8,7 @@ import type {
   InventoryResponse, EquipResponse, SellEquipmentResponse, GachaListResponse,
   GachaPullResponse, EquipmentSlot, CharacterView,
   RebirthStatusResponse, RebirthResponse, ResetRebirthResponse,
+  RaidListResponse, RaidAttackResponse,
 } from '@akatan/shared';
 import {
   MOCK_CHARACTERS, MOCK_ENEMIES, MOCK_SKILLS, MOCK_AI_PROFILES, MOCK_CHAPTERS, MOCK_COMBOS,
@@ -21,6 +22,8 @@ import {
   MOCK_REBIRTH_CONFIG, MOCK_REBIRTH_NODES,
   getMockRebirthStatus, performMockRebirth, allocateMockRebirth, resetMockRebirth,
 } from './rebirth';
+import { getMockRaidList, performMockRaidAttack, MOCK_RAID_BOSSES } from './raid';
+import { DEFAULT_AUDIO_CONFIG } from '../audio/defaultConfig';
 import { ApiClientError } from '../api/client';
 
 function cloneInventory(): InventoryResponse {
@@ -74,6 +77,8 @@ export const mockApi = {
       plannedCharacters: MOCK_PLANNED_CHARACTERS,
       rebirthNodes: MOCK_REBIRTH_NODES,
       rebirthConfig: MOCK_REBIRTH_CONFIG,
+      raidBosses: MOCK_RAID_BOSSES,
+      audio: DEFAULT_AUDIO_CONFIG,
     };
   },
 
@@ -258,5 +263,17 @@ export const mockApi = {
   async resetRebirth(uid: string): Promise<ResetRebirthResponse> {
     await delay(180);
     return resetMockRebirth(uid);
+  },
+
+  // ---------- レイド (設計書§28〜§29, P5) ----------
+
+  async getRaid(): Promise<RaidListResponse> {
+    await delay(110);
+    return getMockRaidList();
+  },
+
+  async raidAttack(bossId: string, members?: (string | null)[]): Promise<RaidAttackResponse> {
+    await delay(280);
+    return performMockRaidAttack(bossId, members);
   },
 };

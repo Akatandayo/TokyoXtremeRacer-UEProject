@@ -7,6 +7,7 @@ import './styles/ui.css';
 import './styles/battle.css';
 import './styles/gacha.css';
 import './styles/rebirth.css';
+import './styles/raid.css';
 
 const el = document.getElementById('root');
 if (!el) {

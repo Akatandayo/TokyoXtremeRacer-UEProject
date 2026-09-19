@@ -156,6 +156,22 @@
     "tags": ["TimeSkip", "Epitaph"]
   },
   {
+    "id": "ult_hitori_stand_heaven",
+    "name": "人は【天国】に行かなければならない。",
+    "kind": "ULTIMATE",
+    "description": "幽波紋が場に居る全員のDISCを一度に書き換える。誰も、この一撃の意味には気づけない。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": { "side": "ENEMY", "pattern": "ALL" },
+    "effects": [
+      { "type": "DAMAGE", "power": 2.6 },
+      { "type": "STATUS", "status": "SILENCE", "duration": 2, "chance": 75 },
+      { "type": "STATUS", "status": "DEF_DOWN", "duration": 2, "potency": 20, "chance": 70 }
+    ],
+    "fx": "ult_dark_heaven",
+    "tags": ["White snake", "幽波紋", "Heaven"]
+  },
+  {
     "id": "ult_amagi_dawn",
     "name": "黎明の再誕",
     "kind": "ULTIMATE",

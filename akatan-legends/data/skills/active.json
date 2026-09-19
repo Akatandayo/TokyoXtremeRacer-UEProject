@@ -606,6 +606,86 @@
     ]
   },
   {
+    "id": "sk_hitori_stand_disc_extract",
+    "name": "一手、遅かったな。",
+    "kind": "ACTIVE",
+    "description": "触れた瞬間、もう抜き終わっている。抜かれた側は、何を失ったのかにすら気づかない。",
+    "cooldown": 3,
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.55
+      },
+      {
+        "type": "STATUS",
+        "status": "SILENCE",
+        "duration": 2,
+        "chance": 65
+      },
+      {
+        "type": "STATUS",
+        "status": "ATK_DOWN",
+        "duration": 2,
+        "potency": 20,
+        "chance": 60
+      }
+    ],
+    "fx": "dark_disc_extract",
+    "tags": [
+      "White snake",
+      "幽波紋",
+      "DISC",
+      "Control"
+    ]
+  },
+  {
+    "id": "sk_hitori_stand_crucifixion",
+    "name": "アンタは磔刑だ...!!",
+    "kind": "ACTIVE",
+    "description": "命令DISCを打ち込む。動くなと言われた体は、もう自分のものではない。",
+    "cooldown": 4,
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.3
+      },
+      {
+        "type": "STATUS",
+        "status": "STUN",
+        "duration": 1,
+        "chance": 45
+      },
+      {
+        "type": "STATUS",
+        "status": "DEF_DOWN",
+        "duration": 3,
+        "potency": 25,
+        "chance": 70
+      },
+      {
+        "type": "STATUS",
+        "status": "BLEED",
+        "duration": 3,
+        "potency": 12,
+        "chance": 60
+      }
+    ],
+    "fx": "dark_bind_crucifix",
+    "tags": [
+      "White snake",
+      "幽波紋",
+      "Control"
+    ]
+  },
+  {
     "id": "sk_amagi_aegis",
     "name": "星護の誓約",
     "kind": "ACTIVE",

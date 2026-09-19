@@ -16,9 +16,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type {
-  AffinityTable, AffixDef, AiProfile, ChapterDef, CharacterDef, ComboDef, DropTableDef,
+  AffinityTable, AffixDef, AiProfile, AudioConfig, ChapterDef, CharacterDef, ComboDef, DropTableDef,
   EnemyDef, GachaBannerDef, ItemBaseDef, MaterialDef, PlannedCharacterDef,
-  ProgressionConfig, RebirthConfig, RebirthNodeDef, Skill, StageDef,
+  ProgressionConfig, RaidBossDef, RebirthConfig, RebirthNodeDef, Skill, StageDef,
 } from '@akatan/shared';
 import { EQUIPMENT_SLOTS, ITEM_RARITIES, REBIRTH_PATHS } from '@akatan/shared';
 
@@ -51,6 +51,16 @@ export const DEFAULT_REBIRTH_CONFIG: RebirthConfig = {
   pointsPerRebirth: 10,
   growthBonusPercent: 5,
   maxRebirth: 5,
+};
+
+/**
+ * data/system/audio.json が無い/欠損している場合に使う既定値(第5ラウンド)。
+ * 空の bgm/sfx でも AudioConfig としては有効(未定義シーンは直前のBGMを鳴らし続ける仕様
+ * ―― shared/src/types.ts の AudioScene コメント参照)なので、これだけでサーバは正常起動する。
+ */
+export const DEFAULT_AUDIO_CONFIG: AudioConfig = {
+  bgm: {},
+  sfx: {},
 };
 
 export interface GameData {
@@ -86,6 +96,11 @@ export interface GameData {
   rebirthNodes: Map<string, RebirthNodeDef>;
   /** 転生の基本設定 (data/system/rebirth.json)。欠損時は DEFAULT_REBIRTH_CONFIG でマージ */
   rebirthConfig: RebirthConfig;
+  /* ---- レイドバトル (設計書§28〜§29, 第5ラウンド): データが空でも起動できる ---- */
+  /** レイドボス定義 (data/raid/bosses.json または data/raid/*.json) */
+  raidBosses: Map<string, RaidBossDef>;
+  /** BGM・効果音の割り当て (data/system/audio.json)。欠損時は DEFAULT_AUDIO_CONFIG */
+  audio: AudioConfig;
   /**
    * 「チケット」として扱う素材ID。
    * MaterialDef 自体には種別フィールドが無いため、`gachaBanners` の
@@ -411,6 +426,29 @@ function validateReferences(data: GameData): void {
     }
   }
 
+  // レイドバトル (第5ラウンド): 参照切れは警告のみ・落とさない。
+  for (const boss of data.raidBosses.values()) {
+    if (!data.enemies.has(boss.enemyId)) {
+      w.push(`raidBoss '${boss.id}': enemyId '${boss.enemyId}' が enemies に見つかりません`);
+    }
+    if (!(boss.totalHp > 0)) {
+      w.push(`raidBoss '${boss.id}': totalHp が不正です (${boss.totalHp})`);
+    }
+    if (boss.dropTable && !data.dropTables.has(boss.dropTable)) {
+      w.push(`raidBoss '${boss.id}': dropTable '${boss.dropTable}' が dropTables に見つかりません`);
+    }
+    if (boss.attemptDropTable && !data.dropTables.has(boss.attemptDropTable)) {
+      w.push(`raidBoss '${boss.id}': attemptDropTable '${boss.attemptDropTable}' が dropTables に見つかりません`);
+    }
+    for (const g of boss.gimmicks ?? []) {
+      for (const skillId of g.unlockSkills ?? []) {
+        if (!hasSkill(skillId)) {
+          w.push(`raidBoss '${boss.id}': gimmick '${g.name}' の unlockSkills '${skillId}' が skills に見つかりません`);
+        }
+      }
+    }
+  }
+
   // P1-3 移行期チェック: playerSelectable を誰も持っていない間は全AI許可で運用する。
   // (server/src/routes/characters.ts の PUT /api/characters/:uid/ai が同じ判定を行う)
   if (data.aiProfiles.size > 0) {
@@ -504,6 +542,16 @@ function mergeRebirthConfig(loaded: Partial<RebirthConfig>): RebirthConfig {
   return merged;
 }
 
+/** audio.json の欠損キーを既定値で補完する(progression.json と同じ寛容マージ方針) */
+function mergeAudioConfig(loaded: Partial<AudioConfig>): AudioConfig {
+  const merged: AudioConfig = {
+    bgm: typeof loaded.bgm === 'object' && loaded.bgm ? loaded.bgm : DEFAULT_AUDIO_CONFIG.bgm,
+    sfx: typeof loaded.sfx === 'object' && loaded.sfx ? loaded.sfx : DEFAULT_AUDIO_CONFIG.sfx,
+  };
+  if (loaded.defaults) merged.defaults = loaded.defaults;
+  return merged;
+}
+
 export function loadGameData(): GameData {
   const warnings: string[] = [];
   const dataDir = resolveDataDir();
@@ -565,6 +613,16 @@ export function loadGameData(): GameData {
     loadSystemFile<Partial<RebirthConfig>>(dataDir, 'rebirth.json', {}, warnings),
   );
 
+  // レイドバトル (第5ラウンド): data/raid/bosses.json (単一ファイル or data/raid/*.json ディレクトリ)
+  const raidBosses = loadFromFiles<RaidBossDef>(
+    collectJsonSources(dataDir, 'raid/bosses.json', 'raid', warnings),
+    'raidBoss', ['bosses', 'raidBosses'], warnings,
+  );
+  // data/system/audio.json (無くてもサーバは起動する。DEFAULT_AUDIO_CONFIG で補う)
+  const audio = mergeAudioConfig(
+    loadSystemFile<Partial<AudioConfig>>(dataDir, 'audio.json', {}, warnings),
+  );
+
   // ticketMaterialIds はデータロード後にバナー/ドロップテーブルの参照から逆引きする
   const ticketMaterialIds = new Set<string>();
   for (const banner of gachaBanners.values()) {
@@ -599,6 +657,8 @@ export function loadGameData(): GameData {
     ticketMaterialIds,
     rebirthNodes,
     rebirthConfig,
+    raidBosses,
+    audio,
     warnings,
   };
 
@@ -609,6 +669,7 @@ export function loadGameData(): GameData {
   if (itemBases.size === 0) warnings.push('装備ベースが 0 件です(data/items/bases/ 未作成? ハクスラは無効化されます)');
   if (gachaBanners.size === 0) warnings.push('ガチャバナーが 0 件です(data/gacha/banners.json 未作成? ガチャは無効化されます)');
   if (rebirthNodes.size === 0) warnings.push('転生ノードが 0 件です(data/rebirth/nodes.json 未作成? 転生ポイントを振れません)');
+  if (raidBosses.size === 0) warnings.push('レイドボスが 0 件です(data/raid/bosses.json 未作成? レイドは空リストを返します)');
 
   return data;
 }
@@ -655,6 +716,7 @@ export function summarizeGameData(data: GameData): Record<string, number | strin
     gachaBanners: data.gachaBanners.size,
     plannedCharacters: data.plannedCharacters.size,
     rebirthNodes: data.rebirthNodes.size,
+    raidBosses: data.raidBosses.size,
     warnings: data.warnings.length,
   };
 }

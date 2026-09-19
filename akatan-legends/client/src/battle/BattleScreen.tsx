@@ -4,16 +4,39 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
-  BattleStartResponse, BattleUnitStat, ActiveStatus, BattleLog, DropResult, MasterDataResponse,
+  BattleStartResponse, BattleUnitStat, ActiveStatus, BattleLog, BattleEvent, DropResult, MasterDataResponse, SfxKey,
 } from '@akatan/shared';
-import { useStore } from '../state/store';
+import { useStore, type RaidBattleContext } from '../state/store';
 import { effectPolicy } from '../state/settings';
 import { useBattlePlayback, type PlaybackState, type Speed, type UnitRuntime, type FxInstance, type Popup } from './playback';
+import { isUltimateFx } from './fx';
 import { CharacterArtView } from '../components/CharacterArt';
+import { useAudio } from '../audio/AudioProvider';
 import {
   STATUS_ICON, STATUS_LABEL, isBuff, formatNumber,
   EQUIPMENT_SLOT_LABEL, EQUIPMENT_SLOT_ICON, ITEM_RARITY_LABEL,
 } from '../utils/labels';
+
+/**
+ * 戦闘イベント -> 効果音の割り当て。
+ * DAMAGE は会心なら CRITICAL、SKILL_USE は必殺技(fx が ult_ で始まる)なら ULTIMATE。
+ */
+function sfxForEvent(ev: BattleEvent): SfxKey | null {
+  switch (ev.type) {
+    case 'DAMAGE':
+      return ev.critical ? 'CRITICAL' : 'HIT';
+    case 'SKILL_USE':
+      return isUltimateFx(ev.fx, ev.skillId) ? 'ULTIMATE' : 'SKILL';
+    case 'AWAKEN':
+      return 'AWAKEN';
+    case 'COMBO':
+      return 'COMBO';
+    case 'DEFEAT':
+      return 'DEFEAT';
+    default:
+      return null;
+  }
+}
 
 /** 再生対象が無いときの空ログ。毎レンダで新しいオブジェクトを作らないようモジュール定数にする。 */
 const EMPTY_LOG: BattleLog = {
@@ -317,11 +340,82 @@ function DropsSection({ drops, master }: { drops: DropResult | null | undefined;
   );
 }
 
+/* ---------- レイド挑戦結果 (設計書§28〜§29) ---------- */
+
+/**
+ * 「このレイドでどれだけ削ったか」を見せるセクション。
+ * 1回では倒しきれない設計なので、削れた量を大きなバーで実感させることを優先する。
+ */
+function RaidDamageSection({ raid }: { raid: RaidBattleContext }): JSX.Element {
+  const { attempt, state, bossName } = raid;
+  const totalHp = Math.max(1, state.totalHp);
+  const beforePct = Math.min(100, (attempt.hpBefore / totalHp) * 100);
+  const afterPct = Math.min(100, (attempt.hpAfter / totalHp) * 100);
+  const remainPct = Math.min(100, (state.remainingHp / totalHp) * 100);
+
+  return (
+    <div className="stack raid-result" style={{ gap: 8 }}>
+      <div className="section-title" style={{ marginBottom: 0 }}>
+        RAID DAMAGE<span className="jp">{bossName} を削った量</span>
+      </div>
+
+      <div className="raid-result-barwrap">
+        <div className="raid-result-bar">
+          <span className="raid-result-bar-before" style={{ width: `${beforePct}%` }} />
+          <span className="raid-result-bar-after" style={{ width: `${afterPct}%` }} />
+        </div>
+        <div className="raid-result-bar-labels">
+          <span>{formatNumber(attempt.hpBefore)}</span>
+          <span className="muted">→</span>
+          <span style={{ color: 'var(--shu)' }}>{formatNumber(attempt.hpAfter)}</span>
+          <span className="muted">/ {formatNumber(state.totalHp)}</span>
+        </div>
+      </div>
+
+      <div className="reward-grid">
+        <div className="reward-box" style={{ borderColor: 'rgba(255,90,67,0.4)' }}>
+          <div className="k">今回与えたダメージ</div>
+          <div className="v" style={{ color: 'var(--shu)' }}>{formatNumber(attempt.damage)}</div>
+        </div>
+        <div className="reward-box">
+          <div className="k">ボスの残りHP</div>
+          <div className="v">{remainPct.toFixed(1)}%</div>
+        </div>
+      </div>
+
+      {attempt.newGimmicks.length > 0 && (
+        <div className="stack" style={{ gap: 6 }}>
+          <div className="muted" style={{ fontSize: 11 }}>新たに発動したギミック</div>
+          {attempt.newGimmicks.map((g) => (
+            <div key={g.name} className="raid-gimmick-row is-on">
+              <span className="nm">{g.name}</span>
+              <span className="muted" style={{ fontSize: 11 }}>{g.description}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {attempt.defeated ? (
+        <div className="raid-result-note is-defeat">
+          撃破しました! {bossName} の脅威は去った。
+        </div>
+      ) : (
+        <div className="raid-result-note">
+          まだ倒しきれていない。確実に削れている — 何度でも挑もう。
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------- リザルト ---------- */
 
 function ResultOverlay({
-  data, onBack, onRetry, master,
-}: { data: BattleStartResponse; onBack: () => void; onRetry: () => void; master: MasterDataResponse | null }): JSX.Element {
+  data, onBack, onRetry, master, raid,
+}: {
+  data: BattleStartResponse; onBack: () => void; onRetry: () => void; master: MasterDataResponse | null;
+  raid?: RaidBattleContext | null;
+}): JSX.Element {
   const { log, rewards, stage } = data;
   const victory = log.result.victory;
   const allyStats = log.result.stats.filter((s) => s.side === 'ALLY');
@@ -338,6 +432,8 @@ function ResultOverlay({
         <div style={{ textAlign: 'center' }} className="muted">
           {stage?.name ?? ''} / {log.result.turns}ターン ({log.result.ticks}tick)
         </div>
+
+        {raid && <RaidDamageSection raid={raid} />}
 
         {rewards && (
           <div className="reward-grid">
@@ -430,8 +526,12 @@ function ResultOverlay({
         </details>
 
         <div className="row" style={{ justifyContent: 'center', marginTop: 4 }}>
-          <button className="btn" onClick={onBack}>ダンジョンへ戻る</button>
-          <button className="btn btn-primary" onClick={onRetry}>もう一度戦う</button>
+          <button className="btn" onClick={onBack}>{raid ? 'レイドへ戻る' : 'ダンジョンへ戻る'}</button>
+          {!(raid && raid.attempt.defeated) && (
+            <button className="btn btn-primary" onClick={onRetry}>
+              {raid ? 'レイドへ戻ってもう一度挑む' : 'もう一度戦う'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -443,7 +543,12 @@ function ResultOverlay({
 export function BattleScreen(): JSX.Element {
   const store = useStore();
   const data = store.battle;
+  const audio = useAudio();
   const policy = useMemo(() => effectPolicy(store.settings), [store.settings]);
+  const onBattleEvent = useCallback((ev: BattleEvent) => {
+    const key = sfxForEvent(ev);
+    if (key) audio.playSfx(key);
+  }, [audio]);
   const [showResult, setShowResult] = useState(false);
   const finishedOnce = useRef(false);
   const arenaRef = useRef<HTMLDivElement>(null);
@@ -472,6 +577,8 @@ export function BattleScreen(): JSX.Element {
   }, [data, store]);
 
   const log = data?.log;
+  // レイド挑戦の戦闘かどうか(store.raidContext が今再生中のログと一致する場合のみ)
+  const raidCtx = store.raidContext && log && store.raidContext.logId === log.id ? store.raidContext : null;
   const playback = useBattlePlayback(
     log ?? EMPTY_LOG,
     {
@@ -479,6 +586,7 @@ export function BattleScreen(): JSX.Element {
       logLines: store.settings.logLines,
       initialSpeed: store.settings.speed as Speed,
       onFinish,
+      onEvent: onBattleEvent,
     },
   );
 
@@ -525,6 +633,13 @@ export function BattleScreen(): JSX.Element {
   }, [state.finished, store.settings.autoResult]);
 
   const handleRetry = useCallback(async () => {
+    // レイドはボス定義がこの画面には無いため、RAID画面へ戻って挑戦し直してもらう
+    // (何度も挑む前提の設計なので、"もう一度戦う" 相当の導線はそちらに置く)。
+    if (raidCtx) {
+      store.clearBattle();
+      store.navigate('RAID');
+      return;
+    }
     if (!data?.stage) return;
     setRetrying(true);
     try {
@@ -536,12 +651,13 @@ export function BattleScreen(): JSX.Element {
     } finally {
       setRetrying(false);
     }
-  }, [data, store]);
+  }, [data, store, raidCtx]);
 
   const handleBack = useCallback(() => {
+    const toRaid = !!raidCtx;
     store.clearBattle();
-    store.navigate('DUNGEON');
-  }, [store]);
+    store.navigate(toRaid ? 'RAID' : 'DUNGEON');
+  }, [store, raidCtx]);
 
   if (!data || !log) {
     return (
@@ -699,6 +815,7 @@ export function BattleScreen(): JSX.Element {
           onBack={handleBack}
           onRetry={retrying ? () => undefined : handleRetry}
           master={store.master}
+          raid={raidCtx}
         />
       )}
     </div>

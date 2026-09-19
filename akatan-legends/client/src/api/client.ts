@@ -12,6 +12,7 @@ import type {
   SellEquipmentRequest, SellEquipmentResponse, GachaListResponse,
   GachaPullRequest, GachaPullResponse, EquipmentSlot,
   RebirthStatusResponse, RebirthResponse, ResetRebirthResponse, AllocateRebirthRequest,
+  RaidListResponse, RaidAttackRequest, RaidAttackResponse,
 } from '@akatan/shared';
 import { isMockMode } from './mode';
 import { mockApi } from '../mock';
@@ -45,6 +46,7 @@ export function describeError(err: unknown): { title: string; detail: string; co
       NOT_ENOUGH_CURRENCY: '所持GOLD/チケット/素材が足りません',
       REBIRTH_LOCKED: 'まだ転生できません',
       NOT_ENOUGH_POINTS: '転生ポイントが足りません',
+      RAID_DEFEATED: 'このレイドボスはすでに撃破されています。',
       SLOT_MISMATCH: 'この装備は対応する部位(スロット)が異なります',
       ALREADY_EQUIPPED: 'すでに他のキャラクターが装着中です',
       INTERNAL: 'サーバ内部エラーが発生しました',
@@ -121,6 +123,9 @@ export interface GameApi {
    */
   allocateRebirth(uid: string, nodeId: string, ranks?: number): Promise<RebirthStatusResponse>;
   resetRebirth(uid: string): Promise<ResetRebirthResponse>;
+  /** レイド (設計書§28〜§29) */
+  getRaid(): Promise<RaidListResponse>;
+  raidAttack(bossId: string, members?: (string | null)[]): Promise<RaidAttackResponse>;
 }
 
 const httpApi: GameApi = {
@@ -182,6 +187,11 @@ const httpApi: GameApi = {
     `/characters/${encodeURIComponent(uid)}/rebirth/reset`,
     { method: 'POST' },
   ),
+  getRaid: () => request<RaidListResponse>('/raid'),
+  raidAttack: (bossId, members) => {
+    const payload: RaidAttackRequest = members ? { bossId, members } : { bossId };
+    return request<RaidAttackResponse>('/raid/attack', { method: 'POST', body: JSON.stringify(payload) });
+  },
 };
 
 /** 現在のモードに応じた API 実装を返す */

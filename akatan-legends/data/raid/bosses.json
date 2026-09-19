@@ -1,0 +1,60 @@
+[
+  {
+    "id": "raid_hitori_stand",
+    "name": "電子 独(幽波紋)",
+    "title": "レイドボス / ホワイトスネイク・レイド個体",
+    "enemyId": "boss_raid_hitori_stand",
+    "level": 40,
+    "totalHp": 2000000,
+    "description": "異世界を巡り続けた果てに、取りこぼされた可能性ごと肥大化した独の幽波紋。プレイヤーが育てる独本人とは別物の、レイドにしか現れない巨大な個体。DISCを抜く一撃と全体拘束で編成を丸ごと止めにかかり、追い詰められるほど幽波紋の制御を手放して暴走していく。総HPは1回の挑戦では到底削りきれない量に設定されており、何度も挑んで少しずつ削っていくことを前提にしている。",
+    "gimmicks": [
+      {
+        "hpBelow": 80,
+        "name": "DISC記憶障壁",
+        "description": "DISCの記憶障壁を展開し、被ダメージの一部を吸収するようになる。",
+        "grant": [
+          { "status": "SHIELD", "duration": 99, "potency": 20 }
+        ],
+        "fx": "dark_disc_shield"
+      },
+      {
+        "hpBelow": 50,
+        "name": "全方位展開",
+        "description": "「もう、遅かったな」——幽波紋を全方位に展開し、攻撃力を上げながらパーティ全体を巻き込む猛攻に切り替える。",
+        "statBonus": {
+          "attack": 20
+        },
+        "grant": [
+          { "status": "ATK_UP", "duration": 99, "potency": 25 }
+        ],
+        "fx": "dark_heaven_rage"
+      },
+      {
+        "hpBelow": 20,
+        "name": "【天国】暴走",
+        "description": "残り20%、【天国】に焦がれる幽波紋が制御を離れ、速度と会心が跳ね上がる最終フェーズに入る。",
+        "statBonus": {
+          "attack": 15,
+          "speed": 25,
+          "criticalDamage": 25
+        },
+        "grant": [
+          { "status": "ATK_UP", "duration": 99, "potency": 15 },
+          { "status": "SPD_UP", "duration": 99, "potency": 30 }
+        ],
+        "fx": "dark_heaven_rage_max"
+      }
+    ],
+    "weakElements": ["LIGHT"],
+    "immuneStatuses": ["SILENCE"],
+    "dropTable": "dt_raid_hitori_stand_defeat",
+    "attemptDropTable": "dt_raid_hitori_stand_attempt",
+    "art": {
+      "primary": "#3D1466",
+      "secondary": "#0A0512",
+      "accent": "#B266FF",
+      "sigil": "蛇",
+      "pattern": "void"
+    }
+  }
+]

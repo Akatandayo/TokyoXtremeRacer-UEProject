@@ -1,0 +1,90 @@
+{
+  "id": "hitori_stand",
+  "name": "電子 独(幽波紋)",
+  "title": "DENSHI HITORI / ホワイトスネイク",
+  "rarity": "UR",
+  "element": "DARK",
+  "roles": [
+    "CONTROL",
+    "SPECIALIST"
+  ],
+  "baseStats": {
+    "hp": 540,
+    "attack": 130,
+    "defense": 34,
+    "speed": 148,
+    "critical": 24,
+    "criticalDamage": 170,
+    "resistance": 20,
+    "healing": 100
+  },
+  "growth": {
+    "hp": 34,
+    "attack": 8.2,
+    "defense": 2.0,
+    "speed": 2.0,
+    "critical": 0.32,
+    "criticalDamage": 0.5
+  },
+  "normalAttack": "na_hitori_stand_pistol",
+  "skills": [
+    "sk_hitori_stand_disc_extract",
+    "sk_hitori_stand_crucifixion"
+  ],
+  "ultimate": "ult_hitori_stand_heaven",
+  "awakening": {
+    "id": "heaven_dream",
+    "name": "【天国】を夢見て。",
+    "condition": {
+      "withAlly": "momiji_kc",
+      "hpBelow": 40
+    },
+    "statBonus": {
+      "attack": 28,
+      "speed": 22,
+      "critical": 18,
+      "criticalDamage": 15
+    },
+    "skillReplace": {
+      "sk_hitori_stand_disc_extract": "sk_hitori_stand_disc_extract_ex",
+      "ult_hitori_stand_heaven": "ult_hitori_stand_heaven_ex"
+    },
+    "grant": [
+      {
+        "status": "ATK_UP",
+        "duration": 3,
+        "potency": 25
+      }
+    ],
+    "description": "「...うるせぇんだよ...。」そう言いながら、紅葉が隣にいるときだけ独の手は迷わなくなる。誰と関わってもろくな事は無いと決めつけてきた失敗作の魂が、それでもまだ【天国】を諦めていないと分かる瞬間。",
+    "fx": "awaken_heaven"
+  },
+  "combos": [
+    "kc_epitaph_link"
+  ],
+  "defaultAi": "ai_hitori_stand_disc",
+  "description": "無口無表情でポーカーフェイス、口癖は「...うるせぇんだよ...。」「理解できないなら...関わらないでくれ...。」。人と関わることに臆病なだけで、本心では誰よりもそばにいたいと願っている、不器用なツンデレの探索者。一点集中は誰よりも鋭いが、油断すると驚くほどポンコツになる。その正体は【異世界を巡っている失敗作の魂】——幽波紋《ホワイトスネイク》でDISCを引き抜き、記憶も命令も幻覚も、対象の在り方そのものを書き換える。電子の世界の向こう側にいるだけの少年(SSR版・架空設定)とは別に実在する、本人の探索者。",
+  "tags": [
+    "White snake",
+    "幽波紋",
+    "Network",
+    "探索者",
+    "DISC"
+  ],
+  "trpg": {
+    "source": "卓/ジョジョの奇妙な冒険",
+    "player": "あかたん",
+    "investigator": "電子 独",
+    "affiliation": "不明",
+    "visibility": "PRIVATE",
+    "note": "元ネタ: ジョジョの奇妙な冒険 / 荒木飛呂彦。幽波紋《ホワイトスネイク》。"
+  },
+  "art": {
+    "primary": "#7B2FBE",
+    "secondary": "#1B0E2E",
+    "accent": "#4FA3FF",
+    "sigil": "蛇",
+    "pattern": "circuit",
+    "portrait": "hitori_stand"
+  }
+}

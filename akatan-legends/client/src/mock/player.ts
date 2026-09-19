@@ -102,6 +102,10 @@ const OWNED_SEED: {
   { defId: 'ch_rin', level: 15, rebirth: 0 },
   { defId: 'ch_zero', level: 12, rebirth: 0 },
   { defId: 'ch_yuu', level: 8, rebirth: 0, expRemain: 30 },
+  // P5-3: レイド関連の確認用(「引き合う引力」ペアコンボ + 新UR「電子 独(幽波紋)」の見た目)。
+  // デフォルト編成には含めない(パーティを組んだ時だけコンボが成立することを確認できるように)。
+  { defId: 'ch_momiji_kc', level: 22, rebirth: 0 },
+  { defId: 'ch_hitori_stand', level: 20, rebirth: 0 },
 ];
 
 function makeOwned(): OwnedCharacter[] {

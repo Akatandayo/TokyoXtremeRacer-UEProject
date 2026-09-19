@@ -6,7 +6,7 @@ import React, {
 } from 'react';
 import type {
   PlayerProfile, CharacterView, Party, MasterDataResponse, ChapterDef,
-  BattleStartResponse, InventoryResponse,
+  BattleStartResponse, InventoryResponse, RaidBossDef, RaidAttemptResult, RaidState,
 } from '@akatan/shared';
 import { api, describeError } from '../api/client';
 import { isMockMode } from '../api/mode';
@@ -15,7 +15,7 @@ import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './s
 export type Screen =
   | 'HOME' | 'CHARACTERS' | 'CHARACTER_DETAIL' | 'PARTY'
   | 'DUNGEON' | 'BATTLE' | 'COLLECTION' | 'SETTINGS'
-  | 'EQUIPMENT' | 'GACHA' | 'REBIRTH';
+  | 'EQUIPMENT' | 'GACHA' | 'REBIRTH' | 'RAID';
 
 export interface Route {
   screen: Screen;
@@ -37,6 +37,16 @@ export interface RecentBattle {
   at: string;
 }
 
+/** レイド挑戦中の戦闘が、どのボスに対するものだったかを BATTLE 画面へ橋渡しする情報。 */
+export interface RaidBattleContext {
+  /** 対応する BattleLog.id (再生中のログと一致するかの照合用) */
+  logId: string;
+  bossId: string;
+  bossName: string;
+  attempt: RaidAttemptResult;
+  state: RaidState;
+}
+
 export interface AppState {
   loading: boolean;
   error: unknown;
@@ -54,6 +64,7 @@ interface Store extends AppState {
   route: Route;
   settings: Settings;
   battle: BattleStartResponse | null;
+  raidContext: RaidBattleContext | null;
   recent: RecentBattle[];
   mock: boolean;
   navigate: (screen: Screen, charUid?: string, equipCharUid?: string) => void;
@@ -62,6 +73,8 @@ interface Store extends AppState {
   saveParty: (members: (string | null)[]) => Promise<void>;
   setAi: (uid: string, aiProfile: string) => Promise<void>;
   startBattle: (stageId: string, members?: (string | null)[]) => Promise<void>;
+  /** レイド挑戦: 1回分の戦闘を開始し、結果を BATTLE 画面で再生する */
+  startRaidBattle: (boss: RaidBossDef, members?: (string | null)[]) => Promise<void>;
   finishBattle: (rec: RecentBattle | null) => void;
   clearBattle: () => void;
   /** 装備/ガチャ画面用: 所持品を取得してストアへ反映する */
@@ -104,6 +117,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
   const [battle, setBattle] = useState<BattleStartResponse | null>(null);
   const battleRef = useRef<BattleStartResponse | null>(null);
   battleRef.current = battle;
+  const [raidContext, setRaidContext] = useState<RaidBattleContext | null>(null);
   const [recent, setRecent] = useState<RecentBattle[]>([]);
   const mounted = useRef(true);
 
@@ -176,7 +190,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
 
   const startBattle = useCallback(async (stageId: string, members?: (string | null)[]) => {
     const res = await api().startBattle(stageId, members);
+    setRaidContext(null);
     setBattle(res);
+    setRoute({ screen: 'BATTLE' });
+  }, []);
+
+  /**
+   * レイド挑戦(設計書§28〜§29): 戦闘そのものは既存の BATTLE 画面をそのまま使う。
+   * レイドボスは StageDef を持たないため、表示用の簡易 StageDef をその場で組み立てる
+   * (戦闘エンジン/再生には一切影響しない、見た目のラベル用途のみ)。
+   */
+  const startRaidBattle = useCallback(async (boss: RaidBossDef, members?: (string | null)[]) => {
+    const res = await api().raidAttack(boss.id, members);
+    const stage = {
+      id: `raid_${boss.id}`,
+      name: boss.title ? `${boss.name} — ${boss.title}` : boss.name,
+      description: boss.description,
+      boss: true,
+      enemies: [{ enemyId: boss.enemyId, level: boss.level }],
+      rewards: { exp: 0, gold: 0 },
+    };
+    setRaidContext({
+      logId: res.log.id,
+      bossId: boss.id,
+      bossName: boss.name,
+      attempt: res.raid,
+      state: res.state,
+    });
+    setBattle({
+      log: res.log,
+      rewards: res.rewards,
+      player: res.player,
+      characters: res.characters,
+      stage,
+      drops: res.drops,
+      inventory: res.inventory,
+    });
     setRoute({ screen: 'BATTLE' });
   }, []);
 
@@ -207,7 +256,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
     }
   }, []);
 
-  const clearBattle = useCallback(() => setBattle(null), []);
+  const clearBattle = useCallback(() => {
+    setBattle(null);
+    setRaidContext(null);
+  }, []);
 
   const refreshInventory = useCallback(async () => {
     const inv = await api().getInventory();
@@ -247,6 +299,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
       route,
       settings,
       battle,
+      raidContext,
       recent,
       mock: isMockMode(),
       navigate,
@@ -255,6 +308,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
       saveParty,
       setAi,
       startBattle,
+      startRaidBattle,
       finishBattle,
       clearBattle,
       refreshInventory,
@@ -264,8 +318,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
       mergeCharacters,
     }),
     [
-      state, route, settings, battle, recent, navigate, reload, updateSettings, saveParty, setAi,
-      startBattle, finishBattle, clearBattle, refreshInventory, applyInventory, applyPlayer,
+      state, route, settings, battle, raidContext, recent, navigate, reload, updateSettings, saveParty, setAi,
+      startBattle, startRaidBattle, finishBattle, clearBattle, refreshInventory, applyInventory, applyPlayer,
       applyCharacterView, mergeCharacters,
     ],
   );

@@ -152,7 +152,27 @@ const MIGRATIONS: ((db: Db) => void)[] = [
       ALTER TABLE owned_characters ADD COLUMN rebirth_points_available INTEGER NOT NULL DEFAULT 0;
     `);
   },
-  // v3 -> v4 以降はここに追記する
+  // v3 -> v4: レイドバトル(第5ラウンド。設計書§28〜§29)
+  //   - raid_states: プレイヤーごと・ボスごとの共有HPプールの進行状況
+  //     (remaining_hp/total_hp は REAL: ダメージ集計が将来小数を含む計算に変わっても安全なように)
+  (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS raid_states (
+        player_id           TEXT NOT NULL,
+        boss_id             TEXT NOT NULL,
+        remaining_hp        REAL NOT NULL,
+        total_hp             REAL NOT NULL,
+        attempts             INTEGER NOT NULL DEFAULT 0,
+        total_damage          REAL NOT NULL DEFAULT 0,
+        defeated               INTEGER NOT NULL DEFAULT 0,
+        triggered_gimmicks      TEXT,
+        updated_at                TEXT NOT NULL,
+        PRIMARY KEY (player_id, boss_id),
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      );
+    `);
+  },
+  // v4 -> v5 以降はここに追記する
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
