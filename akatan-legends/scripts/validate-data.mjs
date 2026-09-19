@@ -1149,6 +1149,42 @@ else {
   }
 }
 
+/*
+ * 7-b. audio.json — 参照先の音源が実在するか
+ * 存在しないファイルを指していても再生が黙って失敗するだけで気づけないため、
+ * ここで実ファイルの有無を突き合わせる。skillSfx はスキルIDの実在も確認する。
+ */
+{
+  const audioPath = join(DATA, 'system', 'audio.json');
+  const audioDir = join(ROOT, 'client', 'public', 'audio');
+  if (!existsSync(audioPath)) {
+    warn('data/system/audio.json', 'ファイルがありません (音声なしで動作します)');
+  } else {
+    const a = loadJson(audioPath);
+    const where = 'data/system/audio.json';
+    for (const section of ['bgm', 'sfx', 'skillSfx']) {
+      const table = a?.[section];
+      if (table === undefined) continue;
+      if (typeof table !== 'object' || table === null) { err(where, `"${section}" がオブジェクトではありません`); continue; }
+      for (const [key, track] of Object.entries(table)) {
+        if (typeof track !== 'object' || track === null || typeof track.file !== 'string') {
+          err(where, `${section}.${key} に "file" (文字列) がありません`);
+          continue;
+        }
+        if (!existsSync(join(audioDir, track.file))) {
+          err(where, `${section}.${key} が参照する音源 "${track.file}" が client/public/audio/ にありません`);
+        }
+        if (track.volume !== undefined && (typeof track.volume !== 'number' || track.volume < 0 || track.volume > 1)) {
+          err(where, `${section}.${key} の volume は 0〜1 の数値にしてください`);
+        }
+      }
+    }
+    for (const skillId of Object.keys(a?.skillSfx ?? {})) {
+      if (!skills.has(skillId)) err(where, `skillSfx のスキル "${skillId}" は data/skills に存在しません`);
+    }
+  }
+}
+
 if (!existsSync(progressionPath)) err('data/system/progression.json', 'ファイルがありません');
 else {
   const p = loadJson(progressionPath);

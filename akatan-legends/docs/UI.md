@@ -349,14 +349,15 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
 ## 5. EQUIPMENT (装備) 画面
 
 `client/src/screens/EquipmentScreen.tsx`。`GET /api/inventory` で装備/素材/チケットを
-取得し、`POST /api/equipment/{equip,unequip,sell}` で操作する。
+取得し、`POST /api/equipment/{equip,unequip,sell,favorite,sell-bulk}` で操作する。
 
 ### 情報設計
 
 - **一覧**: スロット(全部/武器/防具/装飾品)・レアリティ(6段階チップ)・
-  アイテムLv(下限セレクト)で絞り込み、アイテムLv順/レアリティ順/スロット順/名前順で
-  ソート。カードは Prefix+ベース+Suffix の合成名(`EquipmentInstance.name`)、
-  `stats`(フラット)、`statsPercent`(%)、`special`(特殊効果名)、装着中バッジを表示する。
+  アイテムLv(下限セレクト)・**お気に入りのみ**(第6ラウンド)で絞り込み、
+  アイテムLv順/レアリティ順/スロット順/名前順でソート。カードは Prefix+ベース+Suffix
+  の合成名(`EquipmentInstance.name`)、`stats`(フラット)、`statsPercent`(%)、
+  `special`(特殊効果名)、装着中バッジ、お気に入りバッジを表示する。
 - **レアリティ枠**: `ItemRarity` 6段階(`irar-COMMON`〜`irar-MYTHIC`)。COMMON〜LEGENDARY
   は色付きボーダー+グローを段階的に強め、**MYTHICだけ虹コニックグラデーションの回転枠**
   (キャラのURと同格の特別感)にして明確に差別化する。
@@ -366,9 +367,28 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
   新装備の加算 − 既存装備の加算、を1つのdeltaマップにまとめて計算)。増加は緑、
   減少は赤で色分けする。**確定値ではなくクライアント側の概算プレビュー**であることを
   踏まえ、最終値は装着実行後のサーバ応答(`EquipResponse.character`)で必ず上書きする。
+- **お気に入り(第6ラウンド)**: カードヘッダの★ボタン(`FavoriteButton`)で
+  `POST /api/equipment/favorite` を呼び、`EquipmentInstance.favorite` をon/offする。
+  お気に入りの装備は「選択して売却」モードでチェックボックスが無効化され
+  「お気に入り(売却不可)」と明示される(サーバの単発売却APIは favorite を見ないため、
+  **クライアント側で確実に選択させないことで誤売却を防ぐ**)。一括売却からは
+  サーバ側(`sellEquipmentBulk`)が必ず除外する。
 - **売却**: 「選択して売却」でチェックボックス選択モードに切り替え、複数選択して
-  一括売却する。**装着中の装備はチェックボックスを無効化し「装着中(売却不可)」と明示**
-  する(誤操作防止。サーバ側の `BAD_REQUEST` にも保険で当たる)。
+  一括売却する。**装着中・お気に入りの装備はチェックボックスを無効化**し、それぞれ
+  「装着中(売却不可)」「お気に入り(売却不可)」と明示する(誤操作防止。サーバ側の
+  `BAD_REQUEST` にも保険で当たる)。
+- **レアリティ一式の一括売却(第6ラウンド)**: 装備が増えすぎてラグの原因になる問題への
+  対策。「レアリティで一括売却」で `maxRarity`(以下)と任意の `belowItemLevel`(未満)を
+  選び、`estimateBulkSell()`(`utils/equipment.ts`。サーバの `sellPrice()` と同じ算出式を
+  複製した確定値プレビュー)で「対象件数・獲得予定GOLD・装着中/お気に入りで保護される件数」
+  を**実行前に必ず表示**してから、明示的な「本当に売却する」クリックで
+  `POST /api/equipment/sell-bulk` を呼ぶ(取り返しがつかない操作のため二段階確認)。
+  実行後は実際のサーバ応答(`count`/`gold`/`skipped`)で結果を上書き表示する。
+- **一覧の性能(第6ラウンド)**: 装備が数百件になっても一気に描画しないよう、
+  一覧は `PAGE_SIZE`(60件)ずつ表示し、残りは「もっと見る」ボタンで追加読込する。
+  スロット/レアリティ/Lv/お気に入り/ソートを変更すると表示件数はリセットされる。
+  `?mock=1&stress=N` でモックの所持装備をN件まで水増しでき、負荷再現・計測に使う
+  (`client/src/mock/player.ts`)。
 - **EQUIPPED 区画**: 装備を1つ以上装着しているキャラを一覧し、スロットごとに
   「外す」ボタンを置く。キャラ詳細画面からもこの画面へ遷移でき(`装備を変更→`)、
   遷移先は `route.equipCharUid` でそのキャラを装着候補として初期選択する。
@@ -395,8 +415,12 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
    (ボス戦は装備ドロップが出やすい)
 5. **SUMMON → 「召喚: 孤月 紅葉(幽波紋)」バナー** で、ユーザー本人の探索者
    `momiji_kc` の立ち絵を使ったガチャ演出(UR確定の天井は50連)を確認できる
-6. **装備** で所持装備8点の一覧・装着前後の比較・売却を確認できる
+6. **装備** で所持装備8点の一覧・装着前後の比較・お気に入り・売却・レアリティ一括売却を
+   確認できる
 7. 解除は `?mock=1` を外してリロード、または SETTINGS の「モックモードを終了」
+8. **負荷検証用**: `?mock=1&stress=500` のように `stress` を付けると、装備の所持数を
+   指定件数まで水増しする(既定は0=何もしない)。装備一覧が数百件になっても重くならない
+   ことを確認するための専用パラメータ(`client/src/mock/player.ts`)
 
 ### 中身
 
@@ -404,11 +428,11 @@ URLは変えず、ヘッダのナビゲーションと画面内ボタンで遷�
 |---|---|
 | `client/src/api/mode.ts` | `?mock=1` / localStorage の判定 |
 | `client/src/mock/master.ts` | ダミーのキャラ11体(**`ch_momiji_kc` = 孤月 紅葉、UR/VOID/CONTROL・SPECIALIST、`art.portrait: 'momiji_kc'`** を含む)・敵7体・スキル約35・AI 5種・2章8ステージ・コンボ7種(未実装キャラ参加の1種を含む)・`MOCK_PLANNED_CHARACTERS`(`ch_hitori` = 電子 独(幽波紋)、`ch_mikoto`)・素材7種 |
-| `client/src/mock/player.ts` | 所持キャラ8体・パーティ・所持金・**初期所持装備(`mockState.inventory`)**。一部キャラは次Lvまで残りEXPを少なく設定し、**1戦でレベルアップ演出が必ず出る**。`applyEquipmentStats` が装着中装備のステータスを `CharacterView.stats` に反映する |
-| `client/src/mock/equipment.ts` | 装備生成(ベース9種×Prefix6×Suffix6×特殊効果5、レアリティ別倍率)、ドロップ抽選(`rollMockDrops`)、初期所持品(`buildStarterInventory`) |
+| `client/src/mock/player.ts` | 所持キャラ8体・パーティ・所持金・**初期所持装備(`mockState.inventory`)**。一部キャラは次Lvまで残りEXPを少なく設定し、**1戦でレベルアップ演出が必ず出る**。`applyEquipmentStats` が装着中装備のステータスを `CharacterView.stats` に反映する。`?stress=N` で所持装備をN件まで水増しする負荷検証フック付き |
+| `client/src/mock/equipment.ts` | 装備生成(ベース9種×Prefix6×Suffix6×特殊効果5、レアリティ別倍率)、ドロップ抽選(`rollMockDrops`)、初期所持品(`buildStarterInventory`)、売却額算出 `mockSellPrice`(単発売却・一括売却で共通利用) |
 | `client/src/mock/gacha.ts` | バナー定義3種(常設 / `momiji_kc` ピックアップ / 装備)、天井・10連保証・ピックアップ抽選を行う `pullBanner` |
 | `client/src/mock/battle.ts` | 決定論的(シード固定)な簡易シミュレータ。`BattleLog` を生成する(装備ドロップ・ガチャとは独立) |
-| `client/src/mock/index.ts` | `GameApi` と同じ形の `mockApi`(`inventory` / `equip` / `unequip` / `sellEquipment` / `getGacha` / `gachaPull` を含む)。`api()` が実装を切り替える |
+| `client/src/mock/index.ts` | `GameApi` と同じ形の `mockApi`(`inventory` / `equip` / `unequip` / `sellEquipment` / `favoriteEquipment` / `sellEquipmentBulk` / `getGacha` / `gachaPull` を含む)。`api()` が実装を切り替える |
 
 モックログには `BATTLE_START` / `TURN_START` / `ACTION_START` / `SKILL_USE` / `DAMAGE` /
 `HEAL` / `STATUS_APPLY` / `STATUS_TICK` / `STATUS_EXPIRE` / `STATUS_RESIST` /
@@ -447,7 +471,8 @@ allyDefeated / skillUsed をモック側でも実装済み)。**装備の特殊�
 
 - `client/src/audio/` に実装。`AudioManager.ts` がフレームワーク非依存のシングルトンで
   BGM/SFXの再生を持ち、`AudioProvider.tsx` が React Context として橋渡しする
-  (`useAudio().playSfx(key)` / `useAudio().setScene(scene)`)。
+  (`useAudio().playSfx(key)` / `useAudio().playSkillSfx(skillId, fallback)` /
+  `useAudio().setScene(scene)`)。
 - **割り当てデータ**: `data/system/audio.json`(`MasterDataResponse.audio`)を正とし、
   未配信/未起動でも壊れないよう `client/src/audio/defaultConfig.ts` に同内容のフォールバックを
   持つ(サーバが配信し始めたらそちらが優先される)。
@@ -461,6 +486,18 @@ allyDefeated / skillUsed をモック側でも実装済み)。**装備の特殊�
   (`DAMAGE`→`HIT`/`CRITICAL`、`SKILL_USE`→`SKILL`/`ULTIMATE`〈`fx` が `ult_` 始まりなら〉、
   `AWAKEN`/`COMBO`/`DEFEAT` はそのまま)。`playback.ts` の `useBattlePlayback` に渡す
   `onEvent` コールバックとして接続しており、スキップ再生(`silent`)では鳴らさない。
+- **スキル別効果音(第6ラウンド)**: `SKILL_USE` イベントだけは `sfxForEvent()` の結果を
+  `playSfx()` に直接渡さず、`onBattleEvent` が `audio.playSkillSfx(ev.skillId, fallback)` を
+  呼ぶ。`AudioConfig.skillSfx[ev.skillId]` に専用トラックの定義があればそれを優先して鳴らし
+  (`AudioManager.playSkillSfx`。間引きのgapキーは `skill:<skillId>` でSKILL/ULTIMATEの
+  間引きと独立させている)、無ければ従来どおり汎用の `SKILL`/`ULTIMATE` にフォールバックする。
+  **既知の課題(バックエンド側)**: `server/src/data/loader.ts` の `mergeAudioConfig()` が
+  `skillSfx` をレスポンスへコピーしておらず、`GET /api/master` の `audio.skillSfx` は
+  現状 `null` になる(`bgm`/`sfx`/`defaults` はコピーされているが `skillSfx` だけ漏れている)。
+  クライアント側のロジックは `GET /api/master` を横取りして `skillSfx` を注入した状態で
+  Playwrightで動作確認済み(`sk_momiji_kc_timeskip` → `skill_tokitobasi.wav` が正しく
+  再生される)。バックエンド側のこの一行修正が入るまでは、音源自体は存在していても
+  専用効果音は鳴らず、従来の汎用 `SKILL` にフォールバックし続ける(無音で壊れはしない)。
 - **自動再生制限への対応**: 最初のユーザー操作(`pointerdown`/`keydown`/`touchstart`)まで
   実際の再生は行わず、`setScene`/`playSfx` の呼び出しは「保留」するだけで画面には影響しない。
   最初の操作で保留中のBGMシーンを再生する。
@@ -528,5 +565,6 @@ client/src/
   utils/
     labels.ts                  日本語ラベル・戦力計算・ItemRarity/Rarity 共通のレアリティ解決
     combo.ts                   コンボ判定 + 未実装キャラの名前解決 (comboMemberName)
-    equipment.ts                装備ステータス差分の計算 (装着前後の比較プレビュー)
+    equipment.ts                装備ステータス差分の計算 (装着前後の比較プレビュー) /
+                                 一括売却プレビュー (estimateBulkSell / sellPriceEstimate)
 ```

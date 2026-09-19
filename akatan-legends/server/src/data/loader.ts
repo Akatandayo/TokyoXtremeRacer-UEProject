@@ -549,6 +549,9 @@ function mergeAudioConfig(loaded: Partial<AudioConfig>): AudioConfig {
     sfx: typeof loaded.sfx === 'object' && loaded.sfx ? loaded.sfx : DEFAULT_AUDIO_CONFIG.sfx,
   };
   if (loaded.defaults) merged.defaults = loaded.defaults;
+  // skillSfx(スキル個別の効果音)は任意項目。コピー漏れがあるとクライアントへ届かず
+  // 汎用SKILL音に黙ってフォールバックしてしまうため、必ず引き継ぐ。
+  if (typeof loaded.skillSfx === 'object' && loaded.skillSfx) merged.skillSfx = loaded.skillSfx;
   return merged;
 }
 
