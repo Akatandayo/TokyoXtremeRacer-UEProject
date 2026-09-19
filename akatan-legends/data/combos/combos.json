@@ -260,5 +260,34 @@
       }
     ],
     "fx": "combo_earth_guard"
+  },
+  {
+    "id": "kachou_fuugetsu_bond",
+    "name": "《花鳥風月》",
+    "kind": "TAG",
+    "description": "『花鳥風月』に関するキャラ、もしくは花・鳥・風・月をモチーフに持つキャラを2人以上編成すると成立する。本来は『関わるキャラが多いほど強くなる』設計だが、エンジンが人数に応じた可変ボーナスに未対応のため、成立時にパーティ全体のATKが底上げされる固定効果で近似している。",
+    "requireTag": {
+      "tag": "花鳥風月",
+      "count": 2
+    },
+    "trigger": {
+      "type": "ON_BATTLE_START",
+      "maxPerBattle": 1
+    },
+    "effects": [
+      {
+        "effect": {
+          "type": "STATUS",
+          "status": "ATK_UP",
+          "duration": 99,
+          "potency": 15,
+          "target": {
+            "side": "ALLY",
+            "pattern": "ALL"
+          }
+        }
+      }
+    ],
+    "fx": "combo_wind_bloom"
   }
 ]

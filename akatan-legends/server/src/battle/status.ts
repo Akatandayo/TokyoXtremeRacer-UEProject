@@ -28,9 +28,13 @@ export const DEBUFF_STATUS: readonly StatusType[] = [
   'POISON', 'BURN', 'BLEED', 'FREEZE', 'STUN', 'SILENCE', 'SLOW', 'DEF_DOWN', 'ATK_DOWN',
 ];
 
-/** 有利な状態 = 抵抗判定なしで必ず入る */
+/**
+ * 有利な状態 = 抵抗判定なしで必ず入る。
+ * INVULNERABLE/IMMUNE もここに含める: どちらも自分/味方にかける強化状態であり、
+ * SHIELD・TAUNT と同じ扱い(敵の耐性値で弾かれる筋合いが無い)にする。
+ */
 export const BUFF_STATUS: readonly StatusType[] = [
-  'ATK_UP', 'DEF_UP', 'SPD_UP', 'SHIELD', 'REGEN', 'TAUNT',
+  'ATK_UP', 'DEF_UP', 'SPD_UP', 'SHIELD', 'REGEN', 'TAUNT', 'INVULNERABLE', 'IMMUNE',
 ];
 
 /** 演出ログ用の日本語表記 */
@@ -38,6 +42,7 @@ export const STATUS_LABEL: Record<StatusType, string> = {
   POISON: '毒', BURN: '火傷', FREEZE: '氷結', STUN: 'スタン', SILENCE: '沈黙', BLEED: '出血',
   SLOW: '鈍足', DEF_DOWN: '防御低下', ATK_DOWN: '攻撃低下', ATK_UP: '攻撃上昇',
   DEF_UP: '防御上昇', SPD_UP: '速度上昇', SHIELD: 'シールド', REGEN: '再生', TAUNT: '挑発',
+  INVULNERABLE: '無敵', IMMUNE: '免疫',
 };
 
 export function isDot(type: StatusType): boolean {
@@ -73,6 +78,16 @@ export function isSilenced(unit: BattleUnit): boolean {
   return hasStatus(unit, 'SILENCE');
 }
 
+/** INVULNERABLE 中は受けるダメージが常に0になる (DoT含む)。HP・撃破判定はエンジン側の責務。 */
+export function isInvulnerable(unit: BattleUnit): boolean {
+  return hasStatus(unit, 'INVULNERABLE');
+}
+
+/** IMMUNE 中は状態異常(バフ・デバフ問わず)の新規付与を一切受け付けない。 */
+export function isStatusImmune(unit: BattleUnit): boolean {
+  return hasStatus(unit, 'IMMUNE');
+}
+
 export interface ApplyStatusOptions {
   type: StatusType;
   duration: number;
@@ -88,11 +103,13 @@ export interface ApplyStatusOptions {
 export type ApplyStatusOutcome =
   | { kind: 'APPLIED'; status: ActiveStatus }
   | { kind: 'RESISTED' }
+  /** IMMUNE により付与そのものが弾かれた (耐性による RESISTED とは別に区別して返す) */
+  | { kind: 'IMMUNE' }
   | { kind: 'MISSED' };
 
 /**
  * 状態を付与する。
- * 乱数の消費順は「発動確率 -> 抵抗判定」で固定 (どちらもスキップ条件では消費しない)。
+ * 乱数の消費順は「IMMUNE判定 -> 発動確率 -> 抵抗判定」で固定 (どれもスキップ条件では消費しない)。
  */
 export function applyStatus(
   unit: BattleUnit,
@@ -100,6 +117,15 @@ export function applyStatus(
   rng: Rng,
 ): ApplyStatusOutcome {
   if (!unit.alive) return { kind: 'MISSED' };
+
+  // 0) IMMUNE: バフ・デバフを問わず、状態異常の新規付与を一切受け付けない。
+  //    乱数を一切消費しない(確定ブロックなので判定の余地が無い)= IMMUNE を使わない
+  //    既存スキル・戦闘の乱数消費列には一切影響しない。
+  //    既にかかっている状態はここでは何も変更しない(解除しない。仕様どおり)。
+  //    これは「IMMUNE 自身の再付与(延長)」も等しくブロックすることを意味する
+  //    (一度 IMMUNE になったユニットへ重ねがけして duration を伸ばすことはできない)。
+  //    「一切受け付けない」を素直にそのまま適用した結果であり、シンプルさを優先した判断。
+  if (isStatusImmune(unit)) return { kind: 'IMMUNE' };
 
   // 1) スキル側の発動確率。100%指定なら乱数を消費しない (通常攻撃だらけの戦闘で列を汚さないため)。
   const chance = opts.chance ?? 100;

@@ -76,6 +76,19 @@ const SPECIALS: ItemSpecialEffect[] = [
 
 const RARITY_ORDER_LIST: ItemRarity[] = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'];
 
+/**
+ * 売却額(モック専用の簡易テーブル)。`sellEquipment` / `sellEquipmentBulk` の
+ * 両方から使う(第6ラウンドの一括売却追加時に、単発売却と同じ式へ揃えた)。
+ * バランス数値に意味はない(演出レビュー用)。
+ */
+const MOCK_SELL_MULT: Record<ItemRarity, number> = {
+  COMMON: 12, UNCOMMON: 24, RARE: 48, EPIC: 96, LEGENDARY: 220, MYTHIC: 520,
+};
+
+export function mockSellPrice(item: EquipmentInstance): number {
+  return Math.round((MOCK_SELL_MULT[item.rarity] ?? 12) * (1 + item.itemLevel * 0.06));
+}
+
 /** レアリティごとの倍率とアフィックス数 */
 function rarityProfile(r: ItemRarity): { mult: number; affixes: number; special: boolean } {
   switch (r) {

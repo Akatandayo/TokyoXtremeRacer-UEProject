@@ -41,7 +41,7 @@
   "combos": ["network_link"],
   "defaultAi": "ai_momiji_support",
   "description": "面倒見のいい世話焼きで、放っておくと自分の分の熱まで他人に配ってしまう。単体でも十分戦えるが、本領は独との通信中継にある。彼女が居るかどうかで、編成の総火力が別物になる。",
-  "tags": ["Network", "Buff", "Combo"],
+  "tags": ["Network", "Buff", "Combo", "花鳥風月"],
   "trpg": {
     "source": "身内CoC(架空卓)",
     "player": "PL-B(仮)",

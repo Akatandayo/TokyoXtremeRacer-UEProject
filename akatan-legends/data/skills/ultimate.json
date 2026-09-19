@@ -186,5 +186,103 @@
     ],
     "fx": "ult_dawn",
     "tags": ["Cleanse"]
+  },
+  {
+    "id": "ult_sota_impulse",
+    "name": "｛impulse｝",
+    "kind": "ULTIMATE",
+    "description": "《衝動》。三度斬り終えるまで、彼のHPは一切減らず、バフもデバフも一切届かない。覚悟が決まった者の顔で、加那星蒼太はただ前に出る。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 2.6,
+        "hits": 1
+      },
+      {
+        "type": "STATUS",
+        "status": "INVULNERABLE",
+        "duration": 3,
+        "actionDuration": 3,
+        "target": {
+          "side": "SELF",
+          "pattern": "SELF"
+        }
+      },
+      {
+        "type": "STATUS",
+        "status": "IMMUNE",
+        "duration": 3,
+        "actionDuration": 3,
+        "target": {
+          "side": "SELF",
+          "pattern": "SELF"
+        }
+      }
+    ],
+    "fx": "ult_void_impulse",
+    "tags": ["衝動", "Impulse"]
+  },
+  {
+    "id": "ult_fuuka_kachoufuugetsu",
+    "name": "【花鳥風月】",
+    "kind": "ULTIMATE",
+    "description": "「花」「鳥」「風」「月」――4つの力からランダムに1つだけが発動する奥義。花は次に動く味方の火力を、鳥は自分への一撃を、風は仲間全体の勢いを、月は敵の動きを操る。※本来の設定(花=次の味方ダメージ+10%増幅/鳥=次に受ける攻撃・デバフを絶対回避/風=ランダムな味方のスキルCTを0/月=ランダムな敵のスキルCTを+2)はいずれも厳密にはエンジン未対応のため、ATK_UP付与/自身への短時間INVULNERABLE付与(デバフ無効の部分は簡略化のため省略)/味方全体の行動ゲージ回復/敵単体へのSILENCE、という近い効果に置き換えている。",
+    "cooldown": 0,
+    "ultCost": 100,
+    "randomEffect": true,
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "STATUS",
+        "status": "ATK_UP",
+        "duration": 2,
+        "potency": 10,
+        "target": {
+          "side": "ALLY",
+          "pattern": "HIGHEST_ATK",
+          "count": 1
+        }
+      },
+      {
+        "type": "STATUS",
+        "status": "INVULNERABLE",
+        "duration": 1,
+        "actionDuration": 1,
+        "target": {
+          "side": "SELF",
+          "pattern": "SELF"
+        }
+      },
+      {
+        "type": "GAUGE",
+        "amount": 60,
+        "target": {
+          "side": "ALLY",
+          "pattern": "ALL"
+        }
+      },
+      {
+        "type": "STATUS",
+        "status": "SILENCE",
+        "duration": 2,
+        "chance": 70,
+        "target": {
+          "side": "ENEMY",
+          "pattern": "RANDOM",
+          "count": 1
+        }
+      }
+    ],
+    "fx": "ult_wind_kachoufuugetsu",
+    "tags": ["花鳥風月", "Random"]
   }
 ]

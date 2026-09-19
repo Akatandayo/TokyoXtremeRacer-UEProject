@@ -25,6 +25,8 @@ const ROLES = ['TANK', 'ATTACKER', 'SUPPORT', 'HEALER', 'CONTROL', 'SPECIALIST']
 const STATUS_TYPES = [
   'POISON', 'BURN', 'FREEZE', 'STUN', 'SILENCE', 'BLEED', 'SLOW', 'DEF_DOWN', 'ATK_DOWN',
   'ATK_UP', 'DEF_UP', 'SPD_UP', 'SHIELD', 'REGEN', 'TAUNT',
+  // shared/src/types.ts に追加されたステータス。強力なので duration/actionDuration で必ず制限すること。
+  'INVULNERABLE', 'IMMUNE',
 ];
 const STAT_KEYS = ['hp', 'attack', 'defense', 'speed', 'critical', 'criticalDamage', 'resistance', 'healing'];
 const SKILL_KINDS = ['NORMAL', 'ACTIVE', 'ULTIMATE', 'PASSIVE'];

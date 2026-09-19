@@ -12,9 +12,10 @@
  *   API上そもそも起こり得ない(EquipRequest が slot を受け取らないため)。
  */
 import type {
-  CharacterView, EquipmentInstance, EquipmentSlot, EquipResponse, InventoryResponse, SellEquipmentResponse,
+  BulkSellResponse, CharacterView, EquipmentInstance, EquipmentSlot, EquipResponse,
+  FavoriteEquipmentResponse, InventoryResponse, ItemRarity, SellEquipmentResponse,
 } from '@akatan/shared';
-import { EQUIPMENT_SLOTS } from '@akatan/shared';
+import { EQUIPMENT_SLOTS, ITEM_RARITIES } from '@akatan/shared';
 import * as repo from '../db/repository.js';
 import type { GameData } from '../data/loader.js';
 import { alreadyEquipped, badRequest, notFound, slotMismatch } from './app-error.js';
@@ -195,4 +196,97 @@ function repoPlayerProfileOrThrow(playerId: string) {
   const player = repo.findPlayer(playerId);
   if (!player) throw notFound(`プレイヤーが見つかりません: ${playerId}`);
   return player;
+}
+
+/* ============================================================
+ * お気に入り (第6ラウンド)
+ * ========================================================== */
+
+export function favoriteEquipment(
+  playerId: string,
+  data: GameData,
+  equipmentUidsRaw: unknown,
+  favoriteRaw: unknown,
+): FavoriteEquipmentResponse {
+  if (!Array.isArray(equipmentUidsRaw) || equipmentUidsRaw.length === 0) {
+    throw badRequest('equipmentUids は1件以上の配列である必要があります');
+  }
+  if (equipmentUidsRaw.some((v) => typeof v !== 'string' || v.length === 0)) {
+    throw badRequest('equipmentUids の各要素は文字列(uid)である必要があります');
+  }
+  if (typeof favoriteRaw !== 'boolean') {
+    throw badRequest('favorite は真偽値(true/false)である必要があります');
+  }
+  const uids = [...new Set(equipmentUidsRaw as string[])];
+
+  // 全件所持チェックしてから反映する(存在しないuidが混ざっていたら何も変更せずエラー)
+  for (const uid of uids) {
+    if (!repo.findEquipment(playerId, uid)) throw notFound(`所持していない装備です: ${uid}`);
+  }
+
+  repo.setEquipmentFavoriteBulk(playerId, uids, favoriteRaw);
+
+  return { inventory: buildInventoryResponse(playerId, data) };
+}
+
+/* ============================================================
+ * 一括売却 (第6ラウンド)
+ * ------------------------------------------------------------
+ * レアリティ一式(maxRarity 以下)をまとめて売却する。装備が余りすぎて
+ * ラグの原因になるのを防ぐための整理機能。装着中・お気に入りは必ず除外する。
+ * 売却額は sellEquipment() と同じ sellPrice() を使い、算出を重複実装しない。
+ * 削除は repo.deleteEquipmentBulk() で1回(チャンク単位)のDELETEにまとめ、
+ * 装備が数百件あっても1件ずつ往復しないようにする。
+ * ========================================================== */
+
+export function sellEquipmentBulk(
+  playerId: string,
+  data: GameData,
+  maxRarityRaw: unknown,
+  belowItemLevelRaw: unknown,
+): BulkSellResponse {
+  if (typeof maxRarityRaw !== 'string' || !ITEM_RARITIES.includes(maxRarityRaw as ItemRarity)) {
+    throw badRequest(`maxRarity は ${ITEM_RARITIES.join('/')} のいずれかである必要があります: ${String(maxRarityRaw)}`);
+  }
+  const maxRarity = maxRarityRaw as ItemRarity;
+
+  let belowItemLevel: number | undefined;
+  if (belowItemLevelRaw !== undefined && belowItemLevelRaw !== null) {
+    if (typeof belowItemLevelRaw !== 'number' || !Number.isFinite(belowItemLevelRaw) || belowItemLevelRaw <= 0) {
+      throw badRequest('belowItemLevel は正の数値である必要があります');
+    }
+    belowItemLevel = belowItemLevelRaw;
+  }
+
+  // maxRarity 以下のレアリティ一覧(COMMON〜MYTHIC の序列で判定)
+  const cutoff = ITEM_RARITIES.indexOf(maxRarity);
+  const targetRarities = ITEM_RARITIES.slice(0, cutoff + 1) as string[];
+
+  // SQL側でレアリティ(+アイテムレベル)まで絞り込んでから読む(全件スキャンしない)
+  const candidates = repo.listEquipmentByRarities(playerId, targetRarities, belowItemLevel);
+
+  const toSell: EquipmentInstance[] = [];
+  let skipped = 0;
+  for (const item of candidates) {
+    if (item.equippedBy || item.favorite) {
+      skipped += 1;
+      continue;
+    }
+    toSell.push(item);
+  }
+
+  const gold = toSell.reduce((sum, item) => sum + sellPrice(item), 0);
+
+  repo.inTransaction(() => {
+    if (toSell.length > 0) repo.deleteEquipmentBulk(playerId, toSell.map((item) => item.uid));
+    if (gold > 0) repo.addGold(playerId, gold);
+  });
+
+  return {
+    count: toSell.length,
+    gold,
+    skipped,
+    player: repoPlayerProfileOrThrow(playerId),
+    inventory: buildInventoryResponse(playerId, data),
+  };
 }

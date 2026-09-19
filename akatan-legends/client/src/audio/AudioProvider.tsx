@@ -5,6 +5,8 @@ import { audioManager, type AudioSettingsInput } from './AudioManager';
 
 interface AudioApi {
   playSfx: (key: SfxKey) => void;
+  /** スキル専用効果音があればそれを、無ければ fallback を鳴らす */
+  playSkillSfx: (skillId: string | undefined, fallback: SfxKey) => void;
   setScene: (scene: AudioScene) => void;
 }
 
@@ -32,6 +34,7 @@ export function AudioProvider({
 
   const api = useMemo<AudioApi>(() => ({
     playSfx: (key: SfxKey) => audioManager.playSfx(key),
+    playSkillSfx: (skillId: string | undefined, fallback: SfxKey) => audioManager.playSkillSfx(skillId, fallback),
     setScene: (scene: AudioScene) => audioManager.setScene(scene),
   }), []);
 

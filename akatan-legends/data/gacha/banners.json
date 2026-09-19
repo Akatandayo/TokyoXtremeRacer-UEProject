@@ -45,5 +45,22 @@
     },
     "equipment": { "dropTable": "dt_gacha_equipment", "itemLevel": 20 },
     "art": { "primary": "#D8C77A", "accent": "#FFF6C9" }
+  },
+  {
+    "id": "banner_pickup_sota_fuuka",
+    "name": "限定ピックアップ召喚『衝動と花鳥風月』",
+    "description": "加那星蒼太・月島風花、二人だけの専用限定バナー。二人はこのバナー以外(常設含む)には一切出現しない。専用チケット『花鳥風月・衝動チケット』でのみ回せる。",
+    "cost": { "currency": "TICKET", "amount": 1, "ticketId": "ticket_summon_kachoufuugetsu" },
+    "cost10": { "currency": "TICKET", "amount": 9, "ticketId": "ticket_summon_kachoufuugetsu" },
+    "rates": {
+      "rarity": { "N": 34, "R": 30, "SR": 20, "SSR": 15.9, "UR": 0.1 }
+    },
+    "pool": [
+      "enji", "hitori", "hokuto", "kurogane", "momiji", "rin", "sazanami", "shizuku", "yomi",
+      "sota", "fuuka"
+    ],
+    "pity": { "count": 80, "rarity": "UR" },
+    "guarantee10": "SSR",
+    "art": { "primary": "#7B2FBE", "accent": "#7CFFB2" }
   }
 ]

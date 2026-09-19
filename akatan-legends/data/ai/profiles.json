@@ -1053,5 +1053,103 @@
         "skill": "NORMAL"
       }
     ]
+  },
+  {
+    "id": "ai_sota_impulse",
+    "name": "覚悟のイッパツ",
+    "description": "必殺《衝動》で無敵化して押し切り、敵が揃っていれば《斬》で存在ごと薙ぎ、弱った相手や強化された相手には/招来\\で弱点を突く。加那星蒼太の既定戦術。",
+    "playerSelectable": true,
+    "rules": [
+      {
+        "priority": 10,
+        "condition": {
+          "type": "ULT_READY"
+        },
+        "skill": "ult_sota_impulse",
+        "comment": "必殺優先: 3回攻撃するまで無敵+状態異常無効で押し切る"
+      },
+      {
+        "priority": 20,
+        "condition": {
+          "type": "ENEMY_COUNT_ATLEAST",
+          "value": 3
+        },
+        "skill": "sk_sota_zan",
+        "comment": "敵3体以上で《斬》、まとめて存在ごと断つ"
+      },
+      {
+        "priority": 30,
+        "condition": {
+          "type": "ENEMY_HP_BELOW",
+          "value": 30
+        },
+        "skill": "sk_sota_shourai",
+        "comment": "弱った相手は弱点属性に変化する/招来\\で確実に仕留める"
+      },
+      {
+        "priority": 40,
+        "condition": {
+          "type": "ENEMY_HAS_BUFF"
+        },
+        "skill": "sk_sota_shourai",
+        "comment": "強化された敵は弱点を突いて崩す"
+      },
+      {
+        "priority": 50,
+        "condition": {
+          "type": "ALWAYS"
+        },
+        "skill": "sk_sota_zan",
+        "comment": "平時は《斬》を主軸にする"
+      },
+      {
+        "priority": 99,
+        "condition": {
+          "type": "ALWAYS"
+        },
+        "skill": "NORMAL"
+      }
+    ]
+  },
+  {
+    "id": "ai_fuuka_choujuu",
+    "name": "花鳥風月バッファー",
+    "description": "必殺【花鳥風月】を優先し、2ターン目以降は【鳥獣戯画】で攻撃役の手番を増やし、敵が複数いれば弾幕で牽制する。月島風花の既定戦術。",
+    "playerSelectable": true,
+    "rules": [
+      {
+        "priority": 10,
+        "condition": {
+          "type": "ULT_READY"
+        },
+        "skill": "ult_fuuka_kachoufuugetsu",
+        "comment": "必殺優先: 4つの効果からランダムに1つ"
+      },
+      {
+        "priority": 20,
+        "condition": {
+          "type": "TURN_ATLEAST",
+          "value": 2
+        },
+        "skill": "sk_fuuka_choujuugiga",
+        "comment": "2ターン目以降、平時は攻撃役のSPDを跳ね上げて手番を増やす(1ターン目はNORMALで様子見)"
+      },
+      {
+        "priority": 30,
+        "condition": {
+          "type": "ENEMY_COUNT_ATLEAST",
+          "value": 2
+        },
+        "skill": "sk_fuuka_danmaku",
+        "comment": "敵が複数いれば弾幕で牽制"
+      },
+      {
+        "priority": 99,
+        "condition": {
+          "type": "ALWAYS"
+        },
+        "skill": "NORMAL"
+      }
+    ]
   }
 ]

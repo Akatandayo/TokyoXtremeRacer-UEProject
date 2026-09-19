@@ -496,5 +496,43 @@
       }
     ],
     "fx": "dark_gunshot"
+  },
+  {
+    "id": "na_sota_katana",
+    "name": "日本刀",
+    "kind": "NORMAL",
+    "description": "黒鞘から一閃。ただの得物ではない、彼が「今の自分」を確かめるための刃。",
+    "cooldown": 0,
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.95,
+        "hits": 1
+      }
+    ],
+    "fx": "void_katana_slash"
+  },
+  {
+    "id": "na_fuuka_rednote",
+    "name": "アウトロー・レッドノート",
+    "kind": "NORMAL",
+    "description": "赤黒く染め上げた超長距離用スナイパーライフル。面倒くさがりのくせに、狙いだけは一切ブレない。",
+    "cooldown": 0,
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.85,
+        "hits": 1
+      }
+    ],
+    "fx": "gale_snipe_shot"
   }
 ]

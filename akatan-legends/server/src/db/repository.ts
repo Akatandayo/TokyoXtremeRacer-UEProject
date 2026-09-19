@@ -433,6 +433,7 @@ interface EquipmentRow {
   enhance_level: number;
   seed: number | null;
   equipped_by: string | null;
+  favorite: number;
   obtained_at: string;
 }
 
@@ -456,6 +457,7 @@ function toEquipmentInstance(row: EquipmentRow): EquipmentInstance {
   if (row.enhance_level) item.enhanceLevel = row.enhance_level;
   if (typeof row.seed === 'number') item.seed = row.seed;
   if (row.equipped_by) item.equippedBy = row.equipped_by;
+  if (row.favorite) item.favorite = true;
   return item;
 }
 
@@ -463,8 +465,8 @@ export function insertEquipment(playerId: string, item: EquipmentInstance, db: D
   db.prepare(
     `INSERT INTO equipment
        (uid, player_id, base_id, slot, rarity, name, item_level, prefix_id, suffix_id,
-        stats, stats_percent, special, enhance_level, seed, equipped_by, obtained_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        stats, stats_percent, special, enhance_level, seed, equipped_by, favorite, obtained_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     item.uid,
     playerId,
@@ -481,6 +483,7 @@ export function insertEquipment(playerId: string, item: EquipmentInstance, db: D
     item.enhanceLevel ?? 0,
     typeof item.seed === 'number' ? item.seed : null,
     item.equippedBy ?? null,
+    item.favorite ? 1 : 0,
     item.obtainedAt ?? new Date().toISOString(),
   );
   return item;
@@ -516,6 +519,73 @@ export function setEquipmentEquippedBy(
 export function deleteEquipment(playerId: string, uid: string, db: Db = getDb()): boolean {
   const info = db.prepare('DELETE FROM equipment WHERE player_id = ? AND uid = ?').run(playerId, uid);
   return info.changes > 0;
+}
+
+/** IN句のプレースホルダ数上限に引っかからないよう分割送信するチャンクサイズ */
+const SQL_IN_CHUNK_SIZE = 500;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/**
+ * レアリティ(と任意でアイテムレベル)で装備を絞り込む(一括売却用)。
+ * 装備数が多い前提の一括売却で、全件を読んでからJSでフィルタするのではなく
+ * SQL側で対象を絞ることで安価にする。
+ */
+export function listEquipmentByRarities(
+  playerId: string,
+  rarities: string[],
+  belowItemLevel: number | undefined,
+  db: Db = getDb(),
+): EquipmentInstance[] {
+  if (rarities.length === 0) return [];
+  const placeholders = rarities.map(() => '?').join(',');
+  let sql = `SELECT * FROM equipment WHERE player_id = ? AND rarity IN (${placeholders})`;
+  const params: unknown[] = [playerId, ...rarities];
+  if (typeof belowItemLevel === 'number') {
+    sql += ' AND item_level < ?';
+    params.push(belowItemLevel);
+  }
+  sql += ' ORDER BY obtained_at ASC, uid ASC';
+  const rows = db.prepare(sql).all(...params) as EquipmentRow[];
+  return rows.map(toEquipmentInstance);
+}
+
+/**
+ * 一括売却: 指定uid群を1回(数が多い場合はチャンク単位)のDELETEでまとめて削除する。
+ * 1件ずつ往復しないことで装備が数百件あっても重くならないようにする。
+ */
+export function deleteEquipmentBulk(playerId: string, uids: string[], db: Db = getDb()): number {
+  let deleted = 0;
+  for (const batch of chunk(uids, SQL_IN_CHUNK_SIZE)) {
+    const placeholders = batch.map(() => '?').join(',');
+    const info = db
+      .prepare(`DELETE FROM equipment WHERE player_id = ? AND uid IN (${placeholders})`)
+      .run(playerId, ...batch);
+    deleted += info.changes;
+  }
+  return deleted;
+}
+
+/** お気に入りの一括on/off。こちらも1件ずつ往復しない。 */
+export function setEquipmentFavoriteBulk(
+  playerId: string,
+  uids: string[],
+  favorite: boolean,
+  db: Db = getDb(),
+): number {
+  let changed = 0;
+  for (const batch of chunk(uids, SQL_IN_CHUNK_SIZE)) {
+    const placeholders = batch.map(() => '?').join(',');
+    const info = db
+      .prepare(`UPDATE equipment SET favorite = ? WHERE player_id = ? AND uid IN (${placeholders})`)
+      .run(favorite ? 1 : 0, playerId, ...batch);
+    changed += info.changes;
+  }
+  return changed;
 }
 
 /** OwnedCharacter.equipment (JSON列) のスロットを更新する */

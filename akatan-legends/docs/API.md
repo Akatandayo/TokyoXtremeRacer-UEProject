@@ -567,6 +567,70 @@ curl -s -X POST localhost:8787/api/equipment/sell -H 'content-type: application/
 
 ---
 
+### POST /api/equipment/favorite (第6ラウンド)
+
+`FavoriteEquipmentRequest` → `FavoriteEquipmentResponse`。実装は `equipment-service.ts: favoriteEquipment()`。
+
+- `equipmentUids`(1件以上の配列) + `favorite`(真偽値)で複数の装備をまとめて on/off できる。
+- 1件でも所持していない uid が混ざっていれば何も変更せず `NOT_FOUND`。
+- `EquipmentInstance.favorite` として DB(`equipment.favorite` 列)へ永続化される。
+  `true` の装備は `sell-bulk` の対象から必ず除外される。
+
+```bash
+curl -s -X POST localhost:8787/api/equipment/favorite -H 'content-type: application/json' \
+  -d '{"equipmentUids":["eq_b5108264-..."],"favorite":true}'
+```
+
+```json
+{ "ok": true, "data": { "inventory": { "equipment": [ { "uid": "eq_b5108264-...", "favorite": true, "...": "他は変化なし" } ], "materials": [], "tickets": [] } } }
+```
+
+---
+
+### POST /api/equipment/sell-bulk (第6ラウンド)
+
+`BulkSellRequest` → `BulkSellResponse`。実装は `equipment-service.ts: sellEquipmentBulk()`。
+装備が余りすぎてラグの原因になるのを防ぐための一括整理機能。
+
+- `maxRarity` で指定したレアリティ**以下**をすべて売る
+  (`ITEM_RARITIES = [COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, MYTHIC]` の序列で判定。
+  例: `"LEGENDARY"` を指定すると COMMON〜LEGENDARY が対象になり、MYTHIC は残る)。
+- `belowItemLevel` を指定すると、そのアイテムレベル**未満**だけがさらに対象になる。
+- **装着中の装備は必ず除外**(`sell`と同じ規則)。
+- **`favorite: true` の装備は必ず除外**。
+- 除外した件数(装着中+お気に入り)を `skipped` で返す。
+- 売却額は `sell` と同じ `sellPrice()`(レアリティ基準額 × `1 + (itemLevel-1) * 0.05`)を再利用しており、
+  算出ロジックの重複実装はしていない。
+- 性能: 対象候補は SQL側で `rarity IN (...)` (`+ item_level < ?`)まで絞り込んでから読み、
+  削除は `DELETE ... WHERE uid IN (...)` のチャンク一括実行(`repo.deleteEquipmentBulk()`、
+  1チャンク最大500件)。1件ずつDELETEを往復しないため、装備が数百〜数千件あっても軽い
+  (実機確認: 2000件の一括売却で約70ms)。削除+所持金加算は `repo.inTransaction` で1トランザクション。
+
+```bash
+curl -s -X POST localhost:8787/api/equipment/sell-bulk -H 'content-type: application/json' \
+  -d '{"maxRarity":"LEGENDARY"}'
+```
+
+```json
+{
+  "ok": true,
+  "data": {
+    "count": 306,
+    "gold": 3749,
+    "skipped": 3,
+    "player": { "...": "gold加算後" },
+    "inventory": { "equipment": [ "...": "MYTHIC・装着中・お気に入りだけが残る" ], "materials": [], "tickets": [] }
+  }
+}
+```
+
+```json
+// maxRarity が不正 -> HTTP 400
+{"ok":false,"error":{"code":"BAD_REQUEST","message":"maxRarity は COMMON/UNCOMMON/RARE/EPIC/LEGENDARY/MYTHIC のいずれかである必要があります: ULTRA"}}
+```
+
+---
+
 ### GET /api/gacha
 
 `GachaListResponse`。バナー一覧・天井カウンタ・所持チケット。
@@ -1018,6 +1082,20 @@ CREATE TABLE raid_states (
 - `raid-service.ts: attackRaidBoss()` が1回の挑戦で行うこと(すべて1トランザクション):
   状態の保存(`repo.saveRaidState()`)→ EXP/ゴールド付与 → 参加報酬抽選(`attemptDropTable`)→
   (このターンで撃破したときだけ)撃破報酬抽選(`dropTable`)。
+
+### v5 → v6 マイグレーション(第6ラウンド: 装備のお気に入り / 一括売却)
+
+```sql
+ALTER TABLE equipment ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;
+```
+
+- 既存行は `favorite = 0`(お気に入りなし)のまま起動できる。破壊的変更なし
+  (実機確認: v5 で作った DB を v6 のコードで開くと `schema v5 -> v6` とログに出て正常起動する)。
+- `POST /api/equipment/favorite` が `repo.setEquipmentFavoriteBulk()` でこの列を on/off する。
+- `POST /api/equipment/sell-bulk` の一括売却は `repo.listEquipmentByRarities()` で
+  `rarity IN (...)` (+ `item_level < ?`) まで SQL側で絞り込んでから読み、削除は
+  `repo.deleteEquipmentBulk()` が `DELETE ... WHERE uid IN (...)` を最大500件ずつのチャンクで
+  実行する(1件ずつ往復しない)。詳細は §2 の `POST /api/equipment/sell-bulk` を参照。
 
 ---
 

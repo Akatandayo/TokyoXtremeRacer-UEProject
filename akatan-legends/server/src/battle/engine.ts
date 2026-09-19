@@ -25,17 +25,19 @@
  *   演出の生命線。全イベントに seq/tick を振り、HP・ゲージ・状態が動くイベントには
  *   適用直後の全ユニット snapshot を添える。フロントはイベント列だけで完全再生できる。
  */
-import type {
-  ActiveStatus, AffinityTable, Awakening, BattleEvent, BattleEventType, BattleLog,
-  BattleResult, BattleUnit, BattleUnitSnapshot, BattleUnitStat, ComboDef, ComboEffect, Element,
-  ItemSpecialEffect, ProgressionConfig, Side, Skill, SkillEffect, StatKey, StatusType,
+import {
+  ELEMENTS,
+  type ActiveStatus, type AffinityTable, type Awakening, type BattleEvent, type BattleEventType,
+  type BattleLog, type BattleResult, type BattleUnit, type BattleUnitSnapshot, type BattleUnitStat,
+  type ComboDef, type ComboEffect, type Element, type ItemSpecialEffect, type ProgressionConfig,
+  type Side, type Skill, type SkillEffect, type StatKey, type StatusType,
 } from '@akatan/shared';
 import type { BattleContext, CombatantInput, RunBattle } from './contract.js';
 import { createRng, type Rng } from './rng.js';
 import { affinityMultiplier, computeDamage, computeHeal } from './damage.js';
 import {
   advanceStatuses, absorbWithShield, applyStatus, cleanseDebuffs, clearAll, computeStatusTick,
-  effectiveStat, incapacitatingReason, isIncapacitated, STATUS_LABEL,
+  effectiveStat, hasStatus, incapacitatingReason, isIncapacitated, STATUS_LABEL,
 } from './status.js';
 import { decideAction, hpRatio, selectTargets, profileTendency, type AiUnit } from './ai.js';
 import { qualifyCombos, type ComboRuntime } from './combo.js';
@@ -214,7 +216,8 @@ class BattleRunner {
         if (e.type !== 'STATUS' || !e.status) continue;
         applyStatus(u, {
           type: e.status,
-          duration: e.duration ?? 9999,
+          // actionDuration 指定時は duration の代わりにそちらを使う (effectStatus と同じ規約)。
+          duration: e.actionDuration ?? e.duration ?? 9999,
           potency: e.potency ?? 0,
           sourceId: u.id,
           ignoreResistance: true,
@@ -440,14 +443,29 @@ class BattleRunner {
     });
     const skill = decision.skill;
 
+    // randomEffect: 効果をランダムに1つだけ選ぶ。乱数消費はここで rng.pick 1回だけ
+    // (「1つの技の発動」につき1回。resolveEffects は他の呼び出し元(コンボ経由の
+    // applySkillEffects)でも同じ規約で1回だけ呼ぶ)。
+    // ここで先に選んでおくことで、SKILL_USE の時点で「どの効果が選ばれたか」を
+    // テキストに残せる(選ばれなかった効果は以後一切参照されない = 見た目にも影響しない)。
+    const effectsToApply = this.resolveEffects(skill);
+    const primaryEffect = effectsToApply[0];
+    const announceTarget = decision.targets[0];
+    // adaptElement: 対象の弱点属性を採用する。乱数は使わない(テーブル参照のみ)。
+    const announceElement: Element = primaryEffect?.adaptElement && announceTarget
+      ? this.adaptedElement(announceTarget.element)
+      : (primaryEffect?.element ?? actor.element);
+
     this.emit('SKILL_USE', {
       sourceId: actor.id,
-      targetId: decision.targets[0]?.id,
+      targetId: announceTarget?.id,
       skillId: skill.id,
       skillName: skill.name,
-      element: skill.effects[0]?.element ?? actor.element,
+      element: announceElement,
       fx: skill.fx,
-      text: `${actor.name} の ${skill.name}！`,
+      text: skill.randomEffect && primaryEffect
+        ? `${actor.name} の ${skill.name}！（${this.describeEffect(primaryEffect)}）`
+        : `${actor.name} の ${skill.name}！`,
     });
 
     actor.skillUseCount.set(skill.id, (actor.skillUseCount.get(skill.id) ?? 0) + 1);
@@ -463,7 +481,9 @@ class BattleRunner {
     if (skill.cooldown > 0) actor.cooldowns.set(skill.id, skill.cooldown + 1);
 
     // --- 5. 効果適用 ---
-    this.applySkillEffects(actor, skill, decision.targets);
+    // effectsToApply は SKILL_USE 直前に resolveEffects() で確定済み(rng.pick はそこで1回消費済み)。
+    // ここで再度 resolveEffects を呼ばない = randomEffect スキルの乱数消費が2回になるのを防ぐ。
+    this.applySkillEffects(actor, skill, decision.targets, effectsToApply);
 
     // --- 5.5 コンボ判定 (ON_SKILL_USE) ---
     // 「使った直後」なので、効果適用(ダメージ等)が全部終わった後に判定する。
@@ -519,6 +539,20 @@ class BattleRunner {
     const t = computeStatusTick(unit);
     for (const d of t.damage) {
       if (!unit.alive) break;
+      // INVULNERABLE: DoT を含め、受けるダメージは常に0になる。
+      // computeStatusTick は無敵を知らない(HPへの反映はエンジン側の責務、との既存方針どおり)ので、
+      // ここで弾く。素の「applied<=0なら出さない」ガード(下の通常経路)とは別に、
+      // 無敵で防いだこと自体をプレイヤーに見せたいので、value:0 の STATUS_TICK を明示的に出す
+      // (通常の 0 ダメージ抑止とは違う理由の0なので、あえて出す判断)。
+      if (hasStatus(unit, 'INVULNERABLE')) {
+        this.emit('STATUS_TICK', {
+          targetId: unit.id,
+          status: d.type,
+          value: 0,
+          text: `${unit.name} は無敵状態で ${STATUS_LABEL[d.type]} のダメージを受けない！`,
+        });
+        continue;
+      }
       const before = unit.hp;
       unit.hp = Math.max(0, unit.hp - d.value);
       const applied = before - unit.hp;
@@ -576,10 +610,57 @@ class BattleRunner {
    * スキル効果
    * ====================================================== */
 
-  private applySkillEffects(actor: EngineUnit, skill: Skill, baseTargets: EngineUnit[]): void {
+  /**
+   * randomEffect: true のスキルは effects から**ランダムに1つだけ**を適用する。
+   * 乱数消費はここで rng.pick を1回だけ (呼び出し元がこのメソッドを1回呼ぶごとに1回)。
+   * false/未指定のスキルは skill.effects をそのまま返し、乱数は一切消費しない
+   * (= randomEffect を使わない既存スキルの決定論・乱数消費列には一切影響しない)。
+   */
+  private resolveEffects(skill: Skill): SkillEffect[] {
+    if (skill.randomEffect && skill.effects.length > 0) {
+      return [this.rng.pick(skill.effects)];
+    }
+    return skill.effects;
+  }
+
+  /** randomEffect のログ表示用に、効果の種別を簡潔な日本語にする。 */
+  private describeEffect(effect: SkillEffect | undefined): string {
+    if (!effect) return '';
+    if (effect.status) return STATUS_LABEL[effect.status];
+    switch (effect.type) {
+      case 'DAMAGE': return 'ダメージ';
+      case 'HEAL': return '回復';
+      case 'CLEANSE': return '状態解除';
+      case 'GAUGE': return '行動ゲージ';
+      case 'ULT_GAUGE': return '必殺ゲージ';
+      default: return effect.type;
+    }
+  }
+
+  /**
+   * adaptElement: 対象が「弱点とする属性」を返す = 対象への攻撃倍率が最も高くなる属性。
+   * ELEMENTS の並び順で走査し、厳密な '>' でだけ更新するので、同率の場合は必ず
+   * 並び順で先頭のものが残る(決定論)。テーブル参照のみで乱数は一切使わない。
+   */
+  private adaptedElement(defender: Element): Element {
+    let best: Element = ELEMENTS[0];
+    let bestMul = -Infinity;
+    for (const el of ELEMENTS) {
+      const mul = affinityMultiplier(this.affinity as Record<string, Record<string, number>>, el, defender);
+      if (mul > bestMul) {
+        bestMul = mul;
+        best = el;
+      }
+    }
+    return best;
+  }
+
+  private applySkillEffects(
+    actor: EngineUnit, skill: Skill, baseTargets: EngineUnit[], effects: SkillEffect[] = skill.effects,
+  ): void {
     const tendency = profileTendency(this.ctx.aiProfiles.get(actor.aiProfileId));
 
-    for (const effect of skill.effects) {
+    for (const effect of effects) {
       if (!actor.alive) break;
       // 効果ごとに対象が上書きされる場合は再選択。されない場合は選択済みの対象から死者を除く。
       const targets = effect.target
@@ -621,11 +702,40 @@ class BattleRunner {
     // 転生の SKILL_POWER (§17〜§19): actor.skillPowerMul は rebirthMods 未指定なら常に1なので、
     // ここで乗じても既存の呼び出し(乱数消費・数値)には一切影響しない。
     const power = (effect.power ?? 1) * actor.skillPowerMul;
-    const element: Element = effect.element ?? actor.element;
+    // adaptElement: 対象の弱点属性(=対象への倍率が最も高い属性)で計算する。element 指定より優先。
+    // adaptedElement はテーブル参照のみで乱数を使わないため、決定論・乱数消費には影響しない。
+    const element: Element = effect.adaptElement
+      ? this.adaptedElement(target.element)
+      : (effect.element ?? actor.element);
     const affinity = affinityMultiplier(this.affinity as Record<string, Record<string, number>>, element, target.element);
 
     for (let i = 0; i < hits; i++) {
       if (!target.alive || !actor.alive) break;
+
+      // INVULNERABLE: 受けるダメージを常に0にする(撃破もされない)。
+      // ダメージ計算自体を丸ごとスキップする = 乱数(会心判定・乱数幅)を一切消費しない
+      // (INVULNERABLE を使わない既存スキル/戦闘の乱数消費列には一切影響しない)。
+      // 「防いだ」ことが分かるよう、value:0 の DAMAGE イベントを明示的に出す。
+      // (通常の DAMAGE は最低1ダメージ保証で value===0 になり得ないため、
+      //  このイベント自体が「無効化された」ことのシグナルになる。抑止せずそのまま出す判断)
+      // 被弾ゲージ加算・ON_ATTACK/ON_HIT_TAKEN 特殊効果も「実際に何も起きていない」ので発火させない。
+      if (hasStatus(target, 'INVULNERABLE')) {
+        this.emit('DAMAGE', {
+          sourceId: actor.id,
+          targetId: target.id,
+          skillId: skill.id,
+          skillName: skill.name,
+          value: 0,
+          critical: false,
+          affinity,
+          element,
+          fx: skill.fx,
+          text: `${actor.name} の ${skill.name}！ ${target.name} は無敵状態で無効化した！`,
+          ...(grouped && i === 0 ? { grouped: true } : {}),
+        });
+        continue;
+      }
+
       const res = computeDamage({
         attackStat: this.scalingValue(actor, effect.scaling),
         power,
@@ -724,7 +834,11 @@ class BattleRunner {
     if (!effect.status) return;
     const outcome = applyStatus(target, {
       type: effect.status,
-      duration: effect.duration ?? 1,
+      // actionDuration: 「自身の行動回数」で切れる状態を指定したい場合の別名。
+      // ActiveStatus.duration の単位は元々「そのユニット自身の行動回数」(advanceStatuses参照)
+      // なので意味は重複している。無理に別実装せず、指定されていれば duration へそのまま
+      // 流し込むだけにする(シンプルさ優先の判断)。
+      duration: effect.actionDuration ?? effect.duration ?? 1,
       potency: effect.potency ?? 0,
       sourceId: actor.id,
       chance: effect.chance ?? 100,
@@ -732,6 +846,19 @@ class BattleRunner {
       ignoreResistance: target.id === actor.id,
     }, this.rng);
 
+    if (outcome.kind === 'IMMUNE') {
+      // IMMUNE: RESISTED (耐性ロールで弾かれた) とは別の理由なので、テキストで区別する。
+      this.emit('STATUS_RESIST', {
+        sourceId: actor.id,
+        targetId: target.id,
+        skillId: skill.id,
+        skillName: skill.name,
+        status: effect.status,
+        text: `${target.name} は状態異常を受け付けない！`,
+        ...(grouped ? { grouped: true } : {}),
+      });
+      return;
+    }
     if (outcome.kind === 'RESISTED') {
       this.emit('STATUS_RESIST', {
         sourceId: actor.id,
@@ -903,6 +1030,16 @@ class BattleRunner {
       ignoreResistance,
     }, this.rng);
 
+    if (outcome.kind === 'IMMUNE') {
+      this.emit('STATUS_RESIST', {
+        sourceId,
+        targetId: target.id,
+        skillName: special.name,
+        status: special.status,
+        text: `${target.name} は 装備の特殊効果「${special.name}」を受け付けない！`,
+      });
+      return;
+    }
     if (outcome.kind === 'RESISTED') {
       this.emit('STATUS_RESIST', {
         sourceId,
@@ -938,6 +1075,10 @@ class BattleRunner {
     special: ItemSpecialEffect, actor: EngineUnit, target: EngineUnit,
   ): void {
     if (!special.bonusDamage || special.bonusDamage <= 0) return;
+    // INVULNERABLE: 現状の呼び出し経路 (triggerOnAttackSpecials) は effectDamage 側の
+    // 無敵チェックで既に呼ばれなくなっているため到達しないが、将来の呼び出し元追加に備えた
+    // 安全弁として同じ判断をここにも置く(乱数消費前にreturnするので決定論への影響もない)。
+    if (hasStatus(target, 'INVULNERABLE')) return;
     const element = actor.element;
     const affinity = affinityMultiplier(
       this.affinity as Record<string, Record<string, number>>, element, target.element,
@@ -1110,7 +1251,9 @@ class BattleRunner {
       const targets = selectTargets(
         performer, skill.target, this.alliesOf(performer), this.foesOf(performer), this.rng, tendency,
       );
-      this.applySkillEffects(performer, skill, targets);
+      // コンボ経由で発動する既存スキルが randomEffect を持つ場合も、通常の発動と同じ規約
+      // (resolveEffects で rng.pick 1回だけ)を適用する。
+      this.applySkillEffects(performer, skill, targets, this.resolveEffects(skill));
       return;
     }
 
@@ -1318,7 +1461,9 @@ export function damageText(
 }
 
 /** バフは「〜が上がった」、デバフは「〜状態になった」で語調を分ける */
-const BUFFY: readonly StatusType[] = ['ATK_UP', 'DEF_UP', 'SPD_UP', 'SHIELD', 'REGEN', 'TAUNT'];
+const BUFFY: readonly StatusType[] = [
+  'ATK_UP', 'DEF_UP', 'SPD_UP', 'SHIELD', 'REGEN', 'TAUNT', 'INVULNERABLE', 'IMMUNE',
+];
 function statusApplyText(target: string, type: StatusType): string {
   const label = STATUS_LABEL[type];
   if (type === 'SHIELD') return `${target} に ${label} が張られた！`;

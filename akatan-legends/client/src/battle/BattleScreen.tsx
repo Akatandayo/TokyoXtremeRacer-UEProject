@@ -19,7 +19,9 @@ import {
 
 /**
  * 戦闘イベント -> 効果音の割り当て。
- * DAMAGE は会心なら CRITICAL、SKILL_USE は必殺技(fx が ult_ で始まる)なら ULTIMATE。
+ * DAMAGE は会心なら CRITICAL、SKILL_USE は必殺技(fx が ult_ で始まる)なら ULTIMATE
+ * (SKILL_USE の実際の再生は `playSkillSfx` 経由。`AudioConfig.skillSfx` に該当スキルIDの
+ * 定義があればそちらを優先し、無ければここで返す SKILL/ULTIMATE を鳴らす)。
  */
 function sfxForEvent(ev: BattleEvent): SfxKey | null {
   switch (ev.type) {

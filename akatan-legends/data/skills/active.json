@@ -710,5 +710,96 @@
       }
     ],
     "fx": "holy_aegis"
+  },
+  {
+    "id": "sk_sota_zan",
+    "name": "《斬》",
+    "kind": "ACTIVE",
+    "description": "刃が触れた「存在」そのものを断つ。傷ではなく在り方ごと斬られた相手は、抗う力そのものが鈍る。",
+    "cooldown": 4,
+    "target": {
+      "side": "ENEMY",
+      "pattern": "ALL"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.85
+      },
+      {
+        "type": "STATUS",
+        "status": "DEF_DOWN",
+        "duration": 2,
+        "potency": 15,
+        "chance": 40
+      }
+    ],
+    "fx": "void_zan_erase",
+    "tags": ["斬", "VoidCut"]
+  },
+  {
+    "id": "sk_sota_shourai",
+    "name": "/招来\\",
+    "kind": "ACTIVE",
+    "description": "変幻自在――呼び出す一撃は、斬る瞬間に相手の弱点属性へと姿を変える。",
+    "cooldown": 5,
+    "target": {
+      "side": "ENEMY",
+      "pattern": "SINGLE"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 1.75,
+        "adaptElement": true
+      }
+    ],
+    "fx": "void_shourai_call",
+    "tags": ["招来", "AdaptElement"]
+  },
+  {
+    "id": "sk_fuuka_danmaku",
+    "name": "弾幕",
+    "kind": "ACTIVE",
+    "description": "色とりどりの弾幕が鳥の群れのように広がる。当たれば火薬より羽の匂いがする、そんな戯れの全体攻撃。",
+    "cooldown": 3,
+    "target": {
+      "side": "ENEMY",
+      "pattern": "ALL"
+    },
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "power": 0.75
+      }
+    ],
+    "fx": "gale_danmaku_burst",
+    "tags": ["鳥", "Nuke"]
+  },
+  {
+    "id": "sk_fuuka_choujuugiga",
+    "name": "【鳥獣戯画】",
+    "kind": "ACTIVE",
+    "description": "戯画の獣たちが次に動く味方の背を押す。狙った一人のSPDを大きく跳ね上げ、行動ゲージも大量に前借りさせて、事実上もう一度動けるようにする。※本来の設定は『次に味方が攻撃するタイミングで攻撃前にSPDを2倍にし、敵SPDの2倍以上ならそのまま2回行動させる』という条件付き効果だが、エンジンがその厳密な分岐に未対応のため、SPD_UP(潜在値100=2倍相当)+行動ゲージ大回復という近似で表現している。",
+    "cooldown": 4,
+    "target": {
+      "side": "ALLY",
+      "pattern": "HIGHEST_ATK",
+      "count": 1
+    },
+    "effects": [
+      {
+        "type": "STATUS",
+        "status": "SPD_UP",
+        "duration": 2,
+        "potency": 100
+      },
+      {
+        "type": "GAUGE",
+        "amount": 100
+      }
+    ],
+    "fx": "buff_choujuu_gauge",
+    "tags": ["鳥", "Buff", "GaugeApprox"]
   }
 ]

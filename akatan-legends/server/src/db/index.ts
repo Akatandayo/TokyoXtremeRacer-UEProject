@@ -184,6 +184,16 @@ const MIGRATIONS: ((db: Db) => void)[] = [
       db.exec('ALTER TABLE raid_states ADD COLUMN clears INTEGER NOT NULL DEFAULT 0');
     }
   },
+
+  // --- v5 -> v6 (第6ラウンド: 装備のお気に入り / 一括売却) ---
+  //   - equipment.favorite: 0/1。true の装備は一括売却(sell-bulk)から必ず除外される。
+  //     既存行は 0(お気に入りなし)のまま起動できる。
+  (db) => {
+    const cols = db.prepare('PRAGMA table_info(equipment)').all() as { name: string }[];
+    if (!cols.some((c) => c.name === 'favorite')) {
+      db.exec('ALTER TABLE equipment ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0');
+    }
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

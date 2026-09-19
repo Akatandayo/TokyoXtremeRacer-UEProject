@@ -10,7 +10,7 @@
  *    それまでの setScene/playSfx 呼び出しは「保留」するだけで、画面には一切影響しない。
  *  - 音源が読めない/再生に失敗しても例外を投げない(常に握りつぶして無音で続行)。
  */
-import type { AudioConfig, AudioScene, SfxKey } from '@akatan/shared';
+import type { AudioConfig, AudioScene, AudioTrack, SfxKey } from '@akatan/shared';
 import { resolveAudioSrc } from './resolve';
 import { DEFAULT_AUDIO_CONFIG } from './defaultConfig';
 
@@ -105,16 +105,39 @@ class AudioManager {
     if (this.settings.muted) return;
     const track = this.config.sfx?.[key];
     if (!track || !track.file) return;
-
-    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     const gap = SFX_MIN_GAP_MS[key] ?? DEFAULT_MIN_GAP_MS;
-    const last = this.lastPlayedAt.get(key) ?? 0;
-    if (now - last < gap) return;
+    this.playTrack(track, key, gap);
+  }
+
+  /**
+   * スキル専用効果音(`AudioConfig.skillSfx`)。定義があればそちらを優先して鳴らし、
+   * 無ければ従来どおり `fallback`(`SKILL`/`ULTIMATE` 等)を鳴らす。
+   * 特定の技にボイス/固有効果音を当てるための仕組み(第6ラウンド)。
+   */
+  playSkillSfx(skillId: string | undefined, fallback: SfxKey): void {
+    const track = skillId ? this.config.skillSfx?.[skillId] : undefined;
+    if (!track || !track.file) {
+      this.playSfx(fallback);
+      return;
+    }
+    if (!this.available) return;
+    this.attachUnlockListeners();
+    if (!this.unlocked) return;
+    if (this.settings.muted) return;
+    const gap = SFX_MIN_GAP_MS[fallback] ?? DEFAULT_MIN_GAP_MS;
+    this.playTrack(track, `skill:${skillId}`, gap);
+  }
+
+  /** `playSfx` / `playSkillSfx` 共通の再生処理(間引き・音量・プール確保・失敗握りつぶし)。 */
+  private playTrack(track: AudioTrack, gapKey: string, gapMs: number): void {
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const last = this.lastPlayedAt.get(gapKey) ?? 0;
+    if (now - last < gapMs) return;
 
     const vol = Math.max(0, Math.min(1, (track.volume ?? this.config.defaults?.sfx ?? 0.5) * this.settings.sfxVolume));
     if (vol <= 0) return;
 
-    this.lastPlayedAt.set(key, now);
+    this.lastPlayedAt.set(gapKey, now);
     try {
       this.ensureSfxPool();
       const el = this.pickFreeSfxEl();

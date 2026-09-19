@@ -37,7 +37,7 @@
   "combos": ["first_strike_duet"],
   "defaultAi": "ai_rin_control",
   "description": "口数が少なく、必要なときだけ前に出る剣士。火力は平凡だが素の速度が最上位クラスで、敵の最大火力役をほぼ確実に先制で止められる。足止め役としての信頼度は高レアの妨害キャラを上回り、ボスの必殺技を一度遅らせるだけで勝敗が変わる場面が多い。",
-  "tags": ["Control", "Stun", "FirstStrike"],
+  "tags": ["Control", "Stun", "FirstStrike", "花鳥風月"],
   "trpg": {
     "source": "身内CoC(架空卓)",
     "player": "PL-E(仮)",

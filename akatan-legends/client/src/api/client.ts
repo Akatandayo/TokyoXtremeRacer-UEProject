@@ -10,7 +10,8 @@ import type {
   BattleStartResponse, UpdatePartyRequest, UpdateAiRequest, BattleStartRequest,
   InventoryResponse, EquipRequest, EquipResponse, UnequipRequest,
   SellEquipmentRequest, SellEquipmentResponse, GachaListResponse,
-  GachaPullRequest, GachaPullResponse, EquipmentSlot,
+  GachaPullRequest, GachaPullResponse, EquipmentSlot, ItemRarity,
+  FavoriteEquipmentRequest, FavoriteEquipmentResponse, BulkSellRequest, BulkSellResponse,
   RebirthStatusResponse, RebirthResponse, ResetRebirthResponse, AllocateRebirthRequest,
   RaidListResponse, RaidAttackRequest, RaidAttackResponse,
 } from '@akatan/shared';
@@ -110,6 +111,10 @@ export interface GameApi {
   equip(equipmentUid: string, characterUid: string): Promise<EquipResponse>;
   unequip(characterUid: string, slot: EquipmentSlot): Promise<EquipResponse>;
   sellEquipment(equipmentUids: string[]): Promise<SellEquipmentResponse>;
+  /** お気に入りの一括on/off。お気に入りは一括売却(sellEquipmentBulk)から必ず除外される */
+  favoriteEquipment(equipmentUids: string[], favorite: boolean): Promise<FavoriteEquipmentResponse>;
+  /** レアリティ一式(maxRarity以下)の一括売却。装着中・お気に入りは必ず除外される */
+  sellEquipmentBulk(maxRarity: ItemRarity, belowItemLevel?: number): Promise<BulkSellResponse>;
   getGacha(): Promise<GachaListResponse>;
   gachaPull(bannerId: string, count: number): Promise<GachaPullResponse>;
   /** 転生 (設計書§17〜§20) */
@@ -168,6 +173,14 @@ const httpApi: GameApi = {
   sellEquipment: (equipmentUids) => {
     const payload: SellEquipmentRequest = { equipmentUids };
     return request<SellEquipmentResponse>('/equipment/sell', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  favoriteEquipment: (equipmentUids, favorite) => {
+    const payload: FavoriteEquipmentRequest = { equipmentUids, favorite };
+    return request<FavoriteEquipmentResponse>('/equipment/favorite', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  sellEquipmentBulk: (maxRarity, belowItemLevel) => {
+    const payload: BulkSellRequest = belowItemLevel !== undefined ? { maxRarity, belowItemLevel } : { maxRarity };
+    return request<BulkSellResponse>('/equipment/sell-bulk', { method: 'POST', body: JSON.stringify(payload) });
   },
   getGacha: () => request<GachaListResponse>('/gacha'),
   gachaPull: (bannerId, count) => {

@@ -1,0 +1,73 @@
+{
+  "id": "sota",
+  "name": "加那星 蒼太",
+  "title": "KANABOSHI SOUTA / 虚構memory",
+  "rarity": "UR",
+  "element": "VOID",
+  "roles": [
+    "ATTACKER",
+    "SPECIALIST"
+  ],
+  "baseStats": {
+    "hp": 640,
+    "attack": 145,
+    "defense": 42,
+    "speed": 138,
+    "critical": 29,
+    "criticalDamage": 190,
+    "resistance": 24,
+    "healing": 100
+  },
+  "growth": {
+    "hp": 41,
+    "attack": 8.8,
+    "defense": 2.4,
+    "speed": 1.8,
+    "critical": 0.34,
+    "criticalDamage": 0.6
+  },
+  "normalAttack": "na_sota_katana",
+  "skills": [
+    "sk_sota_zan",
+    "sk_sota_shourai"
+  ],
+  "ultimate": "ult_sota_impulse",
+  "awakening": {
+    "id": "sota_nova_awaken",
+    "name": "新星",
+    "condition": {
+      "hpBelow": 50
+    },
+    "statBonus": {
+      "attack": 80,
+      "criticalDamage": -20
+    },
+    "description": "突如現れ、神風の如く卓に多大な影響を与えた。彼は《覚悟が決まった者》である。記憶の全てを飲み込んで、加那星蒼太はようやく踏み出す一歩を選んだ。追い詰められるほど刃筋だけが真っ直ぐになる、綺麗事の抜けた覚悟の姿。",
+    "fx": "awaken_void_nova"
+  },
+  "defaultAi": "ai_sota_impulse",
+  "description": "元・記憶喪失の少年。記憶を取り戻し、自分の真実に気づいた今は、元の世界へ戻る方法を探している。同じく記憶喪失者の集まりである虚構memoryのメンバーと協力しながら、黒髪に眼帯、腰の日本刀だけを頼りに前へ進み続けている。コンボを組まない代わりに、素の強さそのものを高めてある一枚岩の探索者。",
+  "tags": [
+    "虚構memory",
+    "探索者",
+    "日本刀",
+    "VoidCut"
+  ],
+  "trpg": {
+    "source": "アカルア卓(旧卓)",
+    "player": "虚無プリン",
+    "investigator": "加那星蒼太",
+    "affiliation": "虚構memory",
+    "visibility": "PRIVATE",
+    "note": "PL本人希望によりUR/排出率0.1%固定・チケットガチャ限定。コンボを持たない代わりに、基礎ステータスを同レアリティ帯よりおよそ10%高く調整している。"
+  },
+  "art": {
+    "primary": "#1B1F2A",
+    "secondary": "#0A0C12",
+    "accent": "#E63946",
+    "sigil": "斬",
+    "pattern": "void",
+    "portrait": "sota"
+  },
+  "limited": true
+}

@@ -1,10 +1,27 @@
 /** デモモード用のプレイヤー状態 */
 import type {
   CharacterView, CharacterDef, OwnedCharacter, PlayerProfile, Party, Stats, Skill,
-  EquipmentInstance, InventoryResponse, StatKey,
+  EquipmentInstance, InventoryResponse, StatKey, ItemRarity,
 } from '@akatan/shared';
 import { MOCK_CHARACTERS, MOCK_SKILL_MAP } from './master';
-import { buildStarterInventory } from './equipment';
+import { buildStarterInventory, generateEquipment, RARITY_ORDER_LIST } from './equipment';
+
+/**
+ * 負荷検証用: `?mock=1&stress=N` を付けると、装備の所持数を N 件まで水増しする。
+ * 「装備が多く余り過ぎてラグの原因になる」という報告の再現・計測専用のデバッグ用途
+ * (通常のデモ体験には一切影響しない。既定は 0 = 何もしない)。
+ */
+function readStressEquipCount(): number {
+  try {
+    if (typeof window === 'undefined') return 0;
+    const q = new URLSearchParams(window.location.search).get('stress');
+    if (!q) return 0;
+    const n = parseInt(q, 10);
+    return Number.isFinite(n) && n > 0 ? Math.min(n, 5000) : 0;
+  } catch {
+    return 0;
+  }
+}
 
 export function expToNext(level: number): number {
   return Math.round(100 * Math.pow(level, 1.6));
@@ -126,6 +143,15 @@ function makeOwned(): OwnedCharacter[] {
 
 const starterInventory = buildStarterInventory();
 const starterOwned = makeOwned();
+
+// 負荷検証用の水増し(?stress=N)。通常時は readStressEquipCount() が 0 を返すので何もしない。
+const stressCount = readStressEquipCount();
+if (stressCount > 0) {
+  for (let i = 0; i < stressCount; i++) {
+    const rarity = RARITY_ORDER_LIST[i % RARITY_ORDER_LIST.length]!;
+    starterInventory.equipment.push(generateEquipment(rarity as ItemRarity, 1 + (i % 60)));
+  }
+}
 // デモ用: 灯守あかね(own_001)の武器/防具枠に初期装備を割り当てておく。
 // (装着中の比較UI・売却不可表示を初回描画から確認できるようにするため)
 if (starterInventory.equipment[0] && starterInventory.equipment[1]) {

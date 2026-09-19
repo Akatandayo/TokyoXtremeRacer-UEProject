@@ -1,0 +1,75 @@
+{
+  "id": "fuuka",
+  "name": "月島 風花",
+  "title": "TSUKISHIMA FUUKA / 秘密結社『花鳥風月』",
+  "rarity": "UR",
+  "element": "WIND",
+  "roles": [
+    "SUPPORT",
+    "SPECIALIST"
+  ],
+  "baseStats": {
+    "hp": 580,
+    "attack": 95,
+    "defense": 40,
+    "speed": 158,
+    "critical": 20,
+    "criticalDamage": 160,
+    "resistance": 22,
+    "healing": 100
+  },
+  "growth": {
+    "hp": 34,
+    "attack": 5.5,
+    "defense": 2.0,
+    "speed": 2.3,
+    "critical": 0.28,
+    "criticalDamage": 0.45
+  },
+  "normalAttack": "na_fuuka_rednote",
+  "skills": [
+    "sk_fuuka_danmaku",
+    "sk_fuuka_choujuugiga"
+  ],
+  "ultimate": "ult_fuuka_kachoufuugetsu",
+  "awakening": {
+    "id": "fuuka_rising_awaken",
+    "name": "RISING",
+    "condition": {
+      "hpBelow": 50
+    },
+    "statBonus": {
+      "speed": 60
+    },
+    "description": "面倒くさがりの彼女が、ここで初めて全力を出す。RISING――覚醒中はSPDが跳ね上がり、風のように戦場を駆け抜ける。本来は『覚醒中は自身のスキルCTを1下げる』効果も持つ想定だが、エンジンがクールダウン短縮に未対応のため、今回はSPD強化のみに絞っている。",
+    "fx": "awaken_wind_rising"
+  },
+  "combos": [
+    "kachou_fuugetsu_bond"
+  ],
+  "defaultAi": "ai_fuuka_choujuu",
+  "description": "秘密結社(実態は慈善企業)「花鳥風月」に属する、自称アウトローの活発系美少女。足は誰よりも速いが、性根は徹底して面倒くさがり。なぜか人間を超えた存在にやたらと気に入られる、不思議な引力を持つ。編成のSPDを底上げする純粋な支援役として、統括から「全キャラ中最速」の基準を任されている。",
+  "tags": [
+    "花鳥風月",
+    "秘密結社",
+    "探索者",
+    "Buffer"
+  ],
+  "trpg": {
+    "source": "アカルア卓(旧卓)",
+    "player": "Theルーフ",
+    "investigator": "月島 風花",
+    "affiliation": "秘密結社「花鳥風月」",
+    "visibility": "PRIVATE",
+    "note": "PL本人希望によりUR/排出率0.1%固定・チケットガチャ限定。『SPDの天井になるキャラにしてほしい』という要望どおり、全キャラ中最速のSPDに設定している。"
+  },
+  "art": {
+    "primary": "#2F6D5C",
+    "secondary": "#12241E",
+    "accent": "#7CFFB2",
+    "sigil": "風",
+    "pattern": "burst",
+    "portrait": "fuuka"
+  },
+  "limited": true
+}

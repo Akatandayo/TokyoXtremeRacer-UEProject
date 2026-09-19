@@ -6,17 +6,19 @@ import type {
   PlayerStateResponse, CharacterListResponse, MasterDataResponse,
   DungeonListResponse, UpdatePartyResponse, BattleStartResponse, StageDef,
   InventoryResponse, EquipResponse, SellEquipmentResponse, GachaListResponse,
-  GachaPullResponse, EquipmentSlot, CharacterView,
+  GachaPullResponse, EquipmentSlot, CharacterView, ItemRarity,
+  FavoriteEquipmentResponse, BulkSellResponse,
   RebirthStatusResponse, RebirthResponse, ResetRebirthResponse,
   RaidListResponse, RaidAttackResponse,
 } from '@akatan/shared';
+import { ITEM_RARITY_ORDER } from '../utils/labels';
 import {
   MOCK_CHARACTERS, MOCK_ENEMIES, MOCK_SKILLS, MOCK_AI_PROFILES, MOCK_CHAPTERS, MOCK_COMBOS,
   MOCK_PLANNED_CHARACTERS, MOCK_MATERIALS,
 } from './master';
 import { mockState, mockCharacterViews, expToNext } from './player';
 import { generateMockBattle } from './battle';
-import { rollMockDrops } from './equipment';
+import { rollMockDrops, mockSellPrice } from './equipment';
 import { MOCK_BANNERS, pullBanner } from './gacha';
 import {
   MOCK_REBIRTH_CONFIG, MOCK_REBIRTH_NODES,
@@ -206,10 +208,7 @@ export const mockApi = {
         if (item.equippedBy) {
           throw new ApiClientError('BAD_REQUEST', `${item.name} は装着中のため売却できません。`);
         }
-        const rarityMult: Record<string, number> = {
-          COMMON: 12, UNCOMMON: 24, RARE: 48, EPIC: 96, LEGENDARY: 220, MYTHIC: 520,
-        };
-        gained += Math.round((rarityMult[item.rarity] ?? 12) * (1 + item.itemLevel * 0.06));
+        gained += mockSellPrice(item);
       } else {
         remaining.push(item);
       }
@@ -217,6 +216,48 @@ export const mockApi = {
     mockState.inventory.equipment = remaining;
     mockState.player = { ...mockState.player, gold: mockState.player.gold + gained };
     return { gold: gained, player: { ...mockState.player }, inventory: cloneInventory() };
+  },
+
+  // ---------- お気に入り / 一括売却 (第6ラウンド) ----------
+
+  async favoriteEquipment(equipmentUids: string[], favorite: boolean): Promise<FavoriteEquipmentResponse> {
+    await delay(90);
+    const set = new Set(equipmentUids);
+    for (const item of mockState.inventory.equipment) {
+      if (set.has(item.uid)) item.favorite = favorite;
+    }
+    return { inventory: cloneInventory() };
+  },
+
+  async sellEquipmentBulk(maxRarity: ItemRarity, belowItemLevel?: number): Promise<BulkSellResponse> {
+    await delay(150);
+    const cutoff = ITEM_RARITY_ORDER[maxRarity];
+    const remaining: typeof mockState.inventory.equipment = [];
+    let count = 0;
+    let skipped = 0;
+    let gold = 0;
+    for (const item of mockState.inventory.equipment) {
+      const inRange = ITEM_RARITY_ORDER[item.rarity] <= cutoff
+        && (belowItemLevel === undefined || item.itemLevel < belowItemLevel);
+      if (!inRange) {
+        remaining.push(item);
+        continue;
+      }
+      if (item.equippedBy || item.favorite) {
+        skipped += 1;
+        remaining.push(item);
+        continue;
+      }
+      count += 1;
+      gold += mockSellPrice(item);
+    }
+    mockState.inventory.equipment = remaining;
+    mockState.player = { ...mockState.player, gold: mockState.player.gold + gold };
+    return {
+      count, gold, skipped,
+      player: { ...mockState.player },
+      inventory: cloneInventory(),
+    };
   },
 
   async getGacha(): Promise<GachaListResponse> {
