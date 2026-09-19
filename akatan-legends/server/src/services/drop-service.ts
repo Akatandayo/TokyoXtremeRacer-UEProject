@@ -163,9 +163,19 @@ export function resolveDrops(
   return { gold, equipment: equipmentGained, materials, characters: characterResults, tickets };
 }
 
-/** entry.id 省略時(「誰か」枠)に実装済み全キャラからランダムに1体選ぶ。決定論のため id 昇順ソート後に pick。 */
+/**
+ * entry.id 省略時(「誰か」枠)に実装済み全キャラからランダムに1体選ぶ。
+ * 決定論のため id 昇順ソート後に pick。
+ *
+ * `limited: true` のキャラは除外する。レイド限定・イベント限定のキャラが
+ * 通常ダンジョンの「誰か」枠から漏れて出てしまうのを防ぐため
+ * (ID を明示指定したエントリはこの関数を通らないので、限定入手経路は従来どおり機能する)。
+ */
 function pickRandomCharacterId(rng: Rng, data: GameData): string | undefined {
-  const ids = [...data.characters.keys()].sort();
+  const ids = [...data.characters.values()]
+    .filter((def) => def.limited !== true)
+    .map((def) => def.id)
+    .sort();
   if (ids.length === 0) return undefined;
   return rng.pick(ids);
 }

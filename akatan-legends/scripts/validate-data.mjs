@@ -470,7 +470,7 @@ for (const path of listJson('characters')) {
 
   const allowedKeys = ['id', 'name', 'title', 'rarity', 'element', 'roles', 'baseStats', 'growth',
     'normalAttack', 'skills', 'ultimate', 'passives', 'awakening', 'combos', 'defaultAi',
-    'description', 'tags', 'trpg', 'art'];
+    'description', 'tags', 'trpg', 'art', 'limited'];
   for (const k of Object.keys(c)) {
     if (!allowedKeys.includes(k)) err(where, `CharacterDef に存在しないフィールド "${k}" があります`);
   }

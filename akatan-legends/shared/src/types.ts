@@ -261,6 +261,12 @@ export interface CharacterDef {
   description: string;
   tags?: string[];
   trpg?: TrpgMeta;
+  /**
+   * true のキャラは「誰か1体」枠のランダム排出プールから除外される。
+   * レイド限定・イベント限定など、入手経路を限定したいキャラに付ける。
+   * ドロップテーブルやガチャで ID を明示指定した場合は、このフラグに関係なく排出される。
+   */
+  limited?: boolean;
   /** 見た目: 仮アセット用のカラーテーマと紋章 */
   art?: CharacterArt;
 }

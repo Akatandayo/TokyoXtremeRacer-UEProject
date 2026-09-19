@@ -138,7 +138,10 @@ function pickCharacterDefId(
 ): string | undefined {
   const poolIds = banner.pool && banner.pool.length > 0
     ? banner.pool
-    : [...data.characters.values()].map((c) => c.id);
+    // pool 未指定のバナーは全キャラが対象になるが、limited(レイド限定など)は除外する。
+    // pool に ID を明示したバナーはそちらが優先されるので、限定キャラを意図的に
+    // ピックアップしたい場合は pool へ書けばよい。
+    : [...data.characters.values()].filter((c) => c.limited !== true).map((c) => c.id);
   const candidates = poolIds
     .map((id) => data.characters.get(id))
     .filter((c): c is NonNullable<typeof c> => !!c && c.rarity === rarity)

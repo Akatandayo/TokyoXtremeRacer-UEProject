@@ -515,7 +515,8 @@ function rollDrops(stage: StageDef): DropResult {
         break;
       }
       case 'CHARACTER': {
-        const pool = picked.id ? [picked.id] : characters.map((c) => c.id);
+        // limited(レイド限定など)は「誰か1体」枠から除外する。ID明示のエントリは対象外
+        const pool = picked.id ? [picked.id] : characters.filter((c) => c.limited !== true).map((c) => c.id);
         const defId = pool[rng.int(0, pool.length - 1)];
         result.characters.push(grantOrConvert(defId));
         break;
@@ -580,7 +581,7 @@ function pullOnce(banner: GachaBannerDef, rng: ReturnType<typeof createRng>, for
   for (const p of pickups) {
     if (rng.next() * 100 < p.rate) return { character: grantOrConvert(p.defId), rarity };
   }
-  const poolIds = banner.pool ?? characters.map((c) => c.id);
+  const poolIds = banner.pool ?? characters.filter((c) => c.limited !== true).map((c) => c.id);
   const pool = poolIds.filter((id) => charById.get(id)?.rarity === rarity);
   if (pool.length === 0) {
     // そのレアリティのキャラが居ない場合は全プールから引く(空振りを出さない)
