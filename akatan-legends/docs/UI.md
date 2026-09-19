@@ -443,31 +443,88 @@ allyDefeated / skillUsed をモック側でも実装済み)。**装備の特殊�
 
 ---
 
-## 8. ディレクトリ
+## 8. 音声 (BGM / 効果音)
+
+- `client/src/audio/` に実装。`AudioManager.ts` がフレームワーク非依存のシングルトンで
+  BGM/SFXの再生を持ち、`AudioProvider.tsx` が React Context として橋渡しする
+  (`useAudio().playSfx(key)` / `useAudio().setScene(scene)`)。
+- **割り当てデータ**: `data/system/audio.json`(`MasterDataResponse.audio`)を正とし、
+  未配信/未起動でも壊れないよう `client/src/audio/defaultConfig.ts` に同内容のフォールバックを
+  持つ(サーバが配信し始めたらそちらが優先される)。
+- **BGM**: シーン(`AudioScene`)が変わっても曲ファイルが同じなら再生を継続する(頭出ししない)。
+  曲が変わるときだけ2つの `<audio>` 要素をクロスフェード(約550ms)する。シーンに対応が
+  無い場合(例: SETTINGS画面)は直前の曲を継続する。`App.tsx` の `SceneSync` が
+  `store.route.screen` の変化を見て `setScene()` を呼ぶ。
+- **効果音**: `<audio>` 要素のプール(10個)を使い回して同時発音に対応する。倍速(2x/4x)再生時に
+  同種の効果音が詰まらないよう、`SfxKey` ごとに最短発音間隔(90〜280ms)で間引く。
+  `BattleScreen.tsx` の `sfxForEvent()` が `BattleEvent.type` → `SfxKey` を決める
+  (`DAMAGE`→`HIT`/`CRITICAL`、`SKILL_USE`→`SKILL`/`ULTIMATE`〈`fx` が `ult_` 始まりなら〉、
+  `AWAKEN`/`COMBO`/`DEFEAT` はそのまま)。`playback.ts` の `useBattlePlayback` に渡す
+  `onEvent` コールバックとして接続しており、スキップ再生(`silent`)では鳴らさない。
+- **自動再生制限への対応**: 最初のユーザー操作(`pointerdown`/`keydown`/`touchstart`)まで
+  実際の再生は行わず、`setScene`/`playSfx` の呼び出しは「保留」するだけで画面には影響しない。
+  最初の操作で保留中のBGMシーンを再生する。
+- **音源の解決**: `client/src/audio/resolve.ts` の `resolveAudioSrc()` が唯一の解決箇所。
+  `window.__AKATAN_AUDIO__[file]`(オフライン単体版に注入されるdata URL)→
+  `public/audio/<file>` の順で解決する(`CharacterArt.tsx` の `resolvePortraitSrc` と同じ作り)。
+  音源が読めない/再生に失敗しても例外は握りつぶし、無音のまま画面は壊れない。
+- **設定**: SETTINGS画面の AUDIO パネルで BGM音量 / 効果音音量 / ミュートを変更でき、
+  `state/settings.ts`(`bgmVolume` / `sfxVolume` / `audioMuted`)経由で `localStorage` に保存される。
+
+---
+
+## 9. RAID 画面
+
+- `client/src/screens/RaidScreen.tsx`。`GET /api/raid` でボス一覧 + 進行状況(`RaidState`)を
+  取得し、ボスごとに **巨大なHPバー**(`remainingHp / totalHp`)・挑戦回数・累計与ダメージ・
+  弱点属性/無効状態異常・ギミック一覧(HP割合ごとの発動条件と発動済みフラグ)を表示する。
+- 「挑戦する」を押すと `store.startRaidBattle(boss)` が `POST /api/raid/attack` を呼び、
+  戦闘そのものは **既存の BATTLE 画面の再生をそのまま使う**(表示用に `RaidBossDef` から
+  簡易な `StageDef` をその場で組み立てるだけで、戦闘エンジンには一切手を入れていない)。
+- `store.raidContext` が「今再生中の戦闘がレイド挑戦によるものか」を橋渡しし、
+  `BattleScreen.tsx` のリザルトに **RAID DAMAGE セクション**(`RaidDamageSection`)を追加表示する。
+  `RaidAttemptResult` の `hpBefore` → `hpAfter` を大きなバーで見せ、「1回では倒せない」設計を
+  「確実に削れている」実感に変える。新たに発動したギミックもここに出す。
+- レイド文脈では「ダンジョンへ戻る」→「レイドへ戻る」、「もう一度戦う」→
+  「レイドへ戻ってもう一度挑む」に文言を差し替える(ボス定義がBATTLE画面には無いため、
+  再挑戦はRAID画面からのボタン操作に統一している)。撃破時はこのボタン自体を隠す。
+- 撃破時のキャラドロップは既存の `DropsSection`(リザルトの仕組み)をそのまま流用する。
+- `RAID_DEFEATED`(撃破済みボスへの再挑戦)は `describeError()` で日本語化して表示する。
+- サーバ未起動/`/api/raid` 未実装の環境でも画面が壊れないよう、取得失敗時は
+  再試行ボタン付きのエラー表示に落ちる(モックモードへの誘導文言つき)。
+
+---
+
+## 10. ディレクトリ
 
 ```
 client/src/
   main.tsx                     エントリ (StrictMode は使わない: 演出の二重適用を避ける)
   App.tsx                      ヘッダ + 画面切り替え (EQUIPMENT / GACHA を含む)
   api/
-    client.ts                  API集約 / ApiResponse 封筒の剥がし / ApiClientError
+    client.ts                  API集約 / ApiResponse 封筒の剥がし / ApiClientError / raid含む
     mode.ts                    モックモード判定
+  audio/
+    AudioManager.ts            BGM/SFX再生のシングルトン(クロスフェード・自動再生制限対応)
+    AudioProvider.tsx          React Context 橋渡し (useAudio)
+    resolve.ts                 音源パスの解決 (resolvePortraitSrcと同じ作り)
+    defaultConfig.ts           data/system/audio.json のフォールバック複製
   state/
-    store.tsx                  Context + useState のみの状態管理 (inventory 含む)
-    settings.ts                設定の永続化 / effectPolicy()
+    store.tsx                  Context + useState のみの状態管理 (inventory / raidContext 含む)
+    settings.ts                設定の永続化 / effectPolicy() / 音量設定
   components/
     CharacterArt.tsx           立ち絵(実画像) + プロシージャル キャラ画像 (pattern 6種) の合成描画。
                                 resolvePortraitSrc() が立ち絵の解決順を一元管理する
     common.tsx                 Loading / ErrorView / CharacterCard / StatRow / Panel
   battle/
     fx.ts                      fxキー → 演出ファミリーの解決 (装備の `equip:` 接頭辞を含む)
-    playback.ts                タイムライン再生エンジン (applyEvent / useBattlePlayback)
-    BattleScreen.tsx           BATTLE画面 + カットイン + リザルト + ドロップ表示 (DropsSection)
+    playback.ts                タイムライン再生エンジン (applyEvent / useBattlePlayback / onEvent)
+    BattleScreen.tsx           BATTLE画面 + カットイン + リザルト + ドロップ表示 + 効果音 + RAID DAMAGE
   screens/                     HOME / CHARACTERS / CHARACTER_DETAIL / PARTY / EQUIPMENT /
-                               GACHA / DUNGEON / COLLECTION / SETTINGS
-  mock/                        デモモード用データ + 簡易シミュレータ + ガチャ/装備/ドロップ
+                               GACHA / DUNGEON / RAID / COLLECTION / SETTINGS
+  mock/                        デモモード用データ + 簡易シミュレータ + ガチャ/装備/ドロップ/レイド
   styles/                      base.css (トークン) / ui.css (カード) / battle.css (演出) /
-                               gacha.css (SUMMON画面 / EQUIPMENT画面 / ドロップ表示)
+                               gacha.css (SUMMON画面 / EQUIPMENT画面 / ドロップ表示) / raid.css
   utils/
     labels.ts                  日本語ラベル・戦力計算・ItemRarity/Rarity 共通のレアリティ解決
     combo.ts                   コンボ判定 + 未実装キャラの名前解決 (comboMemberName)
