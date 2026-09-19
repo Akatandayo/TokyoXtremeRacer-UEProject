@@ -3,15 +3,20 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "workspaces": ["shared", "server", "client"],
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
   "scripts": {
     "dev": "concurrently -n server,client -c cyan,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
-    "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client",
+    "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client && npm run typecheck:standalone",
     "test": "npm run test -w server",
     "validate:data": "node scripts/validate-data.mjs",
     "build:standalone": "node tools/build-standalone.mjs",
-    "smoke": "node tools/smoke.mjs"
+    "smoke": "node tools/smoke.mjs",
+    "typecheck:standalone": "tsc -p standalone/tsconfig.json --noEmit"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

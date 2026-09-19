@@ -15,7 +15,7 @@ import type {
   BulkSellResponse, CharacterView, EquipmentInstance, EquipmentSlot, EquipResponse,
   FavoriteEquipmentResponse, InventoryResponse, ItemRarity, SellEquipmentResponse,
 } from '@akatan/shared';
-import { EQUIPMENT_SLOTS, ITEM_RARITIES } from '@akatan/shared';
+import { EQUIPMENT_SLOTS, ITEM_RARITIES, sellPrice } from '@akatan/shared';
 import * as repo from '../db/repository.js';
 import type { GameData } from '../data/loader.js';
 import { alreadyEquipped, badRequest, notFound, slotMismatch } from './app-error.js';
@@ -140,20 +140,7 @@ export function unequipItem(
  * 売却
  * ========================================================== */
 
-/** レアリティ別の売却基準額(itemLevel 補正込み)。バランス調整用の暫定値。 */
-const SELL_BASE_GOLD: Record<EquipmentInstance['rarity'], number> = {
-  COMMON: 10,
-  UNCOMMON: 25,
-  RARE: 60,
-  EPIC: 150,
-  LEGENDARY: 400,
-  MYTHIC: 1000,
-};
-
-function sellPrice(item: EquipmentInstance): number {
-  const base = SELL_BASE_GOLD[item.rarity] ?? 10;
-  return Math.round(base * (1 + Math.max(0, item.itemLevel - 1) * 0.05));
-}
+// 売却額の式は shared/src/economy.ts が唯一の定義(sellPrice)。ここで再実装しない。
 
 export function sellEquipment(
   playerId: string,

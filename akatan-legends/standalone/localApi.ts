@@ -22,7 +22,9 @@ import type {
   RaidGimmick, RaidListResponse, RaidState, RebirthConfig, RebirthNodeDef, RebirthPath,
   RebirthResponse, RebirthStatus, RebirthStatusResponse, ResetRebirthResponse,
   SellEquipmentResponse, Skill, StageDef, UpdatePartyResponse, AudioConfig,
+  BulkSellResponse, FavoriteEquipmentResponse,
 } from '@akatan/shared';
+import { ITEM_RARITIES, sellPrice } from '@akatan/shared';
 import { runBattle } from '../server/src/battle/index.js';
 import type { CombatantInput } from '../server/src/battle/contract.js';
 import {
@@ -33,6 +35,7 @@ import {
   type ItemGeneratorContext,
 } from '../server/src/services/item-generator.js';
 import { createRng } from '../server/src/battle/rng.js';
+import type { GameApi } from '../client/src/api/client.js';
 
 /* ============================================================
  * マスターデータの読み込み (data/ をビルド時に埋め込む)
@@ -757,6 +760,9 @@ function activeGimmicks(boss: RaidBossDef, remainingHp: number): RaidGimmick[] {
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+// `satisfies GameApi` で「クライアントが呼ぶメソッドが単体版にも全部ある」ことを
+// コンパイル時に強制する。これが無かったため favoriteEquipment / sellEquipmentBulk の
+// 実装漏れが型検査をすり抜け、オフライン版でだけ一括売却が動かない不具合になった。
 export const mockApi = {
   async getPlayer(): Promise<PlayerStateResponse> {
     await delay(40);
@@ -950,21 +956,58 @@ export const mockApi = {
 
   async sellEquipment(equipmentUids: string[]): Promise<SellEquipmentResponse> {
     await delay(30);
+    const uids = new Set(equipmentUids);
     let gold = 0;
-    const sellValue: Record<string, number> = {
-      COMMON: 20, UNCOMMON: 45, RARE: 110, EPIC: 260, LEGENDARY: 600, MYTHIC: 1400,
-    };
-    for (const uid of equipmentUids) {
+    for (const uid of uids) {
       const eq = (state.equipment ?? []).find((e) => e.uid === uid);
       if (!eq) continue;
-      // 装着中は売れない(サーバと同じ規則)
+      // 装着中・お気に入りは売れない(サーバと同じ規則)
       if (eq.equippedBy) throw new Error('装備中のアイテムは売却できません。');
-      gold += sellValue[eq.rarity] ?? 20;
+      if (eq.favorite) throw new Error('お気に入りに登録した装備は売却できません。');
+      gold += sellPrice(eq);
     }
-    state.equipment = (state.equipment ?? []).filter((e) => !equipmentUids.includes(e.uid));
+    state.equipment = (state.equipment ?? []).filter((e) => !uids.has(e.uid));
     state.player = { ...state.player, gold: state.player.gold + gold };
     save(state);
     return { gold, player: { ...state.player }, inventory: inventory() };
+  },
+
+  async favoriteEquipment(equipmentUids: string[], favorite: boolean): Promise<FavoriteEquipmentResponse> {
+    await delay(20);
+    const uids = new Set(equipmentUids);
+    for (const eq of state.equipment ?? []) {
+      if (uids.has(eq.uid)) eq.favorite = favorite;
+    }
+    save(state);
+    return { inventory: inventory() };
+  },
+
+  /**
+   * レアリティ一式の一括売却。サーバ(equipment-service.sellEquipmentBulk)と同じ規則:
+   * maxRarity 以下が対象、belowItemLevel 未満のみに絞れる、装着中とお気に入りは必ず残す。
+   */
+  async sellEquipmentBulk(maxRarity: ItemRarity, belowItemLevel?: number): Promise<BulkSellResponse> {
+    await delay(40);
+    const cutoff = ITEM_RARITIES.indexOf(maxRarity);
+    if (cutoff < 0) throw new Error(`maxRarity が不正です: ${String(maxRarity)}`);
+    const targets = new Set(ITEM_RARITIES.slice(0, cutoff + 1) as string[]);
+
+    const toSell: EquipmentInstance[] = [];
+    let skipped = 0;
+    for (const eq of state.equipment ?? []) {
+      if (!targets.has(eq.rarity)) continue;
+      if (belowItemLevel !== undefined && !(eq.itemLevel < belowItemLevel)) continue;
+      if (eq.equippedBy || eq.favorite) { skipped += 1; continue; }
+      toSell.push(eq);
+    }
+
+    const gold = toSell.reduce((sum, eq) => sum + sellPrice(eq), 0);
+    const sold = new Set(toSell.map((e) => e.uid));
+    state.equipment = (state.equipment ?? []).filter((e) => !sold.has(e.uid));
+    state.player = { ...state.player, gold: state.player.gold + gold };
+    save(state);
+
+    return { count: toSell.length, gold, skipped, player: { ...state.player }, inventory: inventory() };
   },
 
   /* ---------- レイド ---------- */
@@ -1269,4 +1312,4 @@ export const mockApi = {
       pityCounter: pity,
     };
   },
-};
+} satisfies GameApi;

@@ -78,23 +78,15 @@ export function statDeltaLabel(key: StatKey, value: number): string {
 /* ============================================================
  * 一括売却プレビュー(第6ラウンド)
  * ------------------------------------------------------------
- * サーバの sellPrice() (server/src/services/equipment-service.ts) と同じ計算式を
- * ここに写し、実行前の確認ダイアログで「いくら入るか」を確定値として見せる。
+ * 売却額の式は shared/src/economy.ts の sellPrice() が唯一の定義。ここでは再実装せず
+ * そのまま使い、実行前の確認ダイアログで「いくら入るか」を確定値として見せる。
  * 実行後は必ずサーバ応答の `gold` で上書きする(ここはあくまで確認用のプレビュー)。
  * ========================================================== */
-export const SELL_BASE_GOLD: Record<ItemRarity, number> = {
-  COMMON: 10,
-  UNCOMMON: 25,
-  RARE: 60,
-  EPIC: 150,
-  LEGENDARY: 400,
-  MYTHIC: 1000,
-};
+export { SELL_BASE_GOLD, sellPrice } from '@akatan/shared';
+import { sellPrice } from '@akatan/shared';
 
-export function sellPriceEstimate(item: EquipmentInstance): number {
-  const base = SELL_BASE_GOLD[item.rarity] ?? 10;
-  return Math.round(base * (1 + Math.max(0, item.itemLevel - 1) * 0.05));
-}
+/** @deprecated shared の sellPrice() を直接使ってください(名前だけの互換エイリアス)。 */
+export const sellPriceEstimate = sellPrice;
 
 export interface BulkSellPreview {
   /** 売却対象(装着中・お気に入りを除く) */
