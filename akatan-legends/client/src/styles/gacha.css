@@ -79,6 +79,46 @@
 }
 .equip-card-head .ilv { margin-left: auto; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
+/* ---------- お気に入り(第6ラウンド) ---------- */
+
+.fav-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.fav-btn:hover:not(:disabled) { transform: scale(1.12); color: var(--gold); }
+.fav-btn:disabled { opacity: 0.5; cursor: wait; }
+.fav-btn.is-on {
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 65%, transparent);
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--gold) 70%, transparent);
+}
+/* sell-mode の <label> には既に売却チェックボックスが top:8/right:8 にあるため、
+   お気に入りボタンはヘッダ行の一部(flexの最後尾)としてのみ描画し、位置は重ねない */
+
+.equip-card.is-favorite { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+
+.favorite-tag {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 0.06em;
+}
+
+.fav-chip.is-on { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 60%, transparent); }
+
 .item-name { font-size: 12.5px; font-weight: 700; line-height: 1.35; }
 .item-name .affix { color: var(--irar-color, var(--cyan)); }
 
@@ -113,6 +153,43 @@
   border: 1px solid rgba(255, 95, 109, 0.35);
   background: rgba(255, 95, 109, 0.06);
 }
+
+/* ---------- 一括売却パネル(第6ラウンド) ---------- */
+
+.bulk-sell-panel {
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(255, 95, 109, 0.35);
+  background: rgba(255, 95, 109, 0.05);
+  display: grid;
+  gap: 10px;
+}
+.bulk-sell-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bulk-sell-title .jp { font-size: 10.5px; font-weight: 400; color: var(--muted); }
+.bulk-sell-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.bulk-sell-field { display: grid; gap: 4px; font-size: 11px; }
+.bulk-sell-field .k { color: var(--muted); letter-spacing: 0.06em; }
+.bulk-sell-confirm {
+  padding: 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(255, 95, 109, 0.5);
+  background: rgba(255, 95, 109, 0.1);
+}
+.bulk-sell-confirm-text { font-size: 12.5px; line-height: 1.7; }
+.bulk-sell-confirm-text .num { color: var(--text); font-variant-numeric: tabular-nums; }
+.bulk-sell-confirm-text .num.gold { color: var(--gold); }
+
+/* ---------- 一覧のページング(第6ラウンド: 装備が数百件でも重くならないように) ---------- */
+
+.load-more-row { display: flex; justify-content: center; margin-top: 12px; }
 
 .equip-detail-grid {
   display: grid;

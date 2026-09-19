@@ -5,7 +5,8 @@ import type { BattleUnit } from '@akatan/shared';
 import { createRng } from './rng.js';
 import {
   absorbWithShield, advanceStatuses, applyStatus, cleanseDebuffs, computeStatusTick,
-  effectiveStat, isIncapacitated, isSilenced, statMultiplier, tauntingUnits,
+  effectiveStat, isIncapacitated, isInvulnerable, isSilenced, isStatusImmune, statMultiplier,
+  tauntingUnits,
 } from './status.js';
 import { baseStats } from './testFixtures.js';
 
@@ -149,6 +150,59 @@ test('status: TAUNT を持つユニットだけを抽出できる', () => {
   applyStatus(dead, { type: 'TAUNT', duration: 2 }, createRng(1));
   const t = tauntingUnits([a, b, dead]);
   assert.deepEqual(t.map((u) => u.id), ['b']);
+});
+
+test('status: INVULNERABLE / IMMUNE は isInvulnerable / isStatusImmune で判定できる', () => {
+  const u = mk();
+  assert.equal(isInvulnerable(u), false);
+  assert.equal(isStatusImmune(u), false);
+  applyStatus(u, { type: 'INVULNERABLE', duration: 2 }, createRng(1));
+  assert.equal(isInvulnerable(u), true);
+  applyStatus(u, { type: 'IMMUNE', duration: 2 }, createRng(1));
+  assert.equal(isStatusImmune(u), true);
+});
+
+test('status: IMMUNE を持つユニットへの新規付与はバフ・デバフ問わず全てブロックされる', () => {
+  const u = mk();
+  const rng = createRng(1);
+  applyStatus(u, { type: 'IMMUNE', duration: 3 }, rng);
+  assert.equal(u.statuses.length, 1);
+
+  const debuff = applyStatus(u, { type: 'POISON', duration: 3, potency: 5 }, rng);
+  assert.equal(debuff.kind, 'IMMUNE');
+  const buff = applyStatus(u, { type: 'ATK_UP', duration: 3, potency: 20 }, rng);
+  assert.equal(buff.kind, 'IMMUNE');
+  // 何も新規に付与されていない (IMMUNE 自身だけが残る)
+  assert.equal(u.statuses.length, 1);
+  assert.equal(u.statuses[0]!.type, 'IMMUNE');
+});
+
+test('status: IMMUNE は乱数を一切消費せずブロックする (確率/耐性ロールより前に弾く)', () => {
+  const u = mk();
+  const rng = createRng(1);
+  applyStatus(u, { type: 'IMMUNE', duration: 3 }, rng);
+  const before = rng.calls;
+  const outcome = applyStatus(u, { type: 'POISON', duration: 3, potency: 5, chance: 50 }, rng);
+  assert.equal(outcome.kind, 'IMMUNE');
+  assert.equal(rng.calls, before, 'IMMUNE のブロックで乱数が消費されている');
+});
+
+test('status: IMMUNE 中でも既にかかっている状態は解除されない', () => {
+  const u = mk();
+  const rng = createRng(1);
+  // 先に POISON を付与してから IMMUNE を付与する
+  applyStatus(u, { type: 'POISON', duration: 3, potency: 5 }, rng);
+  applyStatus(u, { type: 'IMMUNE', duration: 5 }, rng);
+  const poison = u.statuses.find((s) => s.type === 'POISON');
+  assert.ok(poison, '既存の POISON が消えている');
+  assert.equal(poison!.duration, 3);
+  assert.equal(poison!.potency, 5);
+
+  // IMMUNE が切れれば再び付与を受け付けるようになる
+  advanceStatuses(u); advanceStatuses(u); advanceStatuses(u); advanceStatuses(u); advanceStatuses(u);
+  assert.equal(isStatusImmune(u), false);
+  const outcome = applyStatus(u, { type: 'BURN', duration: 2, potency: 3 }, rng);
+  assert.equal(outcome.kind, 'APPLIED');
 });
 
 test('status: CLEANSE はデバフだけを消す', () => {

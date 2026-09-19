@@ -23,5 +23,11 @@
     "COMBO":     { "file": "sfx_skill.wav",    "volume": 0.55 },
     "DEFEAT":    { "file": "sfx_damage.mp3",   "volume": 0.5 },
     "CLICK":     { "file": "sfx_hit.mp3",      "volume": 0.25 }
+  },
+  "skillSfx": {
+    "sk_hitori_stand_disc_extract":    { "file": "skill_itteosokattana.wav", "volume": 0.6 },
+    "sk_hitori_stand_disc_extract_ex": { "file": "skill_itteosokattana.wav", "volume": 0.6 },
+    "sk_momiji_kc_timeskip":           { "file": "skill_tokitobasi.wav",     "volume": 0.6 },
+    "sk_momiji_kc_timeskip_ex":        { "file": "skill_tokitobasi.wav",     "volume": 0.6 }
   }
 }

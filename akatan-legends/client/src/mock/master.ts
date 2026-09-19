@@ -370,6 +370,14 @@ export const MOCK_CHARACTERS: CharacterDef[] = [
   },
 ];
 
+/*
+ * 第6ラウンド補足: 新キャラ「加那星蒼太」「月島風花」の確認は、データ担当の実データ
+ * (data/characters/{sota,fuuka}.json, data/gacha/banners.json の
+ * `banner_pickup_sota_fuuka`, data/combos/combos.json の `kachou_fuugetsu_bond`)が
+ * 投入され次第、そちらを実サーバ経由で直接確認する方針に切り替えた
+ * (モックに別IDの仮キャラを重複投入すると名前が競合して紛らわしいため)。
+ */
+
 /* ---------------- 敵 ---------------- */
 
 export const MOCK_ENEMIES: EnemyDef[] = [

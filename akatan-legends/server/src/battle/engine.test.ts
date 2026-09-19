@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import type { AiProfile, BattleEvent, BattleLog, Skill } from '@akatan/shared';
 import { damageText } from './engine.js';
 import { runBattle } from './index.js';
+import { createRng } from './rng.js';
 import { AWAKENING_TURN1, CONFIG, aiMap, baseStats, makeContext, skillMap, unit } from './testFixtures.js';
 
 /** createdAt だけが実時刻依存なので、比較時は取り除く */
@@ -589,4 +590,283 @@ test('engine(P1-2): TURN_START は「ラウンド開始時の全体生存数ぶ�
     const actionsBefore = actionStarts.filter((e) => e.seq < ts.seq).length;
     assert.equal(actionsBefore, i * 8, `ターン${i + 1}開始までの行動数が想定(8の倍数)と違う: ${actionsBefore}`);
   });
+});
+
+/* ---------- 15. 新キャラ特殊能力 (第6ラウンド): INVULNERABLE / IMMUNE / actionDuration / adaptElement / randomEffect ---------- */
+
+test('engine: INVULNERABLE 中は直接ダメージもDoTも0になり、撃破もされない。切れると通常に戻る', () => {
+  const grantInvuln: Skill = {
+    id: 'grant_invuln', name: '絶対防御', kind: 'ACTIVE', description: '', cooldown: 9999,
+    target: { side: 'SELF', pattern: 'SELF' },
+    effects: [{ type: 'STATUS', status: 'INVULNERABLE', duration: 3 }],
+  };
+  const victimAi: AiProfile = {
+    id: 'ai_victim', name: 'x',
+    rules: [
+      { priority: 1, condition: { type: 'ALWAYS' }, skill: 'grant_invuln' },
+      { priority: 2, condition: { type: 'ALWAYS' }, skill: 'NORMAL' },
+    ],
+  };
+  const victim = unit({
+    id: 'victim', slot: 0, side: 'ALLY', aiProfile: 'ai_victim', skills: ['grant_invuln'],
+    stats: { ...baseStats, hp: 30000, defense: 200, speed: 50, attack: 10 },
+  });
+  const attacker = unit({
+    id: 'attacker', slot: 0, side: 'ENEMY', aiProfile: 'ai_poison', skills: ['poison_strike'],
+    stats: { ...baseStats, hp: 30000, defense: 200, speed: 100, attack: 300 },
+  });
+  const log = runBattle([victim], [attacker], makeContext({
+    seed: 5, skills: skillMap([grantInvuln]), aiProfiles: aiMap([victimAi]),
+    config: { ...CONFIG, maxTicks: 600 },
+  }));
+
+  const grantIdx = log.events.findIndex((e) => e.type === 'STATUS_APPLY' && e.status === 'INVULNERABLE');
+  assert.ok(grantIdx >= 0, 'INVULNERABLE が付与されていない');
+  const expireIdx = log.events.findIndex(
+    (e, i) => i > grantIdx && e.type === 'STATUS_EXPIRE' && e.status === 'INVULNERABLE',
+  );
+  assert.ok(expireIdx > grantIdx, 'INVULNERABLE が期限切れになっていない (テスト前提が崩れている)');
+
+  const window = log.events.slice(grantIdx, expireIdx);
+  const dmgInWindow = window.filter((e) => e.type === 'DAMAGE' && e.targetId === 'victim');
+  const dotInWindow = window.filter((e) => e.type === 'STATUS_TICK' && e.targetId === 'victim' && e.status === 'POISON');
+  assert.ok(dmgInWindow.length > 0, 'テスト前提: 無敵中に一度も狙われていない');
+  assert.ok(dmgInWindow.every((e) => e.value === 0), '無敵中なのにダメージが通っている');
+  assert.ok(dmgInWindow.every((e) => (e.text ?? '').includes('無効化')), '無効化したことがログから分からない');
+  assert.ok(dotInWindow.length > 0, 'テスト前提: 無敵中に一度も毒ダメージが発生していない');
+  assert.ok(dotInWindow.every((e) => e.value === 0), '無敵中なのにDoTが通っている');
+  // 無敵中はHPが一切減っていない = 撃破もされない
+  assert.ok(!window.some((e) => e.type === 'DEFEAT' && e.targetId === 'victim'));
+
+  // 期限切れ以降は通常通りダメージが通る
+  const after = log.events.slice(expireIdx);
+  const dmgAfter = after.filter((e) => e.type === 'DAMAGE' && e.targetId === 'victim');
+  assert.ok(dmgAfter.length > 0, 'テスト前提: 期限切れ後に一度も狙われていない');
+  assert.ok(dmgAfter.some((e) => (e.value ?? 0) > 0), '期限切れ後もダメージが0のまま (無敵が解除されていない)');
+});
+
+test('engine: actionDuration が指定されていれば duration の代わりに使われる', () => {
+  const skillWithBoth: Skill = {
+    id: 'skill_action_duration', name: '持続強化', kind: 'ACTIVE', description: '', cooldown: 9999,
+    target: { side: 'SELF', pattern: 'SELF' },
+    // duration(1) と actionDuration(5) を両方指定 -> actionDuration が優先されるはず
+    effects: [{ type: 'STATUS', status: 'ATK_UP', duration: 1, actionDuration: 5, potency: 10 }],
+  };
+  const hero = unit({
+    id: 'hero', slot: 0, side: 'ALLY', skills: [skillWithBoth.id], aiProfile: 'ai_action_duration',
+    stats: { ...baseStats, hp: 20000, speed: 100 },
+  });
+  const foe = unit({ id: 'foe', slot: 0, side: 'ENEMY', stats: { ...baseStats, hp: 20000, speed: 0.001, attack: 0 } });
+  const ai: AiProfile = {
+    id: 'ai_action_duration', name: 'x',
+    rules: [{ priority: 1, condition: { type: 'ALWAYS' }, skill: skillWithBoth.id }],
+  };
+  const log = runBattle([hero], [foe], makeContext({
+    seed: 1, skills: skillMap([skillWithBoth]), aiProfiles: aiMap([ai]), config: { ...CONFIG, maxTicks: 50 },
+  }));
+  const applied = log.events.find((e) => e.type === 'STATUS_APPLY' && e.status === 'ATK_UP')!;
+  assert.ok(applied, 'ATK_UP が付与されていない');
+  assert.equal(applied.duration, 5, 'actionDuration が duration より優先されていない');
+});
+
+test('engine: IMMUNE 中は状態異常の新規付与を受け付けないが、既存の状態は残り、切れれば再び付与される', () => {
+  const passiveDefUp: Skill = {
+    id: 'passive_def_up', name: '鉄壁の心得', kind: 'PASSIVE', description: '', cooldown: 0,
+    target: { side: 'SELF', pattern: 'SELF' },
+    effects: [{ type: 'STATUS', status: 'DEF_UP', duration: 9999, potency: 30 }],
+  };
+  const grantImmune: Skill = {
+    id: 'grant_immune', name: '心を閉ざす', kind: 'ACTIVE', description: '', cooldown: 9999,
+    target: { side: 'SELF', pattern: 'SELF' },
+    effects: [{ type: 'STATUS', status: 'IMMUNE', duration: 3 }],
+  };
+  const victimAi: AiProfile = {
+    id: 'ai_victim2', name: 'x',
+    rules: [
+      { priority: 1, condition: { type: 'ALWAYS' }, skill: 'grant_immune' },
+      { priority: 2, condition: { type: 'ALWAYS' }, skill: 'NORMAL' },
+    ],
+  };
+  const victim = unit({
+    id: 'victim', slot: 0, side: 'ALLY', aiProfile: 'ai_victim2', skills: ['grant_immune'],
+    passives: ['passive_def_up'],
+    stats: { ...baseStats, hp: 30000, defense: 200, speed: 50, attack: 10 },
+  });
+  const attacker = unit({
+    id: 'attacker', slot: 0, side: 'ENEMY', aiProfile: 'ai_poison', skills: ['poison_strike'],
+    stats: { ...baseStats, hp: 30000, defense: 200, speed: 100, attack: 300, resistance: 0 },
+  });
+  const log = runBattle([victim], [attacker], makeContext({
+    seed: 9, skills: skillMap([passiveDefUp, grantImmune]), aiProfiles: aiMap([victimAi]),
+    config: { ...CONFIG, maxTicks: 600 },
+  }));
+
+  // 開幕からパッシブの DEF_UP が乗っている(テスト前提)
+  const start = log.events.find((e) => e.type === 'BATTLE_START')!;
+  assert.ok(start.snapshot!.find((s) => s.id === 'victim')!.statuses.some((s) => s.type === 'DEF_UP'));
+
+  const grantIdx = log.events.findIndex((e) => e.type === 'STATUS_APPLY' && e.status === 'IMMUNE');
+  assert.ok(grantIdx >= 0, 'IMMUNE が付与されていない');
+  const expireIdx = log.events.findIndex(
+    (e, i) => i > grantIdx && e.type === 'STATUS_EXPIRE' && e.status === 'IMMUNE',
+  );
+  assert.ok(expireIdx > grantIdx, 'IMMUNE が期限切れになっていない (テスト前提が崩れている)');
+
+  const window = log.events.slice(grantIdx, expireIdx);
+  const poisonApplyInWindow = window.filter((e) => e.type === 'STATUS_APPLY' && e.status === 'POISON');
+  const resistInWindow = window.filter((e) => e.type === 'STATUS_RESIST' && e.targetId === 'victim' && e.status === 'POISON');
+  assert.equal(poisonApplyInWindow.length, 0, 'IMMUNE中なのにPOISONが付与されている');
+  assert.ok(resistInWindow.length > 0, 'テスト前提: IMMUNE中に一度も毒を狙われていない');
+  assert.ok(resistInWindow.every((e) => (e.text ?? '').includes('受け付けない')), 'IMMUNEでブロックしたことがログから分からない');
+
+  // IMMUNE中もDEF_UP(既存の状態)は残ったまま
+  const midSnap = [...window].reverse().find((e) => e.snapshot)!.snapshot!;
+  assert.ok(midSnap.find((s) => s.id === 'victim')!.statuses.some((s) => s.type === 'DEF_UP'), 'IMMUNE中に既存のDEF_UPが消えている');
+
+  // 期限切れ以降は再び POISON が付与できるようになる
+  const after = log.events.slice(expireIdx);
+  assert.ok(after.some((e) => e.type === 'STATUS_APPLY' && e.status === 'POISON'), '期限切れ後もPOISONを受け付けない');
+});
+
+test('engine: adaptElement は対象の弱点属性(最大倍率)で計算し、乱数消費は増えない', () => {
+  // AFFINITY (testFixtures): WATER->FIRE が 1.5倍。対象がFIREなら弱点はWATER。
+  const adaptStrike: Skill = {
+    id: 'adapt_strike', name: '変幻撃', kind: 'ACTIVE', description: '', cooldown: 0,
+    target: { side: 'ENEMY', pattern: 'SINGLE' },
+    effects: [{ type: 'DAMAGE', power: 1.0, adaptElement: true }],
+  };
+  const waterStrike: Skill = {
+    id: 'water_strike', name: '水撃', kind: 'ACTIVE', description: '', cooldown: 0,
+    target: { side: 'ENEMY', pattern: 'SINGLE' },
+    effects: [{ type: 'DAMAGE', power: 1.0, element: 'WATER' }],
+  };
+  const build = (skill: Skill): BattleLog => {
+    const aiId = `ai_${skill.id}`;
+    const attacker = unit({
+      id: 'atk', slot: 0, side: 'ALLY', element: 'VOID', skills: [skill.id], aiProfile: aiId,
+      stats: { ...baseStats, hp: 5000, attack: 200, speed: 100 },
+    });
+    const foe = unit({
+      id: 'foe', slot: 0, side: 'ENEMY', element: 'FIRE',
+      stats: { ...baseStats, hp: 50000, attack: 50, speed: 40 },
+    });
+    const ai: AiProfile = {
+      id: aiId, name: 'x', rules: [{ priority: 1, condition: { type: 'ALWAYS' }, skill: skill.id }],
+    };
+    return runBattle([attacker], [foe], makeContext({
+      seed: 42, skills: skillMap([skill]), aiProfiles: aiMap([ai]), config: { ...CONFIG, maxTicks: 300 },
+    }));
+  };
+
+  const adaptLog = build(adaptStrike);
+  const waterLog = build(waterStrike);
+
+  // sourceId==='atk' に絞る (foe の反撃も DAMAGE イベントとして混ざるため)
+  const adaptDmg = adaptLog.events.filter((e) => e.type === 'DAMAGE' && e.sourceId === 'atk');
+  const waterDmg = waterLog.events.filter((e) => e.type === 'DAMAGE' && e.sourceId === 'atk');
+  assert.ok(adaptDmg.length > 0);
+  assert.equal(adaptDmg.length, waterDmg.length);
+  assert.ok(adaptDmg.every((e) => e.element === 'WATER'), 'adaptElementがWATER(弱点)を選んでいない');
+  assert.ok(adaptDmg.every((e) => Math.abs((e.affinity ?? 0) - 1.5) < 1e-9), 'adaptElementの相性倍率が想定と違う');
+
+  // adaptElement を使っても乱数消費列は変わらない -> 明示的にWATERを指定した場合とログが完全一致する
+  // (skillId/skillName/text はスキル自体が違うので除いて比較する)
+  const strip = (l: BattleLog): string => JSON.stringify(l.events.map((e) => {
+    const { skillId, skillName, text, ...rest } = e;
+    void skillId; void skillName; void text;
+    return rest;
+  }));
+  assert.equal(strip(adaptLog), strip(waterLog), 'adaptElementの有無で乱数消費列がズレている');
+});
+
+test('engine: randomEffect は effects からランダムに1つだけを適用し、乱数消費は1回だけ。同シードなら同じ効果が選ばれる', () => {
+  // SELF対象・両方ともバフ(抵抗判定なし・chance100%)にして、選択の pick 以外に
+  // 乱数を消費しない状況を作る。こうすると、この技の発動で消費される乱数は
+  // 「resolveEffects の rng.pick」1回だけになる。
+  const randomBuff: Skill = {
+    id: 'random_buff', name: '気まぐれな祝福', kind: 'ACTIVE', description: '', cooldown: 9999,
+    target: { side: 'SELF', pattern: 'SELF' },
+    randomEffect: true,
+    effects: [
+      { type: 'STATUS', status: 'ATK_UP', duration: 3, potency: 20 },
+      { type: 'STATUS', status: 'DEF_UP', duration: 3, potency: 20 },
+    ],
+  };
+  const ai: AiProfile = {
+    id: 'ai_random_buff', name: 'x',
+    rules: [
+      { priority: 1, condition: { type: 'ALWAYS' }, skill: 'random_buff' },
+      { priority: 2, condition: { type: 'ALWAYS' }, skill: 'NORMAL' },
+    ],
+  };
+  const seed = 777;
+  const hero = unit({
+    id: 'hero', slot: 0, side: 'ALLY', aiProfile: 'ai_random_buff', skills: ['random_buff'],
+    stats: { ...baseStats, hp: 20000, speed: 100 },
+  });
+  const foe = unit({ id: 'foe', slot: 0, side: 'ENEMY', stats: { ...baseStats, hp: 20000, speed: 0.001, attack: 0 } });
+  const log = runBattle([hero], [foe], makeContext({
+    seed, skills: skillMap([randomBuff]), aiProfiles: aiMap([ai]), config: { ...CONFIG, maxTicks: 50 },
+  }));
+
+  // 1) 選ばれなかった方は一切ログに出ない (1つだけ適用されている)
+  const applies = log.events.filter((e) => e.type === 'STATUS_APPLY' && e.sourceId === 'hero' && e.skillId === 'random_buff');
+  assert.equal(applies.length, 1, `1つだけ適用されるはずが ${applies.length} 件出ている`);
+  const chosenType = applies[0]!.status;
+  assert.ok(chosenType === 'ATK_UP' || chosenType === 'DEF_UP');
+  // SKILL_USE のテキストにも選ばれた効果が分かるよう出している
+  const use = log.events.find((e) => e.type === 'SKILL_USE' && e.sourceId === 'hero' && e.skillId === 'random_buff')!;
+  assert.ok((use.text ?? '').length > 0 && use.text !== `${hero.name} の ${randomBuff.name}！`, 'ログから選ばれた効果が分からない');
+
+  // 2) 乱数消費は「この技の発動につき1回だけ」。
+  //    このシナリオでは戦闘開始からこの技の発動までに他の乱数消費が一切無い
+  //    (SELF対象=ターゲット選択で乱数不使用、バフ2種=chance/抵抗ロールなし、パッシブ/コンボ/特殊効果も未使用)。
+  //    そのため、同じ seed から createRng() を直接動かした最初の1回の rng.pick(effects) が
+  //    その値そのままで再現できるはずで、「選ばれた効果」と完全に一致する。
+  const rng = createRng(seed);
+  const r0 = rng.next();
+  const expectedIdx = Math.min(randomBuff.effects.length - 1, Math.floor(r0 * randomBuff.effects.length));
+  const expectedType = randomBuff.effects[expectedIdx]!.status;
+  assert.equal(chosenType, expectedType, 'rng.pick の消費タイミング/回数がドキュメント通りではない');
+
+  // 3) 同シードで再実行しても同じ効果が選ばれる (決定論)
+  const log2 = runBattle([hero], [foe], makeContext({
+    seed, skills: skillMap([randomBuff]), aiProfiles: aiMap([ai]), config: { ...CONFIG, maxTicks: 50 },
+  }));
+  const applies2 = log2.events.filter((e) => e.type === 'STATUS_APPLY' && e.sourceId === 'hero' && e.skillId === 'random_buff');
+  assert.equal(applies2.length, 1);
+  assert.equal(applies2[0]!.status, chosenType, '同シードなのに選ばれる効果が変わっている');
+});
+
+test('engine(第6ラウンド): 新フィールド(INVULNERABLE/IMMUNE/actionDuration/adaptElement/randomEffect)を使わない既存スキルはログが完全同一', () => {
+  // testFixtures の標準戦闘(第6ラウンド以前から存在)は新フィールドを一切使わない。
+  // 既存111件のテスト全体がその証明だが、ここでも明示的に再確認しておく。
+  const build = (): BattleLog => {
+    const allies = [
+      unit({
+        id: 'a1', slot: 0, name: '電子 独', side: 'ALLY', element: 'FIRE',
+        stats: { ...baseStats, hp: 3000, attack: 260, speed: 120, critical: 25 },
+        skills: ['poison_strike', 'big_ult'], ultimate: 'big_ult', aiProfile: 'ai_ult',
+      }),
+      unit({
+        id: 'a2', slot: 1, name: '灯守', side: 'ALLY', element: 'WATER',
+        stats: { ...baseStats, hp: 2600, attack: 150, speed: 95, healing: 140 },
+        skills: ['heal_small'], aiProfile: 'ai_healer',
+      }),
+    ];
+    const enemies = [
+      unit({
+        id: 'e1', slot: 0, name: '影喰らい', side: 'ENEMY', element: 'WIND',
+        stats: { ...baseStats, hp: 3200, attack: 230, speed: 105, critical: 15 },
+        skills: ['poison_strike'], aiProfile: 'ai_poison',
+      }),
+    ];
+    return runBattle(allies, enemies, makeContext({ seed: 20250917, stageId: 'regression' }));
+  };
+  const a = build();
+  const b = build();
+  const { createdAt: ca, ...restA } = a; void ca;
+  const { createdAt: cb, ...restB } = b; void cb;
+  assert.equal(JSON.stringify(restA), JSON.stringify(restB));
+  assert.ok(a.events.length > 10);
 });

@@ -4,6 +4,7 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import type { EquipmentInstance, EquipmentSlot, ItemRarity, CharacterView } from '@akatan/shared';
+import { ITEM_RARITIES } from '@akatan/shared';
 import { useStore } from '../state/store';
 import { Panel, ElementChip, RarityBadge } from '../components/common';
 import { CharacterArtView } from '../components/CharacterArt';
@@ -14,12 +15,18 @@ import {
   STAT_LABEL, formatNumber,
 } from '../utils/labels';
 import {
-  equipmentOf, equippedItemsOf, combinedDelta, formatSigned, statDeltasOf,
+  equipmentOf, equippedItemsOf, combinedDelta, formatSigned, statDeltasOf, estimateBulkSell,
 } from '../utils/equipment';
 
 const SLOTS: EquipmentSlot[] = ['WEAPON', 'ARMOR', 'ACCESSORY'];
 const RARITIES: ItemRarity[] = ['MYTHIC', 'LEGENDARY', 'EPIC', 'RARE', 'UNCOMMON', 'COMMON'];
 type SortKey = 'itemLevel' | 'rarity' | 'name' | 'slot';
+
+/** 装備が数百件になっても一覧描画が重くならないよう、一度に描画する件数を制限する */
+const PAGE_SIZE = 60;
+
+/** 一括売却の「◯Lv未満のみ」プルダウンの選択肢 */
+const BULK_LEVEL_OPTIONS = [10, 20, 30, 40, 60];
 
 function ItemName({ item }: { item: EquipmentInstance }): JSX.Element {
   return (
@@ -46,16 +53,52 @@ function ItemStatsList({ item }: { item: EquipmentInstance }): JSX.Element {
   );
 }
 
-function EquipCard({
-  item, selected, onClick,
-}: { item: EquipmentInstance; selected: boolean; onClick: () => void }): JSX.Element {
+/**
+ * お気に入りのトグルボタン。ネイティブ<button>を入れ子にできない場所
+ * (equip-card自体がクリック領域を持つ場合)向けに、押下イベントを必ず
+ * `stopPropagation`/`preventDefault`してカード本体のクリック・売却チェックボックスの
+ * トグルへ波及しないようにする。
+ */
+function FavoriteButton({
+  favorite, busy, onToggle, name,
+}: { favorite: boolean; busy: boolean; onToggle: () => void; name: string }): JSX.Element {
   return (
     <button
       type="button"
-      className={`equip-card irar-${item.rarity} ${selected ? 'is-selected' : ''} ${item.equippedBy ? 'is-equipped' : ''}`}
+      className={`fav-btn ${favorite ? 'is-on' : ''}`}
+      disabled={busy}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onToggle();
+      }}
+      aria-pressed={favorite}
+      aria-label={favorite ? `${name} のお気に入りを解除` : `${name} をお気に入りに登録(一括売却・売却から保護)`}
+      title={favorite ? 'お気に入り解除' : 'お気に入りに登録(売却から保護)'}
+    >
+      {favorite ? '★' : '☆'}
+    </button>
+  );
+}
+
+function EquipCard({
+  item, selected, onClick, onToggleFavorite, favBusy,
+}: {
+  item: EquipmentInstance; selected: boolean; onClick: () => void;
+  onToggleFavorite: () => void; favBusy: boolean;
+}): JSX.Element {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className={`equip-card irar-${item.rarity} ${selected ? 'is-selected' : ''} ${item.equippedBy ? 'is-equipped' : ''} ${item.favorite ? 'is-favorite' : ''}`}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); }
+      }}
     >
       <div className="equip-card-head">
+        <FavoriteButton favorite={!!item.favorite} busy={favBusy} onToggle={onToggleFavorite} name={item.name} />
         <span className="slot-ic" title={EQUIPMENT_SLOT_LABEL[item.slot]}>{EQUIPMENT_SLOT_ICON[item.slot]}</span>
         <span className="irar-tag">{ITEM_RARITY_LABEL[item.rarity]}</span>
         <span className="ilv">Lv{item.itemLevel}</span>
@@ -64,7 +107,8 @@ function EquipCard({
       <ItemStatsList item={item} />
       {item.special && <div className="special-tag">{item.special.name}</div>}
       {item.equippedBy && <div className="equipped-tag">装着中</div>}
-    </button>
+      {item.favorite && <div className="favorite-tag">★ お気に入り(売却から保護)</div>}
+    </div>
   );
 }
 
@@ -91,12 +135,26 @@ export function EquipmentScreen(): JSX.Element {
   const [slotFilter, setSlotFilter] = useState<EquipmentSlot | null>(null);
   const [rarityFilter, setRarityFilter] = useState<ItemRarity | null>(null);
   const [minLevel, setMinLevel] = useState(0);
+  const [favOnly, setFavOnly] = useState(false);
   const [sort, setSort] = useState<SortKey>('itemLevel');
   const [sellMode, setSellMode] = useState(false);
   const [sellSet, setSellSet] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [actionErr, setActionErr] = useState<unknown>(null);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [favBusy, setFavBusy] = useState<Set<string>>(new Set());
+
+  // 一覧の表示件数(装備が数百件になっても一気に描画しないためのページング)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // 一括売却(レアリティ一式)
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkMaxRarity, setBulkMaxRarity] = useState<ItemRarity>('LEGENDARY');
+  const [bulkBelowLevel, setBulkBelowLevel] = useState<number | ''>('');
+  const [bulkConfirming, setBulkConfirming] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkErr, setBulkErr] = useState<unknown>(null);
+  const [bulkResult, setBulkResult] = useState<{ count: number; gold: number; skipped: number } | null>(null);
 
   useEffect(() => {
     if (store.inventory) return;
@@ -112,6 +170,7 @@ export function EquipmentScreen(): JSX.Element {
       if (slotFilter && it.slot !== slotFilter) return false;
       if (rarityFilter && it.rarity !== rarityFilter) return false;
       if (it.itemLevel < minLevel) return false;
+      if (favOnly && !it.favorite) return false;
       return true;
     });
     const sorted = [...filtered];
@@ -124,7 +183,21 @@ export function EquipmentScreen(): JSX.Element {
       }
     });
     return sorted;
-  }, [inv, slotFilter, rarityFilter, minLevel, sort]);
+  }, [inv, slotFilter, rarityFilter, minLevel, favOnly, sort]);
+
+  // フィルタ/並び替えが変わったら表示件数をリセットする(「もっと見る」の積み上げが
+  // 別の絞り込み結果に引き継がれて大量描画になるのを防ぐ)
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [slotFilter, rarityFilter, minLevel, favOnly, sort, sellMode]);
+
+  const visibleList = useMemo(() => list.slice(0, visibleCount), [list, visibleCount]);
+  const hasMore = list.length > visibleList.length;
+
+  const bulkPreview = useMemo(
+    () => estimateBulkSell(inv?.equipment ?? [], bulkMaxRarity, bulkBelowLevel === '' ? undefined : bulkBelowLevel),
+    [inv, bulkMaxRarity, bulkBelowLevel],
+  );
 
   const selected = useMemo(() => (selectedUid ? equipmentOf(inv, selectedUid) : undefined), [inv, selectedUid]);
 
@@ -200,6 +273,49 @@ export function EquipmentScreen(): JSX.Element {
     }
   };
 
+  /**
+   * お気に入りの登録/解除。売却で誤って失わないための保険機能なので、
+   * サーバ応答をそのまま反映して確実に整合させる(楽観更新はしない)。
+   */
+  const toggleFavorite = async (item: EquipmentInstance) => {
+    if (favBusy.has(item.uid)) return;
+    setFavBusy((prev) => new Set(prev).add(item.uid));
+    setActionErr(null);
+    try {
+      const res = await api().favoriteEquipment([item.uid], !item.favorite);
+      store.applyInventory(res.inventory);
+    } catch (e) {
+      setActionErr(e);
+    } finally {
+      setFavBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(item.uid);
+        return next;
+      });
+    }
+  };
+
+  /**
+   * レアリティ一式の一括売却(第6ラウンド)。装備が余りすぎてラグの原因になるのを
+   * 防ぐための整理機能。取り返しがつかない操作なので、必ず対象件数・獲得予定GOLD・
+   * 除外件数(装着中/お気に入り)を見せてから、明示的な確認クリックを挟んで実行する。
+   */
+  const doBulkSell = async () => {
+    setBulkBusy(true);
+    setBulkErr(null);
+    try {
+      const res = await api().sellEquipmentBulk(bulkMaxRarity, bulkBelowLevel === '' ? undefined : bulkBelowLevel);
+      store.applyPlayer(res.player);
+      store.applyInventory(res.inventory);
+      setBulkResult({ count: res.count, gold: res.gold, skipped: res.skipped });
+      setBulkConfirming(false);
+    } catch (e) {
+      setBulkErr(e);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   if (loading) {
     return <div className="state-box"><div className="spinner" /><div className="muted">所持装備を取得しています…</div></div>;
   }
@@ -221,15 +337,21 @@ export function EquipmentScreen(): JSX.Element {
     <div className="stack">
       <Panel
         title="EQUIPMENT"
-        jp={`所持装備 ${inv?.equipment.length ?? 0}件 — スロット/レアリティ/アイテムレベルで絞り込み`}
+        jp={`所持装備 ${inv?.equipment.length ?? 0}件 — スロット/レアリティ/アイテムレベル/お気に入りで絞り込み`}
         right={
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
             <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="並び替え">
               <option value="itemLevel">アイテムLv順</option>
               <option value="rarity">レアリティ順</option>
               <option value="slot">スロット順</option>
               <option value="name">名前順</option>
             </select>
+            <button
+              className={`btn btn-sm ${bulkOpen ? 'btn-danger' : 'btn-ghost'}`}
+              onClick={() => { setBulkOpen((v) => !v); setBulkConfirming(false); setBulkErr(null); }}
+            >
+              {bulkOpen ? '一括売却を閉じる' : 'レアリティで一括売却'}
+            </button>
             <button
               className={`btn btn-sm ${sellMode ? 'btn-danger' : 'btn-ghost'}`}
               onClick={() => { setSellMode((v) => !v); setSellSet(new Set()); }}
@@ -254,6 +376,15 @@ export function EquipmentScreen(): JSX.Element {
             <option value={30}>Lv30 以上</option>
             <option value={40}>Lv40 以上</option>
           </select>
+          <span style={{ width: 12 }} />
+          <button
+            type="button"
+            className={`chip-toggle fav-chip ${favOnly ? 'is-on' : ''}`}
+            onClick={() => setFavOnly((v) => !v)}
+            aria-pressed={favOnly}
+          >
+            ★ お気に入りのみ
+          </button>
         </div>
         <div className="filter-bar">
           <button className={`chip-toggle ${rarityFilter === null ? 'is-on' : ''}`} onClick={() => setRarityFilter(null)}>全レアリティ</button>
@@ -269,10 +400,103 @@ export function EquipmentScreen(): JSX.Element {
           ))}
         </div>
 
+        {bulkOpen && (
+          <div className="bulk-sell-panel">
+            <div className="bulk-sell-title">
+              レアリティ一式の一括売却
+              <span className="jp">装着中・お気に入りの装備は必ず除外されます</span>
+            </div>
+            <div className="bulk-sell-row">
+              <label className="bulk-sell-field">
+                <span className="k">対象レアリティ</span>
+                <select
+                  value={bulkMaxRarity}
+                  onChange={(e) => { setBulkMaxRarity(e.target.value as ItemRarity); setBulkConfirming(false); setBulkErr(null); }}
+                >
+                  {ITEM_RARITIES.map((r) => (
+                    <option key={r} value={r}>{ITEM_RARITY_LABEL[r]}以下をまとめて売却</option>
+                  ))}
+                </select>
+              </label>
+              <label className="bulk-sell-field">
+                <span className="k">アイテムLv条件</span>
+                <select
+                  value={bulkBelowLevel}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setBulkBelowLevel(v === '' ? '' : Number(v));
+                    setBulkConfirming(false);
+                    setBulkErr(null);
+                  }}
+                >
+                  <option value="">指定なし(レアリティのみで判定)</option>
+                  {BULK_LEVEL_OPTIONS.map((lv) => (
+                    <option key={lv} value={lv}>Lv{lv} 未満のみ</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {bulkErr !== null && (
+              <div className="error-box" style={{ marginTop: 8 }}>
+                <h3>{describeError(bulkErr).title}</h3>
+                <div className="muted">{describeError(bulkErr).detail}</div>
+              </div>
+            )}
+
+            {!bulkConfirming ? (
+              <button
+                type="button"
+                className="btn btn-sm btn-danger"
+                disabled={bulkBusy}
+                onClick={() => { setBulkErr(null); setBulkConfirming(true); }}
+              >
+                対象を確認する
+              </button>
+            ) : (
+              <div className="bulk-sell-confirm">
+                <div className="bulk-sell-confirm-text">
+                  <b>{ITEM_RARITY_LABEL[bulkMaxRarity]}以下</b>
+                  {bulkBelowLevel !== '' && <>・<b>Lv{bulkBelowLevel}未満</b></>}
+                  の装備のうち、
+                  <b className="num">{bulkPreview.toSell.length}件</b> を売却して
+                  <b className="num gold">{formatNumber(bulkPreview.gold)} GOLD</b> を獲得します。
+                  {bulkPreview.skipped > 0 && (
+                    <> 装着中・お気に入りの <b className="num">{bulkPreview.skipped}件</b> は売却されず保護されます。</>
+                  )}
+                  {bulkPreview.toSell.length === 0 && (
+                    <div className="muted" style={{ marginTop: 4 }}>該当する売却対象がありません。</div>
+                  )}
+                </div>
+                <div className="row" style={{ gap: 8, marginTop: 8 }}>
+                  <button type="button" className="btn btn-sm btn-ghost" disabled={bulkBusy} onClick={() => setBulkConfirming(false)}>
+                    キャンセル
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-danger"
+                    disabled={bulkBusy || bulkPreview.toSell.length === 0}
+                    onClick={() => void doBulkSell()}
+                  >
+                    {bulkBusy ? '処理中…' : `本当に売却する (${bulkPreview.toSell.length}件)`}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {bulkResult && (
+              <div className="muted" style={{ color: 'var(--ok)', fontSize: 12, marginTop: 8 }}>
+                一括売却が完了しました: {bulkResult.count}件を売却して {formatNumber(bulkResult.gold)} GOLD を入手
+                (装着中・お気に入りの {bulkResult.skipped}件 は保護されました)。
+              </div>
+            )}
+          </div>
+        )}
+
         {sellMode && (
           <div className="sell-bar">
             <span className="muted" style={{ fontSize: 12 }}>
-              売却する装備を選択してください(装着中の装備は選択できません)。選択中: {sellSet.size}件
+              売却する装備を選択してください(装着中・お気に入りの装備は選択できません)。選択中: {sellSet.size}件
             </span>
             <button className="btn btn-sm btn-primary" disabled={sellSet.size === 0 || busy} onClick={() => void doSell()}>
               {busy ? '処理中…' : `売却する (${sellSet.size}件)`}
@@ -291,18 +515,27 @@ export function EquipmentScreen(): JSX.Element {
           <div className="muted" style={{ padding: 24, textAlign: 'center' }}>条件に合う装備がありません。</div>
         ) : (
           <div className="equip-grid">
-            {list.map((it) => (
+            {visibleList.map((it) => (
               sellMode ? (
-                <label key={it.uid} className={`equip-card irar-${it.rarity} ${it.equippedBy ? 'is-equipped is-disabled' : ''} ${sellSet.has(it.uid) ? 'is-selected' : ''}`}>
+                <label
+                  key={it.uid}
+                  className={`equip-card irar-${it.rarity} ${it.equippedBy || it.favorite ? 'is-equipped is-disabled' : ''} ${sellSet.has(it.uid) ? 'is-selected' : ''} ${it.favorite ? 'is-favorite' : ''}`}
+                >
                   <input
                     type="checkbox"
                     style={{ position: 'absolute', top: 8, right: 8 }}
-                    disabled={!!it.equippedBy}
+                    disabled={!!it.equippedBy || !!it.favorite}
                     checked={sellSet.has(it.uid)}
                     onChange={() => toggleSell(it.uid)}
                     aria-label={`${it.name} を売却選択`}
                   />
                   <div className="equip-card-head">
+                    <FavoriteButton
+                      favorite={!!it.favorite}
+                      busy={favBusy.has(it.uid)}
+                      onToggle={() => void toggleFavorite(it)}
+                      name={it.name}
+                    />
                     <span className="slot-ic">{EQUIPMENT_SLOT_ICON[it.slot]}</span>
                     <span className="irar-tag">{ITEM_RARITY_LABEL[it.rarity]}</span>
                     <span className="ilv">Lv{it.itemLevel}</span>
@@ -310,11 +543,26 @@ export function EquipmentScreen(): JSX.Element {
                   <ItemName item={it} />
                   <ItemStatsList item={it} />
                   {it.equippedBy && <div className="equipped-tag">装着中(売却不可)</div>}
+                  {!it.equippedBy && it.favorite && <div className="favorite-tag">★ お気に入り(売却不可)</div>}
                 </label>
               ) : (
-                <EquipCard key={it.uid} item={it} selected={selectedUid === it.uid} onClick={() => setSelectedUid(selectedUid === it.uid ? null : it.uid)} />
+                <EquipCard
+                  key={it.uid}
+                  item={it}
+                  selected={selectedUid === it.uid}
+                  onClick={() => setSelectedUid(selectedUid === it.uid ? null : it.uid)}
+                  onToggleFavorite={() => void toggleFavorite(it)}
+                  favBusy={favBusy.has(it.uid)}
+                />
               )
             ))}
+          </div>
+        )}
+        {hasMore && (
+          <div className="load-more-row">
+            <button type="button" className="btn btn-ghost" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
+              もっと見る(残り {list.length - visibleList.length}件 / 全{list.length}件)
+            </button>
           </div>
         )}
       </Panel>

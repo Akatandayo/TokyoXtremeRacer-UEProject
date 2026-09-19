@@ -560,7 +560,13 @@ export function BattleScreen(): JSX.Element {
   const policy = useMemo(() => effectPolicy(store.settings), [store.settings]);
   const onBattleEvent = useCallback((ev: BattleEvent) => {
     const key = sfxForEvent(ev);
-    if (key) audio.playSfx(key);
+    if (!key) return;
+    // SKILL_USE だけは skillSfx(スキルID別の専用効果音)を優先させる
+    if (ev.type === 'SKILL_USE') {
+      audio.playSkillSfx(ev.skillId, key);
+      return;
+    }
+    audio.playSfx(key);
   }, [audio]);
   const [showResult, setShowResult] = useState(false);
   const finishedOnce = useRef(false);

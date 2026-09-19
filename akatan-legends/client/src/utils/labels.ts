@@ -75,14 +75,14 @@ export const STATUS_LABEL: Record<StatusType, string> = {
   POISON: '毒', BURN: '火傷', FREEZE: '氷結', STUN: '気絶', SILENCE: '沈黙',
   BLEED: '出血', SLOW: '鈍足', DEF_DOWN: '防down', ATK_DOWN: '攻down',
   ATK_UP: '攻UP', DEF_UP: '防UP', SPD_UP: '速UP', SHIELD: '障壁',
-  REGEN: '再生', TAUNT: '挑発',
+  REGEN: '再生', TAUNT: '挑発', INVULNERABLE: '無敵', IMMUNE: '状態異常無効',
 };
 
 export const STATUS_ICON: Record<StatusType, string> = {
   POISON: '毒', BURN: '炎', FREEZE: '氷', STUN: '★', SILENCE: '黙',
   BLEED: '血', SLOW: '鈍', DEF_DOWN: '防', ATK_DOWN: '攻',
   ATK_UP: '攻', DEF_UP: '防', SPD_UP: '速', SHIELD: '盾',
-  REGEN: '癒', TAUNT: '挑',
+  REGEN: '癒', TAUNT: '挑', INVULNERABLE: '無', IMMUNE: '護',
 };
 
 export const BUFF_STATUSES: StatusType[] = ['ATK_UP', 'DEF_UP', 'SPD_UP', 'SHIELD', 'REGEN', 'TAUNT'];

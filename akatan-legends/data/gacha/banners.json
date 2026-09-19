@@ -53,7 +53,7 @@
     "cost": { "currency": "TICKET", "amount": 1, "ticketId": "ticket_summon_kachoufuugetsu" },
     "cost10": { "currency": "TICKET", "amount": 9, "ticketId": "ticket_summon_kachoufuugetsu" },
     "rates": {
-      "rarity": { "N": 34, "R": 30, "SR": 20, "SSR": 15.9, "UR": 0.1 }
+      "rarity": { "N": 34, "R": 30, "SR": 20, "SSR": 15.8, "UR": 0.2 }
     },
     "pool": [
       "enji", "hitori", "hokuto", "kurogane", "momiji", "rin", "sazanami", "shizuku", "yomi",

@@ -348,3 +348,57 @@ base + growth × 59(転生前Lv60時点) = base + growth × 1.03 × (L - 1)
 
 - **ガチャ**: `banner_standard_char` と `banner_pickup_momiji_kc` は `pool` が未指定だと `gacha-service.ts` が「全実装済みキャラ」にフォールバックする仕様だったため、両バナーに明示的な `pool`(`hitori_stand` を除く既存11キャラ)を追加した。
 - **既知の未解決の漏れ(要バックエンド対応)**: `server/src/services/drop-service.ts` の `pickRandomCharacterId()` は、`kind: "CHARACTER"` かつ `id` 省略のドロップエントリで「実装済み全キャラからランダム1体」を選ぶ(`data.characters.keys()` をソートして `rng.pick`)。`data/items/droptables/chapter1.json`(`dt_ch1_common`/`dt_ch1_boss`)と `chapter2.json`(`dt_ch2_common`/`dt_ch2_boss`)がこの「id省略」形式を使っているため、**`hitori_stand` の実装により、通常のダンジョン周回でも(低確率だが)排出され得る状態になっている**。この関数にはキャラ単位の除外機構が無く、データ側(`data/**`)だけでは対処できない。`CharacterDef` に `raidExclusive` 等のフラグを追加して `pickRandomCharacterId` 側でフィルタする対応をバックエンド担当に依頼したい(`spawn_task` でタスク登録を試みたがツールがタイムアウトしたため、ここに明記しておく)。
+  - **第6ラウンド時点の追記**: `pickRandomCharacterId()` は既にバックエンド側で修正済みで、`def.limited !== true` によるフィルタが入っている(`server/src/services/drop-service.ts:187`)。`gacha-service.ts` の `pickCharacterDefId()` も `pool` 未指定時は同様に `limited` を除外する。したがって8-3の懸念は解消済みで、`limited: true` を付けたキャラは「明示的に `pool`/`id` を書いたエントリ」からしか出なくなっている。第6ラウンドの新規2キャラもこの仕組みに乗せている(9-4参照)。
+
+## 9. 第6ラウンド: 新キャラ「加那星蒼太」「月島風花」とSPDの天井
+
+### 9-1. `sota`(加那星蒼太)
+
+- ユーザーの友人PLの探索者(アカルア卓(旧卓) / PL: 虚無プリン / 探索者名: 加那星蒼太 / 所属: 虚構memory)。`rarity: "UR"`、`element: "VOID"`(統括指定。「対象の存在ごと切る」能力がVOIDらしいため)、`roles: ["ATTACKER", "SPECIALIST"]`。
+- **コンボを持たない代わりに、基礎ステータスを同レアリティ(UR)の相場よりおよそ10%高く**している。既存UR中「攻撃寄りの専門職」型である `momiji_kc`/`hitori_stand` の平均値(hp580/atk131/def38/crit26/critDmg172.5/res22)を基準に、`speed` 以外の主要ステータスへ約10%上乗せした(hp640/atk145/def42/crit29/critDmg190/res24)。`speed`(138)だけは意図的に基準そのままとし、`fuuka` のSPD天井(9-3参照)を超えないよう別枠で調整した。
+- 技名はユーザー指定のものをそのまま採用: `normalAttack`=「日本刀」(単体)、アクティブ=「《斬》」(全体・CT4・「対象の存在ごと切る」演出としてDEF_DOWN付き)/「/招来\」(単体・CT5・`SkillEffect.adaptElement: true` で対象の弱点属性に変化)、`ultimate`=「｛impulse｝」(《衝動》。自身に `INVULNERABLE`+`IMMUNE` を `actionDuration: 3`(=3回行動するまで)付与)、覚醒=「新星」(HP50%以下で `statBonus: { attack: 80, criticalDamage: -20 }`)。
+- `INVULNERABLE`/`IMMUNE` は STATUS effect として `duration` も同じ値(3)を入れている。`actionDuration`(自身の行動回数基準)は型コメントのとおり「エンジン側が対応していればそちらを優先する」設計なので、`duration`(ターン基準)を保険として併記した。エンジン側の実装が `actionDuration` に未対応の間は `duration: 3` ターンとして動く。
+- `combos` フィールドは持たせていない(コンボ無しの代替として上記のステータス上乗せを選んだため)。
+
+### 9-2. `fuuka`(月島風花)
+
+- ユーザーの友人PLの探索者(アカルア卓(旧卓) / PL: Theルーフ / 探索者名: 月島 風花 / 所属: 秘密結社「花鳥風月」)。`rarity: "UR"`、`element: "WIND"`、`roles: ["SUPPORT", "SPECIALIST"]`。本人要望「SPDの天井(最速)になりたい・バッファーでありたい」を反映し、`attack`(95)は既存URの中でも低め、`speed`(158)は全キャラ中最速にしている(9-3参照)。
+- 技名はユーザー指定のものをそのまま採用: `normalAttack`=「アウトロー・レッドノート」(単体・赤黒いスナイパーライフル)、アクティブ=「弾幕」(全体・CT3)/「【鳥獣戯画】」(バフ・CT4)、`ultimate`=「【花鳥風月】」(`Skill.randomEffect: true` で4効果からランダムに1つ)、覚醒=「RISING」(HP50%以下で `statBonus: { speed: 60 }`)。
+- **近似せざるを得なかった箇所(いずれもスキルの `description` にも明記済み)**:
+  - 「【鳥獣戯画】」本来の設定は『次に味方が攻撃するタイミングで、攻撃前にそのSPDを2倍にし、2倍後のSPDが敵SPDの2倍以上なら2回行動させる』という条件付き効果。エンジンは「次の特定タイミングで効果を差し替える」条件分岐に未対応のため、代わりに攻撃力最上位の味方(`HIGHEST_ATK`)へ `SPD_UP` potency100(=2倍相当)+行動ゲージ大回復(`GAUGE` amount100)を即座に付与し、「実質もう1回動ける」状態を作る近似にした。
+  - 「【花鳥風月】」本来は花=次のダメージ+10%増幅/鳥=次の攻撃・デバフを絶対回避/風=ランダムな味方のスキルCTを0/月=ランダムな敵のスキルCTを+2、の4つ。エンジンには「ランダムな相手のクールダウンを直接操作する」機構が無く、`randomEffect` も「4つの中から1つを選んで適用する」までしか対応しないため、以下に置き換えた: 花→`ATK_UP`付与、鳥→自身に短時間`INVULNERABLE`付与(本来はデバフ無効=`IMMUNE`も同時に付くはずだが、`randomEffect` の1エントリ=1 `SkillEffect` という制約上、複数ステータスを同時に持たせられないため`IMMUNE`は省略した)、風→味方全体の行動ゲージ回復、月→敵単体への`SILENCE`。
+  - 覚醒「RISING」も本来は『覚醒中は自身のスキルCTを1下げる』効果を併せ持つ想定だったが、クールダウン短縮を表現する仕組みがエンジンに無いため、`statBonus: { speed: 60 }` のみに絞った(`description` に明記)。
+- `combos: ["kachou_fuugetsu_bond"]`(9-4参照)。
+
+### 9-3. SPDの天井を `fuuka` の158に設定
+
+- これまでの最速は `momiji_kc` の150、次点が `hitori_stand` の148だった。`fuuka` 本人の要望「SPDのボーダーライン(天井)になりたい」を受け、`baseStats.speed: 158` を**全キャラ中で明確に最速**にした。
+- **以降、新規キャラの `baseStats.speed` は `fuuka` の158を超えないことを設計上の天井とする。** 既存キャラの `growth.speed`(レベル成長)による逆転は許容するが、Lv1のベースSPDでこの値を超えるキャラは今後追加しない方針。次点候補を作る場合も155〜157程度に留めること。
+- 同ラウンドで追加した `sota` は意図的にこの天井よりだいぶ低い138に設定し、「基礎ステータス+10%」の対象からも `speed` を除外した(9-1参照)。
+
+### 9-4. コンボ「《花鳥風月》」(`kachou_fuugetsu_bond`)
+
+- `kind: "TAG"`、`requireTag: { tag: "花鳥風月", count: 2 }`。`data/combos/combos.json` の末尾に追加。
+- 既存キャラのうち、名前・設定から花鳥風月に関係すると判断できる3人に `tags` へ `"花鳥風月"` を追加した: `momiji`(紅葉=花)、`rin`(凛=風)、`momiji_kc`(孤月紅葉=月)。「鳥」に対応する既存キャラは見当たらなかったため付けていない(付けすぎを避けるため)。`fuuka` 自身にも当然 `"花鳥風月"` タグを付けている。
+- 本来の設定は『関わるキャラが多いほどお互いのATKが上がる』という人数依存の可変ボーナスだが、`ComboEffect` に人数に応じたスケーリングを表現する仕組みが無いため、**成立時にパーティ全体のATKを固定値(+15%)で底上げする効果**に近似した。この近似である旨は `combos.json` の `description` に明記している。
+- `trigger.type: "ON_BATTLE_START"` / `maxPerBattle: 1`。`effects[0].performer` は省略しており、エンジンは成立に寄与した参加キャラ(タグ保有者)の中から自動で1人を実行役に選ぶ(`fuuka` が編成にいなくても、`momiji`+`rin` など他の2人だけで成立し得るため、特定キャラをハードコードしなかった)。
+
+### 9-5. チケットガチャ限定バナー `banner_pickup_sota_fuuka`
+
+- `sota`・`fuuka` はともに `limited: true`。「他のバナー・ドロップから絶対に出ない」ようにするため、新設した `banner_pickup_sota_fuuka` 以外の `pool` には一切追加していない(8-3で確認済みのとおり、`pool` 省略時の自動抽選やダンジョンの「id省略」ドロップは `limited` を自動で除外するので、他バナー側の修正は不要だった)。
+- コストは `cost.currency: "TICKET"`、`ticketId: "ticket_summon_kachoufuugetsu"`(新規素材、`data/items/materials.json` に追加)。単発1枚/10連9枚。
+- `rates.rarity` は `{ N: 34, R: 30, SR: 20, SSR: 15.9, UR: 0.1 }`(合計100)。**UR枠を0.1%** にし、`pool` には `sota`/`fuuka` の2人だけを UR候補として明示し、他は N〜SSRの既存非限定9キャラ(`amagi`/`hitori_stand`/`momiji_kc` などUR勢は含めない)を「ハズレ枠」として入れている。こうすることで、このバナーでUR(0.1%)を引いた場合は必ず `sota` か `fuuka` のどちらかになる(2人の中から均等抽選)。
+- `pity: { count: 80, rarity: "UR" }` / `guarantee10: "SSR"` を設定し、極端な連続ハズレでも80連目までに必ずどちらか1人が確定するようにした。
+- **チケットの入手経路(必須)**: `ticket_summon_kachoufuugetsu` を `dt_ch2_boss`(第2章ボスドロップ、重み3)と `dt_raid_hitori_stand_defeat`(レイド撃破報酬、重み5)の2箇所に追加した。どちらか一方が将来削除されると「チケットが入手不能になる」ため、削除する場合はもう一方が残っているか必ず確認すること(`validate-data.mjs` は素材の入手可否を転生コストについてのみ検査しており、ガチャチケットの入手可否までは検査しない点に注意)。
+
+### 9-6. `skillSfx` の割り当て(`data/system/audio.json`)
+
+- `AudioConfig.skillSfx` に4件追加。ファイルは配置済み(`client/public/audio/skill_itteosokattana.wav` / `skill_tokitobasi.wav`)。
+  - `sk_hitori_stand_disc_extract` / 覚醒後の `sk_hitori_stand_disc_extract_ex` → `skill_itteosokattana.wav`(「一手、遅かったな。」)
+  - `sk_momiji_kc_timeskip` / 覚醒後の `sk_momiji_kc_timeskip_ex` → `skill_tokitobasi.wav`(「時飛ばし」)
+- EX版にも同じ音を当てているのは、覚醒後もプレイヤーには「同じ技の強化版」として認識してほしいため。
+
+### 9-7. バリデータの追随修正
+
+- `scripts/validate-data.mjs` の `STATUS_TYPES` に `INVULNERABLE`/`IMMUNE` を追加した(`shared/src/types.ts` の追加に合わせる必須修正。これが無いとSTATUS効果や覚醒の`grant`で使った瞬間にエラーになる)。
+- `SkillEffect.adaptElement`/`SkillEffect.actionDuration`/`Skill.randomEffect`/`AudioConfig.skillSfx` は、バリデータの現状の実装では `SkillEffect`/`Skill` オブジェクト自体に対する「未知キー」の総当たりチェックが(他の型と違って)存在しないため、追加の許可リスト修正は不要だった(該当箇所を確認済み)。`audio.json` 自体もバリデータの検査対象外(スキーマ検査なし)なので `skillSfx`追加も無修正で通っている。
