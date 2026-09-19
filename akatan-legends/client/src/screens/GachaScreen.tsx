@@ -8,6 +8,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   GachaBannerDef, GachaPullResult, PlayerProfile, MaterialStack, Rarity, ItemRarity, CharacterArt as ArtDef,
+  CharacterDef,
 } from '@akatan/shared';
 import { useStore } from '../state/store';
 import { Panel } from '../components/common';
@@ -46,9 +47,32 @@ function canAfford(cost: GachaBannerDef['cost'], player: PlayerProfile | null, t
   return { ok: true };
 }
 
-function RateTable({ banner }: { banner: GachaBannerDef }): JSX.Element {
+function RateTable({ banner, characters }: { banner: GachaBannerDef; characters?: CharacterDef[] }): JSX.Element {
   const entries = Object.entries(banner.rates.rarity ?? {}) as [Rarity, number][];
   entries.sort((a, b) => tierOf(b[0]) - tierOf(a[0]));
+  // pool 明示バナーは「そのキャラ1体あたり」の実排出率まで開示する(UR枠のみ)。
+  const perChar = useMemo(() => {
+    if (!banner.pool || !characters) return [];
+    const urPct = banner.rates.rarity?.UR ?? 0;
+    if (urPct <= 0) return [];
+    const urDefs = banner.pool
+      .map((id) => characters.find((c) => c.id === id))
+      .filter((c): c is CharacterDef => !!c && c.rarity === 'UR');
+    if (urDefs.length === 0) return [];
+    const pickups = (banner.pickup ?? []).filter((x) => urDefs.some((d) => d.id === x.defId));
+    const pickedShare = pickups.reduce((a, x) => a + x.rate, 0);
+    const rest = urDefs.filter((d) => !pickups.some((x) => x.defId === d.id));
+    return urDefs.map((def) => {
+      const pu = pickups.find((x) => x.defId === def.id);
+      const rate = pu
+        ? (urPct * pu.rate) / 100
+        : rest.length === 0
+          ? 0
+          : (urPct * (100 - pickedShare)) / 100 / rest.length;
+      return { def, rate };
+    });
+  }, [banner, characters]);
+
   return (
     <div className="rate-table">
       <div className="rate-table-title">排出率</div>
@@ -59,6 +83,17 @@ function RateTable({ banner }: { banner: GachaBannerDef }): JSX.Element {
           <span className="rv">{pct}%</span>
         </div>
       ))}
+      {perChar.length > 0 && (
+        <div className="rate-perchar">
+          {perChar.map(({ def, rate }) => (
+            <div className="rate-perchar-row" key={def.id}>
+              <span style={{ color: anyRarityColorVar(def.rarity) }}>{def.rarity}</span>
+              <span className="rpc-name">{def.name}</span>
+              <span className="rpc-rate">{Number(rate.toFixed(3))}%</span>
+            </div>
+          ))}
+        </div>
+      )}
       {banner.equipment && (
         <div className="muted" style={{ fontSize: 10.5, marginTop: 4 }}>
           ※ 装備バナーの表記は排出の「格」です。実際の装備レアリティ(コモン〜ミシック)は結果画面で確定表示します。
@@ -313,7 +348,7 @@ export function GachaScreen(): JSX.Element {
               {banner.guarantee10 && (
                 <div className="gb-pity muted">10連は{banner.guarantee10}以上を1枠確定保証</div>
               )}
-              <RateTable banner={banner} />
+              <RateTable banner={banner} characters={store.master?.characters} />
             </div>
 
             <div className="gacha-actions">

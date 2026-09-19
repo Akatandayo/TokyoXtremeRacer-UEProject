@@ -557,3 +557,21 @@
   .result-art { width: 84px; height: 84px; }
   .gacha-result-card.is-big .result-art { width: 104px; height: 104px; }
 }
+
+/* 排出率: pool 明示バナーの「1体あたり」開示 */
+.rate-perchar {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.16);
+  display: grid;
+  gap: 3px;
+}
+.rate-perchar-row {
+  display: grid;
+  grid-template-columns: 2.4em 1fr auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.rate-perchar-row .rpc-name { color: var(--fg-2, #cfd8e3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rate-perchar-row .rpc-rate { font-variant-numeric: tabular-nums; color: var(--fg-1, #eaf2ff); }
