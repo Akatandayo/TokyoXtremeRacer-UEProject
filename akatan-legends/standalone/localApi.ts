@@ -712,7 +712,23 @@ function viewOf(owned: OwnedCharacter) {
 function raidStateOf(boss: RaidBossDef): RaidState {
   state.raid ??= {};
   const cur = state.raid[boss.id];
-  if (cur) return cur;
+  if (cur) {
+    // 旧バージョンのセーブ救済:
+    // 周回可能になる前に倒したボスは defeated: true のまま固まっていて、
+    // 二度と挑めない。周回可能なボスなら蘇生してHPを戻す。
+    if (cur.defeated && boss.repeatable !== false) {
+      cur.defeated = false;
+      cur.remainingHp = boss.totalHp;
+      cur.totalHp = boss.totalHp;
+      cur.triggeredGimmicks = [];
+      // 倒した実績は残す(討伐回数が未記録なら1回として数える)
+      cur.clears = Math.max(1, cur.clears ?? 0);
+      cur.updatedAt = new Date().toISOString();
+      save(state);
+    }
+    cur.clears ??= 0;
+    return cur;
+  }
   const fresh: RaidState = {
     bossId: boss.id,
     remainingHp: boss.totalHp,

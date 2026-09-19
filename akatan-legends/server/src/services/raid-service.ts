@@ -63,7 +63,27 @@ function initRaidState(boss: RaidBossDef): RaidState {
 }
 
 function getOrInitRaidState(playerId: string, boss: RaidBossDef): RaidState {
-  return repo.findRaidState(playerId, boss.id) ?? initRaidState(boss);
+  const found = repo.findRaidState(playerId, boss.id);
+  if (!found) return initRaidState(boss);
+
+  // 旧セーブの救済:
+  // レイドが周回可能になる前に撃破したボスは defeated: true のまま固まっており、
+  // そのままでは二度と挑めない。周回可能なボスなら蘇生してHPを戻す。
+  if (found.defeated && boss.repeatable !== false) {
+    const revived: RaidState = {
+      ...found,
+      defeated: false,
+      remainingHp: boss.totalHp,
+      totalHp: boss.totalHp,
+      triggeredGimmicks: [],
+      // 倒した実績は残す(討伐回数が未記録なら1回として数える)
+      clears: Math.max(1, found.clears ?? 0),
+      updatedAt: new Date().toISOString(),
+    };
+    repo.saveRaidState(playerId, revived);
+    return revived;
+  }
+  return { ...found, clears: found.clears ?? 0 };
 }
 
 /** GET /api/raid */
