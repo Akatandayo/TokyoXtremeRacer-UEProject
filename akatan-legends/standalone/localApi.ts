@@ -476,21 +476,26 @@ function rollDrops(stage: StageDef): DropResult {
 
   const rng = createRng((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0);
   const enemyLevel = Math.max(...(stage.enemies ?? []).map((e) => e.level), 1);
+
+  // guaranteed は重み抽選の対象外で、必ず1回処理する(サーバの drop-service と同じ規則)
+  const guaranteed = (table.entries ?? []).filter((e) => e.guaranteed === true);
+  const weightedEntries = (table.entries ?? []).filter((e) => e.guaranteed !== true);
   const choices: { weight: number; entry: DropEntry | null }[] = [
-    ...(table.entries ?? []).map((e) => ({ weight: Math.max(0, e.weight), entry: e })),
+    ...weightedEntries.map((e) => ({ weight: Math.max(0, e.weight), entry: e })),
     ...(table.nothingWeight ? [{ weight: table.nothingWeight, entry: null }] : []),
   ];
   const total = choices.reduce((a, c) => a + c.weight, 0);
-  if (total <= 0) return result;
 
-  for (let i = 0; i < (table.rolls ?? 1); i++) {
+  const picks: DropEntry[] = [...guaranteed];
+  for (let i = 0; i < (table.rolls ?? 1) && total > 0; i++) {
     let roll = rng.next() * total;
-    let picked: DropEntry | null = null;
     for (const c of choices) {
       roll -= c.weight;
-      if (roll <= 0) { picked = c.entry; break; }
+      if (roll <= 0) { if (c.entry) picks.push(c.entry); break; }
     }
-    if (!picked) continue;  // 「何も出ない」枠
+  }
+
+  for (const picked of picks) {
     const count = picked.min != null && picked.max != null
       ? rng.int(picked.min, picked.max) : (picked.min ?? 1);
 
@@ -715,6 +720,7 @@ function raidStateOf(boss: RaidBossDef): RaidState {
     attempts: 0,
     totalDamage: 0,
     defeated: false,
+    clears: 0,
     triggeredGimmicks: [],
   };
   state.raid[boss.id] = fresh;
@@ -1024,11 +1030,17 @@ export const mockApi = {
     const after = activeGimmicks(boss, hpAfter);
     const newGimmicks = after.filter((g) => !before.has(g.name));
 
-    rs.remainingHp = hpAfter;
+    // 周回可能なボス(既定)は撃破したらHPをリセットして何度でも挑めるようにする。
+    // 一度倒したら二度と挑めないと、限定ドロップを狙って周回できずコンテンツが死ぬ。
+    const killed = hpAfter <= 0;
+    const repeatable = boss.repeatable !== false;
+    const didReset = killed && repeatable;
+    rs.remainingHp = didReset ? boss.totalHp : hpAfter;
     rs.attempts += 1;
     rs.totalDamage += damage;
-    rs.triggeredGimmicks = after.map((g) => g.name);
-    rs.defeated = hpAfter <= 0;
+    rs.clears = (rs.clears ?? 0) + (killed ? 1 : 0);
+    rs.triggeredGimmicks = didReset ? [] : after.map((g) => g.name);
+    rs.defeated = killed && !repeatable;
     rs.updatedAt = new Date().toISOString();
 
     // MVP
@@ -1036,7 +1048,7 @@ export const mockApi = {
     const top = allyStats.slice().sort((a, b) => b.damageDealt - a.damageDealt)[0];
 
     // 報酬: 毎回は参加報酬、撃破時は撃破報酬
-    const tableId = rs.defeated ? boss.dropTable : boss.attemptDropTable;
+    const tableId = killed ? boss.dropTable : boss.attemptDropTable;
     const fakeStage = {
       id: `raid:${boss.id}`, name: boss.name,
       enemies: [{ enemyId: boss.enemyId, level: boss.level }],
@@ -1055,7 +1067,7 @@ export const mockApi = {
     save(state);
 
     const raid: RaidAttemptResult = {
-      damage, hpBefore, hpAfter, defeated: rs.defeated, newGimmicks,
+      damage, hpBefore, hpAfter, defeated: killed, clears: rs.clears, reset: didReset, newGimmicks,
       ...(top ? { mvp: { id: top.id, name: top.name, damage: top.damageDealt } } : {}),
     };
     return {

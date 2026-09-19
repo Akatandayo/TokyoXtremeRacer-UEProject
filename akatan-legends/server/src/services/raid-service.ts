@@ -57,6 +57,7 @@ function initRaidState(boss: RaidBossDef): RaidState {
     attempts: 0,
     totalDamage: 0,
     defeated: false,
+    clears: 0,
     triggeredGimmicks: [],
   };
 }
@@ -231,14 +232,24 @@ export function attackRaidBoss(
     if (!mvp || s.damageDealt > mvp.damage) mvp = { id: s.id, name: s.name, damage: s.damageDealt };
   }
 
+  // 周回可能なボス(既定)は、撃破したらHPをリセットして何度でも挑めるようにする。
+  // 一度倒したら二度と挑めない作りだと、限定ドロップを狙って周回できずコンテンツが死ぬ。
+  const repeatable = boss.repeatable !== false;
+  const didReset = willDefeatNow && repeatable;
+  const clears = (existing.clears ?? 0) + (willDefeatNow ? 1 : 0);
+
   const newState: RaidState = {
     bossId: boss.id,
-    remainingHp: hpAfter,
+    // 撃破 + 周回可能 なら満タンに戻す
+    remainingHp: didReset ? totalHp : hpAfter,
     totalHp,
     attempts: existing.attempts + 1,
     totalDamage: existing.totalDamage + damage,
-    defeated: willDefeatNow,
-    triggeredGimmicks,
+    // 周回可能なボスは「もう挑めない」状態にはしない
+    defeated: willDefeatNow && !repeatable,
+    clears,
+    // HPが戻るのでギミックの発動状況もリセットする
+    triggeredGimmicks: didReset ? [] : triggeredGimmicks,
     updatedAt: now,
   };
 
@@ -282,6 +293,8 @@ export function attackRaidBoss(
     hpBefore,
     hpAfter,
     defeated: willDefeatNow,
+    clears,
+    reset: didReset,
     newGimmicks,
     mvp,
   };

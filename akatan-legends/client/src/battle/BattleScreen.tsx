@@ -378,8 +378,17 @@ function RaidDamageSection({ raid }: { raid: RaidBattleContext }): JSX.Element {
           <div className="v" style={{ color: 'var(--shu)' }}>{formatNumber(attempt.damage)}</div>
         </div>
         <div className="reward-box">
-          <div className="k">ボスの残りHP</div>
-          <div className="v">{remainPct.toFixed(1)}%</div>
+          {attempt.defeated ? (
+            <>
+              <div className="k">討伐回数</div>
+              <div className="v" style={{ color: 'var(--gold)' }}>{attempt.clears ?? 1} 回目</div>
+            </>
+          ) : (
+            <>
+              <div className="k">ボスの残りHP</div>
+              <div className="v">{remainPct.toFixed(1)}%</div>
+            </>
+          )}
         </div>
       </div>
 
@@ -397,7 +406,9 @@ function RaidDamageSection({ raid }: { raid: RaidBattleContext }): JSX.Element {
 
       {attempt.defeated ? (
         <div className="raid-result-note is-defeat">
-          撃破しました! {bossName} の脅威は去った。
+          {attempt.reset
+            ? `撃破! ${bossName} を討伐しました(${attempt.clears ?? 1} 回目)。HPが全快して再び現れる — 何度でも挑める。`
+            : `撃破しました! ${bossName} の脅威は去った。`}
         </div>
       ) : (
         <div className="raid-result-note">

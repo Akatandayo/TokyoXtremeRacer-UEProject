@@ -89,14 +89,25 @@ export function resolveDrops(
   const ticketDeltas = new Map<string, number>();
   const characterResults: CharacterDropResult[] = [];
 
+  // guaranteed のエントリは重み抽選の対象から外し、必ず1回処理する。
+  // 「レイドを倒したら限定キャラが確定で手に入る」のような、運に左右させたくない
+  // 報酬のための仕組み(weight は無視される)。
+  const guaranteed = (table.entries ?? []).filter((e) => e.guaranteed === true);
+  const weighted = (table.entries ?? []).filter((e) => e.guaranteed !== true);
+
   const choices: WeightedChoice<DropEntry>[] = [
     { weight: table.nothingWeight ?? 0, value: null },
-    ...(table.entries ?? []).map((e) => ({ weight: e.weight, value: e })),
+    ...weighted.map((e) => ({ weight: e.weight, value: e })),
   ];
 
+  // 確定枠 -> 抽選枠 の順に処理する
+  const picks: DropEntry[] = [...guaranteed];
   for (let i = 0; i < rolls; i += 1) {
     const entry = weightedPick(rng, choices);
-    if (!entry) continue;
+    if (entry) picks.push(entry);
+  }
+
+  for (const entry of picks) {
     const count = rollCount(rng, entry);
 
     switch (entry.kind) {

@@ -65,6 +65,7 @@ function freshState(boss: RaidBossDef): RaidState {
     attempts: 0,
     totalDamage: 0,
     defeated: false,
+    clears: 0,
     triggeredGimmicks: [],
     updatedAt: new Date().toISOString(),
   };
@@ -157,19 +158,28 @@ export function performMockRaidAttack(bossId: string, members?: (string | null)[
   const mvpStat = allyStats.slice().sort((a, b) => b.damageDealt - a.damageDealt)[0];
   const mvp = mvpStat && mvpStat.damageDealt > 0 ? { id: mvpStat.id, name: mvpStat.name, damage: mvpStat.damageDealt } : undefined;
 
+  // 周回可能なボス(既定)は撃破したらHPをリセットして何度でも挑める
+  const killed = hpAfter <= 0;
+  const repeatable = boss.repeatable !== false;
+  const didReset = killed && repeatable;
+  const clears = (state.clears ?? 0) + (killed ? 1 : 0);
+
   const nextState: RaidState = {
     bossId: boss.id,
-    remainingHp: hpAfter,
+    remainingHp: didReset ? state.totalHp : hpAfter,
     totalHp: state.totalHp,
     attempts: state.attempts + 1,
     totalDamage: state.totalDamage + damage,
-    defeated: hpAfter <= 0,
-    triggeredGimmicks: [...state.triggeredGimmicks, ...newGimmicks.map((g) => g.name)],
+    defeated: killed && !repeatable,
+    clears,
+    triggeredGimmicks: didReset ? [] : [...state.triggeredGimmicks, ...newGimmicks.map((g) => g.name)],
     updatedAt: new Date().toISOString(),
   };
   raidStates.set(boss.id, nextState);
 
-  const raid: RaidAttemptResult = { damage, hpBefore, hpAfter, defeated: defeatedNow, newGimmicks, mvp };
+  const raid: RaidAttemptResult = {
+    damage, hpBefore, hpAfter, defeated: defeatedNow, clears, reset: didReset, newGimmicks, mvp,
+  };
 
   // 報酬(参加報酬): 通常戦闘と同様、勝敗に関わらず基礎報酬 + 勝利時ドロップ
   const rewards = log.result.victory ? buildRewards(party, stage) : null;

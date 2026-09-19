@@ -613,6 +613,7 @@ interface RaidStateRow {
   attempts: number;
   total_damage: number;
   defeated: number;
+  clears: number | null;
   triggered_gimmicks: string | null;
   updated_at: string;
 }
@@ -625,6 +626,7 @@ function toRaidState(row: RaidStateRow): RaidState {
     attempts: row.attempts,
     totalDamage: row.total_damage,
     defeated: row.defeated === 1,
+    clears: row.clears ?? 0,
     triggeredGimmicks: parseJson<string[]>(row.triggered_gimmicks, []),
     updatedAt: row.updated_at,
   };
@@ -650,14 +652,15 @@ export function listRaidStates(playerId: string, db: Db = getDb()): Map<string, 
 export function saveRaidState(playerId: string, state: RaidState, db: Db = getDb()): void {
   db.prepare(
     `INSERT INTO raid_states
-       (player_id, boss_id, remaining_hp, total_hp, attempts, total_damage, defeated, triggered_gimmicks, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (player_id, boss_id, remaining_hp, total_hp, attempts, total_damage, defeated, clears, triggered_gimmicks, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(player_id, boss_id) DO UPDATE SET
        remaining_hp = excluded.remaining_hp,
        total_hp = excluded.total_hp,
        attempts = excluded.attempts,
        total_damage = excluded.total_damage,
        defeated = excluded.defeated,
+       clears = excluded.clears,
        triggered_gimmicks = excluded.triggered_gimmicks,
        updated_at = excluded.updated_at`,
   ).run(
@@ -668,6 +671,7 @@ export function saveRaidState(playerId: string, state: RaidState, db: Db = getDb
     state.attempts,
     state.totalDamage,
     state.defeated ? 1 : 0,
+    state.clears ?? 0,
     JSON.stringify(state.triggeredGimmicks ?? []),
     state.updatedAt ?? new Date().toISOString(),
   );

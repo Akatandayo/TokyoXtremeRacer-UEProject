@@ -76,6 +76,7 @@ function BossCard({
 
       <div className="raid-stat-row">
         <span>挑戦回数 <b className="tabular">{state.attempts}</b></span>
+        <span>討伐回数 <b className="tabular" style={{ color: 'var(--gold)' }}>{state.clears ?? 0}</b></span>
         <span>累計与ダメージ <b className="tabular" style={{ color: 'var(--shu)' }}>{formatNumber(state.totalDamage)}</b></span>
       </div>
 

@@ -173,6 +173,17 @@ const MIGRATIONS: ((db: Db) => void)[] = [
     `);
   },
   // v4 -> v5 以降はここに追記する
+
+  // --- v4 -> v5 ---
+  //   - raid_states.clears: 討伐回数。
+  //     周回可能なレイドでは撃破のたびにHPが満タンへ戻るので、
+  //     「何回倒したか」を別に持たないと実績が残らない。
+  (db) => {
+    const cols = db.prepare('PRAGMA table_info(raid_states)').all() as { name: string }[];
+    if (!cols.some((c) => c.name === 'clears')) {
+      db.exec('ALTER TABLE raid_states ADD COLUMN clears INTEGER NOT NULL DEFAULT 0');
+    }
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

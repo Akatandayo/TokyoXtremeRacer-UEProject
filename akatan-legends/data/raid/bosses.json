@@ -13,7 +13,11 @@
         "name": "DISC記憶障壁",
         "description": "DISCの記憶障壁を展開し、被ダメージの一部を吸収するようになる。",
         "grant": [
-          { "status": "SHIELD", "duration": 99, "potency": 20 }
+          {
+            "status": "SHIELD",
+            "duration": 99,
+            "potency": 20
+          }
         ],
         "fx": "dark_disc_shield"
       },
@@ -25,7 +29,11 @@
           "attack": 20
         },
         "grant": [
-          { "status": "ATK_UP", "duration": 99, "potency": 25 }
+          {
+            "status": "ATK_UP",
+            "duration": 99,
+            "potency": 25
+          }
         ],
         "fx": "dark_heaven_rage"
       },
@@ -39,14 +47,26 @@
           "criticalDamage": 25
         },
         "grant": [
-          { "status": "ATK_UP", "duration": 99, "potency": 15 },
-          { "status": "SPD_UP", "duration": 99, "potency": 30 }
+          {
+            "status": "ATK_UP",
+            "duration": 99,
+            "potency": 15
+          },
+          {
+            "status": "SPD_UP",
+            "duration": 99,
+            "potency": 30
+          }
         ],
         "fx": "dark_heaven_rage_max"
       }
     ],
-    "weakElements": ["LIGHT"],
-    "immuneStatuses": ["SILENCE"],
+    "weakElements": [
+      "LIGHT"
+    ],
+    "immuneStatuses": [
+      "SILENCE"
+    ],
     "dropTable": "dt_raid_hitori_stand_defeat",
     "attemptDropTable": "dt_raid_hitori_stand_attempt",
     "art": {
@@ -55,6 +75,7 @@
       "accent": "#B266FF",
       "sigil": "蛇",
       "pattern": "void"
-    }
+    },
+    "repeatable": true
   }
 ]

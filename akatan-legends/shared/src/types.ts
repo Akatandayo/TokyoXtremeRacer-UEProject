@@ -604,6 +604,12 @@ export type DropKind = 'GOLD' | 'EQUIPMENT' | 'MATERIAL' | 'CHARACTER' | 'SUMMON
 
 export interface DropEntry {
   kind: DropKind;
+  /**
+   * true なら重み抽選の対象外で、そのテーブルが引かれたときに必ずドロップする。
+   * 「レイドを倒したら限定キャラが確定で手に入る」のような、運に左右させたくない
+   * 報酬に使う。weight は無視される。
+   */
+  guaranteed?: boolean;
   /** MATERIAL/CHARACTER/SUMMON_TICKET のID */
   id?: string;
   /** 抽選重み(同じテーブル内の相対値) */
@@ -991,6 +997,12 @@ export interface RaidBossDef {
   /** 弱点・無効 (設計書§29) */
   weakElements?: Element[];
   immuneStatuses?: StatusType[];
+  /**
+   * 撃破後にHPがリセットされ、何度でも再挑戦できるか。
+   * false にすると一度倒したら二度と挑めなくなる(コンテンツが死ぬ)ので、
+   * 省略時は true として扱う。
+   */
+  repeatable?: boolean;
   /** 撃破報酬のドロップテーブルID */
   dropTable?: string;
   /** 挑戦1回ごとの参加報酬テーブルID */
@@ -1008,8 +1020,13 @@ export interface RaidState {
   attempts: number;
   /** 累計与ダメージ */
   totalDamage: number;
-  /** 撃破済みか */
+  /**
+   * 撃破済みか。repeatable なボスでは撃破のたびにHPがリセットされるため、
+   * ここは常に false のままになる(「もう挑めない」状態を表すフラグ)。
+   */
   defeated: boolean;
+  /** 討伐回数 */
+  clears: number;
   /** 発動済みギミック名 */
   triggeredGimmicks: string[];
   updatedAt?: string;
@@ -1025,6 +1042,10 @@ export interface RaidAttemptResult {
   hpAfter: number;
   /** この挑戦で撃破したか */
   defeated: boolean;
+  /** 撃破後の累計討伐回数 */
+  clears?: number;
+  /** 撃破してHPがリセットされたか(周回可能なボス) */
+  reset?: boolean;
   /** この挑戦で新たに発動したギミック */
   newGimmicks: RaidGimmick[];
   /** MVP(最大ダメージを出した味方) */

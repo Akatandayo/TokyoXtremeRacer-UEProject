@@ -714,7 +714,12 @@ for (const path of listJson('items/droptables')) {
         const ew = `${where}.entries[${j}]`;
         if (typeof e !== 'object' || e === null) { err(ew, 'DropEntry がオブジェクトではありません'); return; }
         if (!requireEnum(ew, e, 'kind', DROP_KINDS)) return;
-        if (typeof e.weight !== 'number' || e.weight <= 0) err(ew, 'weight が正の数値ではありません');
+        // guaranteed(確定ドロップ)は重み抽選の対象外なので weight 0 を許容する
+        if (e.guaranteed === true) {
+          if (typeof e.weight !== 'number' || e.weight < 0) err(ew, 'weight が数値ではありません');
+        } else if (typeof e.weight !== 'number' || e.weight <= 0) {
+          err(ew, 'weight が正の数値ではありません');
+        }
         if (e.min !== undefined && typeof e.min !== 'number') err(ew, 'min が数値ではありません');
         if (e.max !== undefined && typeof e.max !== 'number') err(ew, 'max が数値ではありません');
         if (typeof e.min === 'number' && typeof e.max === 'number' && e.min > e.max) {
@@ -741,7 +746,7 @@ for (const path of listJson('items/droptables')) {
         if (e.kind === 'CHARACTER' && e.id !== undefined) {
           if (!characters.has(e.id)) err(ew, `参照するキャラクターID "${e.id}" は存在しません`);
         }
-        const allowed = ['kind', 'id', 'weight', 'min', 'max', 'slot', 'rarityWeights'];
+        const allowed = ['kind', 'id', 'weight', 'min', 'max', 'slot', 'rarityWeights', 'guaranteed'];
         for (const k of Object.keys(e)) {
           if (!allowed.includes(k)) err(ew, `DropEntry に存在しないフィールド "${k}" があります`);
         }
@@ -868,7 +873,7 @@ for (const path of listJson('raid')) {
     checkArt(where, b.art, false);
 
     const allowedKeys = ['id', 'name', 'title', 'enemyId', 'level', 'totalHp', 'description',
-      'gimmicks', 'weakElements', 'immuneStatuses', 'dropTable', 'attemptDropTable', 'art'];
+      'gimmicks', 'weakElements', 'immuneStatuses', 'dropTable', 'attemptDropTable', 'art', 'repeatable'];
     for (const k of Object.keys(b)) {
       if (!allowedKeys.includes(k)) err(where, `RaidBossDef に存在しないフィールド "${k}" があります`);
     }
