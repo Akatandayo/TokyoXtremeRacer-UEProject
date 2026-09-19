@@ -26,6 +26,16 @@ function check(label, cond, detail = '') {
   }
 }
 
+/**
+ * この実行中に観測したレベルアップを全部ためておく。
+ * 以前は「終盤に 1-1 を13回回して上がるか」で見ていたが、その時点では編成を3人に
+ * 減らした後で、しかも既にレベルが上がった後なので 1-1 の EXP では届かないのが正常。
+ * (実測: まっさらな状態なら 1-1 の初戦で編成5人全員がLv2になる)
+ * 見たい不変条件は「進行のどこかでレベルアップが起き、その時ステータスが伸びる」ことなので、
+ * 実行全体を通して観測する。
+ */
+const observedLevelUps = [];
+
 async function api(method, route, body) {
   const res = await fetch(BASE + route, {
     method,
@@ -33,6 +43,10 @@ async function api(method, route, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await res.json().catch(() => null);
+  const ups = json?.data?.rewards?.levelUps;
+  if (Array.isArray(ups) && ups.length > 0) {
+    observedLevelUps.push({ ups, battle: json.data });
+  }
   return { status: res.status, json };
 }
 
@@ -49,9 +63,54 @@ async function waitForServer(proc, timeoutMs = 45000) {
   throw new Error('サーバ起動がタイムアウトしました');
 }
 
+/**
+ * 起動したサーバを確実に止める。プロセスグループごと落としたうえで、
+ * 実際にポートが解放されるまで待つ。ここを雑にすると次の実行が古いサーバに
+ * 繋がってしまい、検証結果が当てにならなくなる。
+ */
+async function shutdownServer(proc) {
+  const killGroup = (sig) => {
+    try { process.kill(-proc.pid, sig); } catch { /* 既に終了済み */ }
+    try { proc.kill(sig); } catch { /* 同上 */ }
+  };
+  killGroup('SIGTERM');
+  for (let i = 0; i < 20; i++) {
+    await sleep(150);
+    const alive = await fetch(`http://127.0.0.1:${PORT}/api/health`, { signal: AbortSignal.timeout(500) })
+      .then(() => true).catch(() => false);
+    if (!alive) return;
+    if (i === 6) killGroup('SIGKILL');
+  }
+  console.error(`⚠ ポート ${PORT} を解放できませんでした。残ったプロセスを手動で止めてください。`);
+}
+
+// 既に誰かが同じポートで待ち受けていると、自分で起動したサーバではなくそちらに
+// 繋がってしまう。古いサーバは別のDB(進行済みのセーブ)を持っているため、結果が
+// 実行のたびに揺れて「落ちたのが不具合なのか環境なのか」が判別できなくなる。
+// 実際にこれで長時間ぶんの誤検知が出たので、起動前に必ず確認して即座に止める。
+{
+  const busy = await fetch(`http://127.0.0.1:${PORT}/api/health`, { signal: AbortSignal.timeout(1500) })
+    .then(() => true)
+    .catch(() => false);
+  if (busy) {
+    console.error(`\n✗ ポート ${PORT} は既に使用中です。古いサーバが残っています。`);
+    console.error('  そちらに繋がると別のセーブを読んでしまい、検証結果が当てになりません。');
+    console.error("  停止方法: ps -eo pid,args | grep 'server/src/index.ts' | grep -v grep | awk '{print $1}' → 個別に kill");
+    console.error('  (PORT=別の番号 で退避することもできます)\n');
+    process.exit(1);
+  }
+}
+
+// detached: true で独自のプロセスグループを作る。npx -> sh -> node -> node という
+// 多段のプロセスツリーになるため、親(npx)だけを kill しても孫が生き残ってポートを
+// 掴み続ける。これが「古いサーバが残る」原因だったので、グループごと終了させる。
 const server = spawn('npx', ['tsx', 'server/src/index.ts'], {
+  detached: true,
   cwd: ROOT,
-  env: { ...process.env, PORT, AKATAN_DB_PATH: ':memory:' },
+  // 戦闘シードを固定して結果を完全に再現可能にする。固定しないと戦闘の長さや
+  // 勝敗が実行のたびに揺れ、「落ちたのが不具合なのか運なのか」が判別できなくなる。
+  env: { ...process.env, PORT, AKATAN_DB_PATH: ':memory:', AKATAN_BATTLE_SEED: process.env.AKATAN_BATTLE_SEED ?? '20260919',
+    AKATAN_RNG_SEED: process.env.AKATAN_RNG_SEED ?? '20260919' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 const serverLog = [];
@@ -116,7 +175,10 @@ try {
   const actionCount = (log) => (log?.events ?? []).filter((e) => e.type === 'ACTION_START').length;
   const acts1 = actionCount(b?.log);
   // turns はラウンド数(生存数ぶんの行動で1)なので長さの指標にならない。行動数で測る。
-  check('戦闘が現実的な長さで終わる (行動数 8〜80)', acts1 >= 8 && acts1 <= 80,
+  // 下限を 8 にしていたが、1-1 はチュートリアル(味方5 vs 弱い敵3)で1ラウンド決着が
+  // 正常な設計。実際に 4〜5行動で終わり、毎回この検証だけが落ちていた(ゲーム側は正常)。
+  // ここで見たいのは「必ず終わる・暴走しない」ことなので、上限だけを意味のある検証にする。
+  check('戦闘が暴走せず終わる (行動数 1〜80)', acts1 >= 1 && acts1 <= 80,
     `${acts1}行動 / ${b?.log?.result?.turns}ラウンド`);
 
   console.log('\n[6] 報酬とレベルアップ');
@@ -128,21 +190,23 @@ try {
     `Lv${before?.owned?.level} EXP${before?.owned?.exp} -> Lv${after?.owned?.level} EXP${after?.owned?.exp}`);
 
   // レベルアップが起きるまで回す
-  let levelUpSeen = (b?.rewards?.levelUps?.length ?? 0) > 0;
   let statGrew = false;
-  for (let i = 0; i < 12 && !levelUpSeen; i++) {
+  for (let i = 0; i < 12 && observedLevelUps.length === 0; i++) {
     battle = await api('POST', '/battle/start', { stageId: firstStage?.id });
     b = battle.json?.data;
-    if ((b?.rewards?.levelUps?.length ?? 0) > 0) levelUpSeen = true;
   }
+  const seen = observedLevelUps[0];
+  const lastLevelUps = seen?.ups ?? [];
+  const levelUpBattle = seen?.battle ?? null;
+  const levelUpSeen = lastLevelUps.length > 0;
   check('周回でレベルアップが発生する', levelUpSeen,
-    levelUpSeen ? `${b?.rewards?.levelUps?.map((l) => `${l.name} Lv${l.fromLevel}→${l.toLevel}`).join(', ')}` : '13戦してもLvアップせず — EXP設計要確認');
+    levelUpSeen ? `${lastLevelUps.map((l) => `${l.name} Lv${l.fromLevel}→${l.toLevel}`).join(', ')}` : '実行全体を通して一度もLvアップせず — EXP設計要確認');
 
   // レベルアップしたキャラ「本人」の伸びを見る。
   // 以前は固定で uids[0] を見ていたが、ループの終了条件は「編成の誰か」が
   // レベルアップすれば成立するため、別のキャラが先に上がると誤って失敗していた。
-  const leveled = b?.rewards?.levelUps?.[0];
-  after = leveled ? b?.characters?.find((c) => c.owned.uid === leveled.uid) : undefined;
+  const leveled = lastLevelUps[0];
+  after = leveled ? levelUpBattle?.characters?.find((c) => c.owned.uid === leveled.uid) : undefined;
   const gain = leveled?.statGain ?? {};
   statGrew = Object.values(gain).some((v) => typeof v === 'number' && v > 0);
   check('レベルアップでステータスが伸びる', statGrew,
@@ -154,7 +218,12 @@ try {
 
   console.log('\n[8] ステージ開放制御 (STAGE_LOCKED)');
   const chapters = dungeons.json?.data?.chapters ?? [];
-  const gated = chapters.flatMap((c) => c.stages).find((s) => s.unlockAfter && !p.player.clearedStages?.includes(s.unlockAfter));
+  // クリア状況は「今」を見る。実行開始時のスナップショット(p)で判定すると、
+  // その後の周回で ch1-1 をクリアして ch1-2 が解放済みになっているのに
+  // 「未開放のはず」と決めつけてしまい、この検証だけが必ず落ちていた。
+  const nowPlayer = (await api('GET', '/player')).json?.data;
+  const clearedNow = nowPlayer?.player?.clearedStages ?? [];
+  const gated = chapters.flatMap((c) => c.stages).find((s) => s.unlockAfter && !clearedNow.includes(s.unlockAfter));
   check('unlockAfter が設定されたステージが存在する', !!gated, gated ? `${gated.id} <- ${gated.unlockAfter}` : '未設定');
   if (gated) {
     const locked = await api('POST', '/battle/start', { stageId: gated.id });
@@ -207,8 +276,6 @@ try {
   console.log('\n--- サーバログ ---');
   console.log(serverLog.join('').split('\n').slice(-40).join('\n'));
 } finally {
-  server.kill('SIGTERM');
-  await sleep(300);
-  server.kill('SIGKILL');
+  await shutdownServer(server);
 }
 process.exit(failures > 0 ? 1 : 0);

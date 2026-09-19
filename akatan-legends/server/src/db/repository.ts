@@ -302,13 +302,19 @@ export function findParty(
   return row ? toParty(row) : null;
 }
 
-/** 作成 or 更新(冪等) */
+/**
+ * 作成 or 更新(冪等)。
+ * ON CONFLICT は (player_id, id) の複合キーで判定する(db/index.ts の v7->v8 マイグレーション
+ * 参照: 以前は id 単独PKだったため、全プレイヤーが同じ 'main' 行を奪い合って編成が
+ * 他プレイヤーのものに化けるバグがあった。PvPで複数プレイヤーを同時に扱う以上、
+ * player_id を必ず ON CONFLICT の対象に含める)。
+ */
 export function saveParty(playerId: string, party: Party, db: Db = getDb()): Party {
   const members = normalizeMembers(party.members);
   db.prepare(
     `INSERT INTO parties (id, player_id, name, members, updated_at)
      VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET name = excluded.name, members = excluded.members, updated_at = excluded.updated_at`,
+     ON CONFLICT(player_id, id) DO UPDATE SET name = excluded.name, members = excluded.members, updated_at = excluded.updated_at`,
   ).run(party.id, playerId, party.name, JSON.stringify(members), new Date().toISOString());
   return { ...party, members };
 }

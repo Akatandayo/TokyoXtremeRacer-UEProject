@@ -6,7 +6,7 @@ import React, {
 } from 'react';
 import type {
   PlayerProfile, CharacterView, Party, MasterDataResponse, ChapterDef,
-  BattleStartResponse, InventoryResponse, RaidBossDef, RaidAttemptResult, RaidState,
+  BattleStartResponse, InventoryResponse, RaidBossDef, RaidAttemptResult, RaidState, Side,
 } from '@akatan/shared';
 import { api, describeError } from '../api/client';
 import { isMockMode } from '../api/mode';
@@ -15,7 +15,19 @@ import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './s
 export type Screen =
   | 'HOME' | 'CHARACTERS' | 'CHARACTER_DETAIL' | 'PARTY'
   | 'DUNGEON' | 'BATTLE' | 'COLLECTION' | 'SETTINGS'
-  | 'EQUIPMENT' | 'GACHA' | 'REBIRTH' | 'RAID';
+  | 'EQUIPMENT' | 'GACHA' | 'REBIRTH' | 'RAID' | 'PVP';
+
+/** PvP戦闘が、今再生中のログのどちら側が「自分」だったかを BATTLE 画面へ橋渡しする情報。 */
+export interface PvpBattleContext {
+  /** 対応する BattleLog.id (再生中のログと一致するかの照合用) */
+  logId: string;
+  /** 自分から見た自陣営。相手視点ではこれが逆になる(ログの敵味方は入れ替わらない)。 */
+  side: Side;
+}
+
+/** PvPの結果は通常戦闘のように「ダンジョン進行」として記録すべきではないため、
+ * PvP専用の合成 StageDef の id には必ずこの接頭辞を付ける(finishBattle 参照)。 */
+export const PVP_STAGE_ID_PREFIX = 'pvp_stage_';
 
 export interface Route {
   screen: Screen;
@@ -65,6 +77,7 @@ interface Store extends AppState {
   settings: Settings;
   battle: BattleStartResponse | null;
   raidContext: RaidBattleContext | null;
+  pvpContext: PvpBattleContext | null;
   recent: RecentBattle[];
   mock: boolean;
   navigate: (screen: Screen, charUid?: string, equipCharUid?: string) => void;
@@ -75,6 +88,13 @@ interface Store extends AppState {
   startBattle: (stageId: string, members?: (string | null)[]) => Promise<void>;
   /** レイド挑戦: 1回分の戦闘を開始し、結果を BATTLE 画面で再生する */
   startRaidBattle: (boss: RaidBossDef, members?: (string | null)[]) => Promise<void>;
+  /**
+   * PvP(あいことば対戦)の結果を BATTLE 画面で再生する。
+   * `side` は「自分から見た自陣営」(相手にはこれが逆に見えている)。
+   * 通常戦闘/レイドと違い、この戦闘だけの専用のログ(サーバの `runPvpBattle` が
+   * 一度だけ確定させたもの)をそのまま再生するだけで、report(EXP/GOLD/ドロップ)は無い。
+   */
+  enterPvpBattle: (data: BattleStartResponse, side: Side) => void;
   finishBattle: (rec: RecentBattle | null) => void;
   clearBattle: () => void;
   /** 装備/ガチャ画面用: 所持品を取得してストアへ反映する */
@@ -118,6 +138,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
   const battleRef = useRef<BattleStartResponse | null>(null);
   battleRef.current = battle;
   const [raidContext, setRaidContext] = useState<RaidBattleContext | null>(null);
+  const [pvpContext, setPvpContext] = useState<PvpBattleContext | null>(null);
   const [recent, setRecent] = useState<RecentBattle[]>([]);
   const mounted = useRef(true);
 
@@ -229,6 +250,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
     setRoute({ screen: 'BATTLE' });
   }, []);
 
+  /**
+   * PvPの結果を BATTLE 画面で再生する。レイド(startRaidBattle)と同じパターンで、
+   * 既存の BattleScreen をそのまま再利用する(演出はサーバのログをただ再生するだけ)。
+   */
+  const enterPvpBattle = useCallback((data: BattleStartResponse, side: Side) => {
+    setRaidContext(null);
+    setPvpContext({ logId: data.log.id, side });
+    setBattle(data);
+    setRoute({ screen: 'BATTLE' });
+  }, []);
+
   const finishBattle = useCallback((rec: RecentBattle | null) => {
     const b = battleRef.current;
     if (b) {
@@ -237,8 +269,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
         player: b.player,
         characters: b.characters.length > 0 ? b.characters : s.characters,
         inventory: b.inventory ?? s.inventory,
+        // PvPの合成ステージ(接頭辞は PVP_STAGE_ID_PREFIX)は「ダンジョン進行」ではないので
+        // クリア済みステージ一覧(ヘッダの進行度カウンタ等が参照する)には加えない。
         clearedStages:
-          b.log.result.victory && b.stage && !s.clearedStages.includes(b.stage.id)
+          b.log.result.victory && b.stage
+            && !b.stage.id.startsWith(PVP_STAGE_ID_PREFIX)
+            && !s.clearedStages.includes(b.stage.id)
             ? [...s.clearedStages, b.stage.id]
             : s.clearedStages,
       }));
@@ -259,6 +295,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
   const clearBattle = useCallback(() => {
     setBattle(null);
     setRaidContext(null);
+    setPvpContext(null);
   }, []);
 
   const refreshInventory = useCallback(async () => {
@@ -300,6 +337,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
       settings,
       battle,
       raidContext,
+      pvpContext,
       recent,
       mock: isMockMode(),
       navigate,
@@ -309,6 +347,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
       setAi,
       startBattle,
       startRaidBattle,
+      enterPvpBattle,
       finishBattle,
       clearBattle,
       refreshInventory,
@@ -318,9 +357,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }): JSX.
       mergeCharacters,
     }),
     [
-      state, route, settings, battle, raidContext, recent, navigate, reload, updateSettings, saveParty, setAi,
-      startBattle, startRaidBattle, finishBattle, clearBattle, refreshInventory, applyInventory, applyPlayer,
-      applyCharacterView, mergeCharacters,
+      state, route, settings, battle, raidContext, pvpContext, recent, navigate, reload, updateSettings, saveParty,
+      setAi, startBattle, startRaidBattle, enterPvpBattle, finishBattle, clearBattle, refreshInventory,
+      applyInventory, applyPlayer, applyCharacterView, mergeCharacters,
     ],
   );
 

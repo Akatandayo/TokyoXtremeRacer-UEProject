@@ -15,9 +15,11 @@ import type {
   FavoriteEquipmentRequest, FavoriteEquipmentResponse, BulkSellRequest, BulkSellResponse,
   RebirthStatusResponse, RebirthResponse, ResetRebirthResponse, AllocateRebirthRequest,
   RaidListResponse, RaidAttackRequest, RaidAttackResponse,
+  PvpJoinRequest, PvpJoinResponse, PvpStatusResponse, PvpPartySnapshot,
 } from '@akatan/shared';
 import { isMockMode } from './mode';
 import { mockApi } from '../mock';
+import { pvpPlayerToken } from './pvpToken';
 
 export const API_BASE = '/api';
 
@@ -43,7 +45,7 @@ export function describeError(err: unknown): { title: string; detail: string; co
       BAD_REQUEST: 'リクエストが不正です',
       NOT_FOUND: 'データが見つかりません',
       PARTY_EMPTY: 'パーティが空です',
-      PARTY_INVALID: 'パーティ編成が不正です',
+      PARTY_INVALID: 'パーティ編成が不正です(PvPの場合はレベルやステータスの上限超過も含みます)',
       STAGE_LOCKED: 'このステージはまだ解放されていません',
       NOT_ENOUGH_CURRENCY: '所持GOLD/チケット/素材が足りません',
       REBIRTH_LOCKED: 'まだ転生できません',
@@ -66,12 +68,14 @@ export function describeError(err: unknown): { title: string; detail: string; co
   };
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
       ...init,
+      // init.headers を後勝ちで浅くマージする(単純な ...init 展開だと headers が丸ごと
+      // 置き換わり Content-Type が消えるため)。PvP専用の X-Akatan-Player もここで乗る。
+      headers: { 'Content-Type': 'application/json', ...(init.headers as Record<string, string> | undefined) },
     });
   } catch (e) {
     throw new ApiClientError(
@@ -134,6 +138,15 @@ export interface GameApi {
   /** レイド (設計書§28〜§29) */
   getRaid(): Promise<RaidListResponse>;
   raidAttack(bossId: string, members?: (string | null)[]): Promise<RaidAttackResponse>;
+  /**
+   * PvP(あいことば対戦)。プレイヤー識別は `X-Akatan-Player` ヘッダ(pvpToken.ts)で行う。
+   * `party` はクライアントが計算した編成スナップショットで、サーバが検証してから使う
+   * (信頼境界の詳細は docs/API.md 参照)。相手が既に待っていれば `pvpJoin` の返り値が
+   * そのまま READY(戦闘ログ入り)になる。待機(WAITING)のときは `pvpStatus` でポーリングする。
+   * オフライン単体版・モックモードでは「オンライン非対応」エラーを返す(standalone/localApi.ts)。
+   */
+  pvpJoin(passphrase: string, party: PvpPartySnapshot): Promise<PvpJoinResponse>;
+  pvpStatus(roomId: string): Promise<PvpStatusResponse>;
 }
 
 const httpApi: GameApi = {
@@ -212,6 +225,17 @@ const httpApi: GameApi = {
     const payload: RaidAttackRequest = members ? { bossId, members } : { bossId };
     return request<RaidAttackResponse>('/raid/attack', { method: 'POST', body: JSON.stringify(payload) });
   },
+  pvpJoin: (passphrase, party) => {
+    const payload: PvpJoinRequest = { passphrase, party };
+    return request<PvpJoinResponse>('/pvp/join', {
+      method: 'POST',
+      headers: { 'X-Akatan-Player': pvpPlayerToken() },
+      body: JSON.stringify(payload),
+    });
+  },
+  pvpStatus: (roomId) => request<PvpStatusResponse>(`/pvp/rooms/${encodeURIComponent(roomId)}`, {
+    headers: { 'X-Akatan-Player': pvpPlayerToken() },
+  }),
 };
 
 /** 現在のモードに応じた API 実装を返す */

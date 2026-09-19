@@ -16,6 +16,7 @@ import EquipmentScreen from './screens/EquipmentScreen';
 import GachaScreen from './screens/GachaScreen';
 import RebirthScreen from './screens/RebirthScreen';
 import RaidScreen from './screens/RaidScreen';
+import PvpScreen from './screens/PvpScreen';
 import BattleScreen from './battle/BattleScreen';
 
 const NAV: { screen: Screen; label: string }[] = [
@@ -26,6 +27,7 @@ const NAV: { screen: Screen; label: string }[] = [
   { screen: 'GACHA', label: 'SUMMON' },
   { screen: 'DUNGEON', label: 'ダンジョン' },
   { screen: 'RAID', label: 'RAID' },
+  { screen: 'PVP', label: 'PVP' },
   { screen: 'COLLECTION', label: '図鑑' },
   { screen: 'SETTINGS', label: '設定' },
 ];
@@ -82,6 +84,7 @@ function ScreenBody(): JSX.Element {
     case 'GACHA': return <GachaScreen />;
     case 'DUNGEON': return <DungeonScreen />;
     case 'RAID': return <RaidScreen />;
+    case 'PVP': return <PvpScreen />;
     case 'COLLECTION': return <CollectionScreen />;
     case 'SETTINGS': return <SettingsScreen />;
     default: return <HomeScreen />;

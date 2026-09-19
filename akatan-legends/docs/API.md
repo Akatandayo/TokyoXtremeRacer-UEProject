@@ -69,6 +69,9 @@ MVP では認証を作らず、固定の `player_id = 'local'` を使う。
 | **ガチャの抽選結果・天井・払い戻し** | サーバ(**第3ラウンド**。1トランザクションで残高確認→支払い→付与) | `services/gacha-service.ts: pullGacha()` |
 | **装備込みの最終ステータス** | サーバ(装備フラット→%の順で適用) | `services/progression.ts: computeStats() / resolveEquipmentMods()` |
 | **レイドの共有HP・ギミック発動・撃破判定** | サーバ(**第5ラウンド**。挑戦のたびに永続化) | `services/raid-service.ts: attackRaidBoss()` |
+| **PvPの編成(defId・レベル・AI・ステータス)** | **クライアント申告 → サーバが検証**(唯一の例外。§11参照) | `services/pvp-service.ts: validatePartySnapshot()` |
+| PvPの乱数シード | サーバ(あいことば+両陣営の編成から決定論的に導出。時刻・乱数は不使用) | `services/pvp-service.ts: derivePvpSeed()` |
+| PvPの戦闘結果 | サーバ(部屋が決着した瞬間に1回だけ確定し、両者が同じログを取得する) | `services/pvp-service.ts: runPvpBattle()` |
 
 `POST /api/battle/start` がクライアントから受け取るのは **`stageId` と編成の `uid` だけ**。
 編成に含まれる `uid` は必ず DB でそのプレイヤーの所持キャラかを検証し、保存済みパーティ経由の場合も
@@ -1313,3 +1316,237 @@ ALTER TABLE equipment ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;
 3. 撃破報酬(`dropTable`)からキャラクタードロップ(`hitori_stand`)を実際に付与できることを確認
    (初回は新規付与、2回目以降は `mat_dup_fragment_high` への重複変換。`drop-service.ts` の
    既存ロジックをそのまま再利用しており、レイド専用の分岐は無い)。
+
+---
+
+## 11. オンラインPvP (あいことば対戦)
+
+### 設計方針
+
+2人が同じ「あいことば」(パスフレーズ)を入力すると対戦が成立する。片方が先に入ると
+「相手待ち」の部屋(`pvp_rooms`)が作られ、もう片方が同じあいことばで入った**瞬間**に
+サーバが `runBattle` を1回だけ実行して結果を固定する。以後は両者とも同じ
+`BattleLog`(戦闘ログ)を取得する。戦闘そのものは既存の `runBattle(allies, enemies, ctx)`
+をそのまま使う(`server/src/battle/contract.ts` のコメントに明記されている通り、
+「同じ CombatantInput を敵味方入れ替えて使う模擬戦/PvP のため side は配列位置を正とする」
+契約を素直に利用しているだけで、戦闘エンジン自体への変更は一切無い)。
+
+実装: `shared/src/pvp.ts`(型) / `server/src/services/pvp-service.ts`(検証・シード導出・
+戦闘実行・部屋管理) / `server/src/routes/pvp.ts`(ルーティング) /
+`server/src/db/index.ts` の v7 マイグレーション(`pvp_rooms` テーブル)。
+
+### 信頼境界(設計書§37からの意図的な逸脱)— 理由と対策
+
+設計書§37は「クライアントから来た数値は一切信用しない。サーバがDB/マスタから再計算する」を
+原則としているが、PvPは以下の理由でこの原則を**部分的に**外している。
+
+- **理由**: このゲームは単体HTML(オフライン版, `standalone/`)としても配布・プレイされており、
+  セーブ(所持キャラ・レベル・装備・転生)はブラウザの `localStorage` に閉じている。
+  つまり「サーバがそのプレイヤーの所持キャラを把握している」という通常戦闘の前提
+  (`battle-service.ts` が `owned_characters` テーブルを引く)が、PvPの対戦相手候補全員について
+  常に成り立つとは限らない。PvPは「2人がそれぞれ別々のセーブ(あるいは別々の端末)を
+  持ち寄って対戦する」という性質上、**クライアントが自分の編成スナップショットを申告する**
+  形にせざるを得なかった。
+- **何を信用し、何を信用しないか**(`pvp-service.ts: validatePartySnapshot()`):
+  - **信用しない(必ずマスタから引き直す)**: キャラの `name` / `element` / `roles` /
+    `normalAttack` / `skills` / `ultimate` / `passives` / `art` / `rarity` / `tags`。
+    クライアントは `defId` しか送ってこない(そもそも受け取る型 `PvpMemberSnapshot` に
+    フィールドが無い)。`buildPvpCombatant()` が `data.characters.get(defId)` から
+    必ず引き直すので、「弱いキャラのIDで強いキャラのスキルを使わせる」ような
+    差し替えはできない。
+  - **信用しない(実在確認)**: `defId` がマスタに無ければ `PARTY_INVALID` で拒否。
+    `aiProfile` も同様にマスタに実在し、かつ `playerSelectable !== false`(敵/ボス専用
+    AIではない)ことを検証する(`characters.ts` の `PUT /:uid/ai` と同じ移行期ルール)。
+  - **信用しない(範囲確認)**: `level` は `1〜progression.levelCap` の整数であること。
+  - **検証はするが、最終的には「クライアント申告値」を使う**: `stats`(最終ステータス)。
+    装備・転生・限界突破・覚醒を経た「最終値」は、サーバがそのプレイヤーの装備/転生DBを
+    持たない前提だと再計算できないため、クライアントが計算した値を受け取り、
+    「そのキャラをそのレベルで作れる上限を大きく超えていないか」だけを検証する
+    (次項)。ここが§37の原則から外れる**唯一**の箇所。
+- **対策(何が起きても致命的にならないようにする)**:
+  1. 上限を超える申告は `PARTY_INVALID` で拒否し、そもそも戦闘が成立しない。
+  2. 装備の特殊効果(`ItemSpecialEffect`)や転生の戦闘補正(`RebirthCombatMods`)は
+     PvPでは**一切適用しない**(`buildPvpCombatant()` が `specials` / `rebirthMods` を
+     CombatantInput に渡さない)。内訳を検証できない値をエンジンのトリガー処理にまで
+     渡すと検証をすり抜けた効果が乗りかねないため、「最終ステータスの上限内」という
+     粗い保証だけに留めている(§「妥協した点」参照)。
+  3. PvPの結果は**通常戦闘の報酬(EXP/GOLD/ドロップ/レベルアップ/クリア記録)と
+     完全に無関係**。`runPvpBattle()` は `BattleRewards` を一切計算せず、
+     `POST /battle/start` や `raid/attack` のような `repo.updateCharacterProgressBulk` /
+     `repo.addGold` / `repo.markStageCleared` を一切呼ばない。**つまり、たとえ
+     ステータスの水増し申告がすり抜けたとしても、それで得をするのは「その1回のPvP戦の
+     見た目上の勝敗」だけで、経済(ゴールド・キャラ育成・ガチャ)には一切波及しない。**
+     信頼境界を緩めた副作用の範囲を、影響が閉じた「1回のPvP戦」だけに意図的に絞っている。
+
+### ステータス上限の算出根拠(`pvp-service.ts` の `STAT_CAP_MULTIPLIER` / `STAT_CAP_BUFFER`)
+
+`naked = computeStats(def.baseStats, def.growth, level)`(装備・転生なしの素のLv別ステータス)
+を基準に、`cap = naked * MULTIPLIER + BUFFER` を許容上限とする。実データを調べて決めた値:
+
+- **転生ノード(`data/rebirth/nodes.json`, 24件)を全ノード・全ランク積んだ場合の
+  STAT_PERCENT合計**(実測): `attack +57.8% / defense +83.4% / speed +52.2% / hp +9% /
+  critical +6% / criticalDamage +32% / healing +48%`。GROWTH_PERCENT合計は
+  `attack +26.4% / speed +33% / hp +33% / healing +33%`(+ `RebirthConfig.growthBonusPercent`
+  × 最大転生回数 = 3% × 10 = 30%)。
+- **装備ベース(`data/items/bases/*.json`)の主ステータス**: `mainValue + mainPerLevel × level`。
+  Lv60で最大でもおおよそ数十〜百数十程度(例: `wpn_ritual_wakizashi` は `20 + 1.8×59 ≈ 126`)。
+  アフィックス(`data/items/affixes/*.json`)がスロットごとに最大2つ(prefix/suffix)追加で乗る。
+- 以上から、`MULTIPLIER = { hp:3, attack:3, defense:3, speed:3, critical:2, criticalDamage:2,
+  resistance:2, healing:2 }` (転生の%合計の最大約83%より十分大きい倍率)、
+  `BUFFER = { hp:600, attack:220, defense:220, speed:90, critical:60, criticalDamage:180,
+  resistance:90, healing:180 }`(装備3スロット分のフラット加算を安全側に見積もった値)とした。
+  「大きく超えていないこと」という要件に対して**意図的にかなり余裕を持たせている**
+  (経済への影響が閉じている、という上の対策と合わせて、細かすぎる経済シミュレーションを
+  PvPのためだけに作り込むコストとのバランスを取った)。
+
+### プレイヤー識別: `X-Akatan-Player` ヘッダ
+
+`server/src/routes/_helpers.ts: currentPlayerId()` を変更し、リクエストヘッダ
+`X-Akatan-Player`(英数字・`-`・`_`のみ、最大128文字)があればそれをプレイヤーIDとして使う。
+
+```ts
+export function currentPlayerId(req: Request): string {
+  const raw = req.header('X-Akatan-Player');
+  if (typeof raw !== 'string') return LOCAL_PLAYER_ID;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0 || trimmed.length > 128) return LOCAL_PLAYER_ID;
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(trimmed)) return LOCAL_PLAYER_ID;
+  return trimmed;
+}
+```
+
+**ヘッダが無い場合は必ず `'local'` にフォールバックする。** これにより:
+
+- 既存の全画面(HOME/CHARACTERS/PARTY/DUNGEON/EQUIPMENT/GACHA/RAID/…)・全テスト・
+  オフライン単体版は一切ヘッダを送らないため、今まで通り `'local'` 固定のまま完全互換で動く。
+- ヘッダを送るのは PvP専用のリクエストだけ(`client/src/api/client.ts` の `pvpJoin` /
+  `pvpStatus` だけが `X-Akatan-Player` を付ける。他の全メソッドは付けない)。
+  **通常のAPIリクエストにこのヘッダを付けてしまうと、`'local'` の所持キャラ/ゴールドが
+  急に見えなくなる(サーバはヘッダの有無でプレイヤーIDを完全に切り替えるため)** ので、
+  クライアント側もこの区別を厳守している(`client/src/api/pvpToken.ts` 冒頭コメント参照)。
+- クライアントは `localStorage`(キー `akatan.pvpPlayerToken`)に生成済みトークンを保存し、
+  同じブラウザなら毎回同じトークンを送る(`client/src/api/pvpToken.ts`)。
+
+### エンドポイント
+
+#### POST /api/pvp/join
+
+あいことばで部屋に入る。相手が既に待っていれば、この呼び出しの中で `runBattle` を実行し、
+そのまま `READY`(ログ入り)で返る。
+
+**リクエスト** (`PvpJoinRequest`):
+```json
+{
+  "passphrase": "ふたりのひみつ",
+  "party": {
+    "members": [
+      { "defId": "kurogane", "level": 15, "aiProfile": "ai_basic", "stats": { "hp": 1280, "attack": 210, "defense": 95, "speed": 118, "critical": 8, "criticalDamage": 150, "resistance": 5, "healing": 100 } }
+    ]
+  }
+}
+```
+`aiProfile` は省略可(省略時はキャラの `defaultAi`)。`members` は 1〜`PVP_PARTY_SIZE`(=5)件。
+
+**レスポンス**(`PvpJoinResponse` = `PvpRoomView`)。相手がまだいない場合:
+```json
+{ "roomId": "pvp_...", "status": "WAITING", "opponentJoined": false, "createdAt": "...", "expiresAt": "..." }
+```
+相手が既に待っていて、この呼び出しで決着した場合(このリクエストが `guest` = `ENEMY` 側になる):
+```json
+{ "roomId": "pvp_...", "status": "READY", "side": "ENEMY", "log": { "...": "BattleLog全体" }, "opponentJoined": true, "createdAt": "...", "expiresAt": "..." }
+```
+
+**同一トークンが同じ部屋に再入室した場合**(まだ相手が来ていないとき): 対戦は成立させず、
+`WAITING` のまま `party` だけ更新して返す(自分自身と対戦することはできない、という要件)。
+
+**エラー**: `BAD_REQUEST`(あいことば未入力/長すぎ、`party` の形が不正)、
+`PARTY_EMPTY`(編成が空)、`PARTY_INVALID`(defId/aiProfile不実在、レベル/ステータス上限超過、
+人数超過)。
+
+#### GET /api/pvp/rooms/:roomId
+
+`joinPvp` で受け取った `roomId` をポーリングする(相手待ち中に使う)。
+レスポンス形は `PvpJoinResponse` と同じ(`PvpStatusResponse`)。
+**その部屋の host/guest 以外のプレイヤーが見ようとすると `NOT_FOUND`** を返す
+(他プレイヤーの編成・戦闘内容を roomId の推測だけで覗けないようにするため)。
+存在しない/失効した `roomId` も同じく `NOT_FOUND`。
+
+### シードの決定論的導出
+
+```ts
+derivePvpSeed(passphrase, hostParty, guestParty)
+  = sha256(`akatan-pvp:${passphrase}::${fingerprint(hostParty)}::${fingerprint(guestParty)}`)
+      の先頭4バイトを符号なし32bit整数として読み、% 2_147_483_647
+```
+
+`Date.now()` / `Math.random()` は一切使わない。`fingerprint()` は各メンバーの
+`defId|level|aiProfile|hp|attack|...` を編成順に固定フォーマットで連結した文字列
+(JSON.stringifyのキー順に依存しない)。**同じあいことば・同じ両陣営の編成なら、
+常に同じシードになる**(`server/src/services/pvp-service.test.ts` の
+`derivePvpSeed` のテストで確認)。
+
+### 決定論の確認(実施内容)
+
+1. **単体テスト**(`pvp-service.test.ts`): `runPvpBattle(host, guest, data, sameSeed)` を
+   同じ引数で2回呼び、`events` / `result` / `units` が `assert.deepEqual` で完全一致することを確認。
+2. **実サーバでの確認**(手動): 実データ(`data/`配下14キャラ)を使い、同じあいことば・同じ編成で
+   `derivePvpSeed()` を2回呼んでシードが一致、その同じシードで `runPvpBattle()` を2回実行して
+   `events`(665件)/`result`/`units` が `JSON.stringify` で完全一致することを確認済み
+   (`Bash` で `tsx` から直接呼び出して検証。本レポート末尾の実行ログ参照)。
+3. **実サーバでの2人対戦**: 別々の `X-Akatan-Player` トークンで同じあいことばに入り、
+   host が `GET /pvp/rooms/:roomId` で受け取ったログと、guest が `POST /pvp/join` の
+   レスポンスで受け取ったログが `JSON.stringify` で**バイト単位完全一致**することを確認済み
+   (`id` / `seed` / `events` 149件 / `result.victory` まですべて一致)。
+
+### 部屋の寿命
+
+- `WAITING`(相手待ち): 作成から `PVP_ROOM_WAIT_TTL_MS`(10分)で失効。
+- `READY`(決着済み): 決着した瞬間から `PVP_ROOM_RESULT_TTL_MS`(1時間)に延長し、
+  両者が結果を取得できるだけの猶予を持たせる。
+- `join` / `status` いずれの呼び出しでも `purgeExpiredPvpRooms()` を先に実行し、
+  失効した部屋を消してから処理する(定期バッチ等は無く、アクセスのたびに掃除する方式)。
+- 同じあいことばで3人目以降が来た場合、既に `READY` になった部屋には割り込まず、
+  新しい `WAITING` 部屋を作る(あいことばは使い回せる。テスト
+  「3人目が同じあいことばで来ても、決着済みの部屋には割り込まず新しい部屋を作る」参照)。
+
+### 実装中に見つかった既存バグの修正(`parties` テーブル)
+
+PvPで初めて「同時に複数の異なるプレイヤー」を扱ったところ、`parties` テーブルの
+主キーが `id` 単独(`DEFAULT_PARTY_ID = 'main'` 固定)になっており、**全プレイヤーが
+同じ1行を奪い合っていた**ことが判明した。単一プレイヤー(`'local'`固定)だった間は
+実害が無かったが、2人目のプレイヤーが `saveParty()` を呼ぶと `ON CONFLICT(id)` で
+1人目の編成行を書き換えてしまい(`player_id` 列自体は書き換わらないため、
+「行の所有者表示は1人目のまま、中身だけ2人目のものに化ける」という壊れ方をする)、
+最終的には最後に書き込んだプレイヤーの編成(またはその後の空編成)で全員の
+`findParty()` が失敗する、という実データ破損バグだった。
+
+`server/src/db/index.ts` の **v7→v8マイグレーション**で `parties` テーブルを
+`PRIMARY KEY (player_id, id)` の複合キーへ作り直し(SQLiteは主キーを直接変更できないため
+テーブル再作成)、`repository.ts: saveParty()` の `ON CONFLICT` 対象も
+`(player_id, id)` に修正した。既存の単一プレイヤー運用には影響しない
+(`'local'` 1人分のデータがそのまま複合キーの行として引き継がれるだけ)。
+
+### 妥協した点・未実装の点
+
+- **装備の特殊効果・転生の戦闘補正はPvPに反映されない。** `stats`(最終値)しか
+  受け取らない設計上、`ItemSpecialEffect` や `RebirthCombatMods` のような「内訳」は
+  サーバが検証しようがないため、意図的に対象外にした(上の信頼境界の節参照)。
+  対応するには、装備/転生の「内訳」も申告させた上でその整合性を検証する必要があり、
+  スコープを大きく超えるため見送った。
+- **部屋の明示的な「退出」APIが無い。** 相手待ちをやめても部屋はサーバ側にWAITINGのまま
+  残り続け、`PVP_ROOM_WAIT_TTL_MS`(10分)で自然に失効するのを待つ。クライアント側の
+  「待機をやめる」ボタンはポーリングを止めるだけ(`PvpScreen.tsx`)。実害は乏しい
+  (最大10分间、同じあいことばで別の相手が入っても「待機中の相手」を上書きするだけで
+  問題なくマッチングできる)ため見送ったが、明示的な `DELETE /pvp/rooms/:id` を足すのは
+  小さい変更で可能。
+- **リロードへの耐性が無い。** `roomId` はクライアントのReact stateにしか無く、
+  待機中にページをリロードすると再度あいことばを入力し直す必要がある
+  (`localStorage` に `roomId` を退避する程度の改善は追加コストが小さい)。
+- **PvP専用の「合成StageDef」を使う。** 既存の `BattleScreen` / `BattleStartResponse` を
+  そのまま再利用するため、`id: 'pvp_stage_' + roomId` という見せかけの `StageDef` を
+  クライアント側で組み立てている(`PvpScreen.tsx`)。この接頭辞のステージは
+  `store.finishBattle()` が「ダンジョン進行」としてクリア済みステージ一覧に加えない
+  よう明示的に除外している(`state/store.tsx` の `PVP_STAGE_ID_PREFIX`)。
+- **レーティング/ランキング等は無い。** 今回のスコープは「あいことばで1回対戦して
+  結果を見る」までで、勝敗の記録・累積成績は実装していない
+  (クライアントの「最近の戦闘」ローカル履歴には残るが、サーバには残らない)。

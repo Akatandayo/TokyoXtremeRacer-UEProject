@@ -10,6 +10,7 @@ import type {
   FavoriteEquipmentResponse, BulkSellResponse,
   RebirthStatusResponse, RebirthResponse, ResetRebirthResponse,
   RaidListResponse, RaidAttackResponse,
+  PvpJoinResponse, PvpStatusResponse,
 } from '@akatan/shared';
 import { ITEM_RARITY_ORDER } from '../utils/labels';
 import {
@@ -322,5 +323,24 @@ export const mockApi = {
   async raidAttack(bossId: string, members?: (string | null)[]): Promise<RaidAttackResponse> {
     await delay(280);
     return performMockRaidAttack(bossId, members);
+  },
+
+  // ---------- PvP (あいことば対戦) ----------
+  // モックモードは「サーバ不要のデモ」用途であり、対戦相手となる別プレイヤーが
+  // 存在しないため、PvPはそもそも成立しない。ここで明確な未対応エラーを返す
+  // (standalone/localApi.ts のオフライン単体版も同じ理由で同様のエラーを返す)。
+  async pvpJoin(): Promise<PvpJoinResponse> {
+    await delay(80);
+    throw new ApiClientError(
+      'BAD_REQUEST',
+      'モックモードではPvP(あいことば対戦)は利用できません。設定画面でモックモードを解除し、サーバに接続してください。',
+    );
+  },
+  async pvpStatus(): Promise<PvpStatusResponse> {
+    await delay(80);
+    throw new ApiClientError(
+      'BAD_REQUEST',
+      'モックモードではPvP(あいことば対戦)は利用できません。設定画面でモックモードを解除し、サーバに接続してください。',
+    );
   },
 };

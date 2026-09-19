@@ -23,7 +23,7 @@ import type {
   RaidGimmick, RaidListResponse, RaidState, RebirthConfig, RebirthNodeDef, RebirthPath,
   RebirthResponse, RebirthStatus, RebirthStatusResponse, ResetRebirthResponse,
   SellEquipmentResponse, Skill, StageDef, UpdatePartyResponse, AudioConfig,
-  BulkSellResponse, FavoriteEquipmentResponse,
+  BulkSellResponse, FavoriteEquipmentResponse, PvpJoinResponse, PvpStatusResponse,
 } from '@akatan/shared';
 import { ITEM_RARITIES, sellPrice } from '@akatan/shared';
 import { runBattle } from '../server/src/battle/index.js';
@@ -1358,5 +1358,27 @@ export const mockApi = {
       tickets: inventory().tickets,
       player: { ...state.player },
     };
+  },
+
+  /* ---------- PvP (あいことば対戦) ----------
+   * このオフライン単体版はブラウザ内だけで完結する「ローカルサーバ」であり、
+   * 対戦相手となる別プレイヤーに接続する手段を持たない(ファイル冒頭コメント参照)。
+   * PvPは必ずオンライン構成(server/)側で行う必要があるため、明確な未対応エラーを返す。
+   */
+  async pvpJoin(): Promise<PvpJoinResponse> {
+    await delay(10);
+    const err = new Error(
+      'このオフライン単体版はPvP(あいことば対戦)に対応していません。オンライン版(サーバに接続したブラウザ版)でお試しください。',
+    );
+    (err as Error & { code?: string }).code = 'BAD_REQUEST';
+    throw err;
+  },
+  async pvpStatus(): Promise<PvpStatusResponse> {
+    await delay(10);
+    const err = new Error(
+      'このオフライン単体版はPvP(あいことば対戦)に対応していません。オンライン版(サーバに接続したブラウザ版)でお試しください。',
+    );
+    (err as Error & { code?: string }).code = 'BAD_REQUEST';
+    throw err;
   },
 } satisfies GameApi;

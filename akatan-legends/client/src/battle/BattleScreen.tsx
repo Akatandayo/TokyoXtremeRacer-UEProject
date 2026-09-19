@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   BattleStartResponse, BattleUnitStat, ActiveStatus, BattleLog, BattleEvent, DropResult, MasterDataResponse, SfxKey,
 } from '@akatan/shared';
-import { useStore, type RaidBattleContext } from '../state/store';
+import { useStore, type RaidBattleContext, type PvpBattleContext } from '../state/store';
 import { effectPolicy } from '../state/settings';
 import { useBattlePlayback, type PlaybackState, type Speed, type UnitRuntime, type FxInstance, type Popup } from './playback';
 import { isUltimateFx } from './fx';
@@ -424,14 +424,17 @@ function RaidDamageSection({ raid }: { raid: RaidBattleContext }): JSX.Element {
 /* ---------- リザルト ---------- */
 
 function ResultOverlay({
-  data, onBack, onRetry, master, raid,
+  data, onBack, onRetry, master, raid, pvp,
 }: {
   data: BattleStartResponse; onBack: () => void; onRetry: () => void; master: MasterDataResponse | null;
-  raid?: RaidBattleContext | null;
+  raid?: RaidBattleContext | null; pvp?: PvpBattleContext | null;
 }): JSX.Element {
   const { log, rewards, stage } = data;
-  const victory = log.result.victory;
-  const allyStats = log.result.stats.filter((s) => s.side === 'ALLY');
+  // PvPは「自分から見た自陣営」の勝敗として表示する。log.result.victory は常に
+  // ALLY側が勝ったかどうかを表す(contract.ts)ので、自陣営がENEMYなら反転させる。
+  // これをしないと、相手側(guest=ENEMY)には自分が負けたのに VICTORY と出てしまう。
+  const victory = pvp ? (pvp.side === 'ALLY' ? log.result.victory : !log.result.victory) : log.result.victory;
+  const allyStats = log.result.stats.filter((s) => s.side === (pvp?.side ?? 'ALLY'));
   const mvp = allyStats.slice().sort((a, b) => b.damageDealt - a.damageDealt)[0];
   const mvpUnit = mvp ? log.units.find((u) => u.id === mvp.id) : undefined;
   const levelUps = rewards?.levelUps ?? [];
@@ -445,6 +448,11 @@ function ResultOverlay({
         <div style={{ textAlign: 'center' }} className="muted">
           {stage?.name ?? ''} / {log.result.turns}ターン ({log.result.ticks}tick)
         </div>
+        {pvp && (
+          <div style={{ textAlign: 'center' }} className="muted">
+            あなたの陣営: {pvp.side === 'ALLY' ? 'ALLY(下側)' : 'ENEMY(上側)'}
+          </div>
+        )}
 
         {raid && <RaidDamageSection raid={raid} />}
 
@@ -539,8 +547,12 @@ function ResultOverlay({
         </details>
 
         <div className="row" style={{ justifyContent: 'center', marginTop: 4 }}>
-          <button className="btn" onClick={onBack}>{raid ? 'レイドへ戻る' : 'ダンジョンへ戻る'}</button>
-          {!(raid && raid.attempt.defeated) && (
+          <button className="btn" onClick={onBack}>
+            {raid ? 'レイドへ戻る' : pvp ? 'PVPへ戻る' : 'ダンジョンへ戻る'}
+          </button>
+          {/* PvPは同じ部屋を再戦する仕組みが無い(あいことばで新しい部屋を作るのが正しい導線)ため、
+              「もう一度戦う」は出さない(PVPへ戻るボタンだけで案内する)。 */}
+          {!(raid && raid.attempt.defeated) && !pvp && (
             <button className="btn btn-primary" onClick={onRetry}>
               {raid ? 'レイドへ戻ってもう一度挑む' : 'もう一度戦う'}
             </button>
@@ -574,17 +586,26 @@ export function BattleScreen(): JSX.Element {
   const logRef = useRef<HTMLDivElement>(null);
   const [retrying, setRetrying] = useState(false);
 
+  const log = data?.log;
+  // レイド/PvP挑戦の戦闘かどうか(store.raidContext/pvpContext が今再生中のログと一致する場合のみ)
+  const raidCtx = store.raidContext && log && store.raidContext.logId === log.id ? store.raidContext : null;
+  const pvpCtx = store.pvpContext && log && store.pvpContext.logId === log.id ? store.pvpContext : null;
+
   const onFinish = useCallback(() => {
     if (finishedOnce.current) return;
     finishedOnce.current = true;
     if (!data) return;
-    const allyStats = data.log.result.stats.filter((s) => s.side === 'ALLY');
-    const mvp = allyStats.slice().sort((a, b) => b.damageDealt - a.damageDealt)[0];
+    // PvPは「自分から見た自陣営」の集計・勝敗として記録する(ResultOverlay と同じ理由)。
+    const selfSide = pvpCtx?.side ?? 'ALLY';
+    const selfStats = data.log.result.stats.filter((s) => s.side === selfSide);
+    const mvp = selfStats.slice().sort((a, b) => b.damageDealt - a.damageDealt)[0];
+    const victory = pvpCtx ? (pvpCtx.side === 'ALLY' ? data.log.result.victory : !data.log.result.victory)
+      : data.log.result.victory;
     store.finishBattle({
       id: data.log.id,
       stageId: data.stage?.id ?? data.log.stageId ?? '',
       stageName: data.stage?.name ?? '',
-      victory: data.log.result.victory,
+      victory,
       exp: data.rewards?.exp ?? 0,
       gold: data.rewards?.gold ?? 0,
       mvpName: mvp?.name ?? '-',
@@ -593,11 +614,7 @@ export function BattleScreen(): JSX.Element {
       at: new Date().toISOString(),
     });
     setShowResult(true);
-  }, [data, store]);
-
-  const log = data?.log;
-  // レイド挑戦の戦闘かどうか(store.raidContext が今再生中のログと一致する場合のみ)
-  const raidCtx = store.raidContext && log && store.raidContext.logId === log.id ? store.raidContext : null;
+  }, [data, store, pvpCtx]);
   const playback = useBattlePlayback(
     log ?? EMPTY_LOG,
     {
@@ -659,6 +676,14 @@ export function BattleScreen(): JSX.Element {
       store.navigate('RAID');
       return;
     }
+    // PvPは同じ部屋を再戦する仕組みが無い(あいことばで新しく部屋を作るのが正しい導線)ため、
+    // PVP画面へ戻ってもらう。ResultOverlay 側で「もう一度戦う」ボタン自体を隠している
+    // (下の <ResultOverlay pvp={...}> 呼び出し参照)ので、通常はここへは来ない。
+    if (pvpCtx) {
+      store.clearBattle();
+      store.navigate('PVP');
+      return;
+    }
     if (!data?.stage) return;
     setRetrying(true);
     try {
@@ -670,13 +695,14 @@ export function BattleScreen(): JSX.Element {
     } finally {
       setRetrying(false);
     }
-  }, [data, store, raidCtx]);
+  }, [data, store, raidCtx, pvpCtx]);
 
   const handleBack = useCallback(() => {
     const toRaid = !!raidCtx;
+    const toPvp = !!pvpCtx;
     store.clearBattle();
-    store.navigate(toRaid ? 'RAID' : 'DUNGEON');
-  }, [store, raidCtx]);
+    store.navigate(toRaid ? 'RAID' : toPvp ? 'PVP' : 'DUNGEON');
+  }, [store, raidCtx, pvpCtx]);
 
   if (!data || !log) {
     return (
@@ -728,6 +754,11 @@ export function BattleScreen(): JSX.Element {
     <div className="battle-root">
       <div className="battle-bar">
         <span className="stage-name">{data.stage?.name ?? '戦闘'}</span>
+        {pvpCtx && (
+          <span className={`pvp-side-badge side-${pvpCtx.side.toLowerCase()}`}>
+            あなたは {pvpCtx.side === 'ALLY' ? 'ALLY(下側)' : 'ENEMY(上側)'} です
+          </span>
+        )}
         <span className="turn-badge">TURN {state.turn}</span>
         <div className="battle-progress" aria-hidden>
           <span style={{ width: `${playback.total ? (playback.progress / playback.total) * 100 : 0}%` }} />
@@ -835,6 +866,7 @@ export function BattleScreen(): JSX.Element {
           onRetry={retrying ? () => undefined : handleRetry}
           master={store.master}
           raid={raidCtx}
+          pvp={pvpCtx}
         />
       )}
     </div>

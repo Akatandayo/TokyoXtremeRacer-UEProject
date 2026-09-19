@@ -218,8 +218,21 @@ function buildEnemies(stage: StageDef, data: GameData): CombatantInput[] {
   return enemies;
 }
 
-/** 再現可能かつ衝突しにくいシード(サーバ側で生成。クライアント指定は受け付けない) */
+/**
+ * 再現可能かつ衝突しにくいシード(サーバ側で生成。クライアント指定は受け付けない)。
+ *
+ * `AKATAN_BATTLE_SEED` が設定されている場合はその値を固定で返す。これは
+ * **テスト専用の逃げ道**で、通常の起動では絶対に設定しない。
+ * 戦闘エンジンは「同じシード+同じ入力 ⇒ 同じログ」を保証しているので、
+ * シードを固定できると E2E(tools/smoke.mjs)の結果が完全に再現可能になる。
+ * これが無いと戦闘の長さや勝敗が実行のたびに揺れ、検証が当てにならなくなる。
+ */
 export function generateSeed(): number {
+  const fixed = process.env.AKATAN_BATTLE_SEED;
+  if (fixed !== undefined && fixed !== '') {
+    const n = Number(fixed);
+    if (Number.isFinite(n)) return Math.abs(Math.floor(n)) % 2_147_483_647;
+  }
   // 上位ビットは時刻、下位はランダム。BattleLog.seed は number なので 2^31 未満に収める。
   const t = Date.now() % 1_000_000;
   const r = Math.floor(Math.random() * 2048);

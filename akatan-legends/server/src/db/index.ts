@@ -225,6 +225,35 @@ const MIGRATIONS: ((db: Db) => void)[] = [
         ON pvp_rooms(expires_at);
     `);
   },
+
+  // --- v7 -> v8 (PvP実装中に発覚した既存バグの修正: parties.id が単独PKだった) ---
+  //   v0スキーマでは `parties.id` 単独が PRIMARY KEY だったため、`id` は常に
+  //   DEFAULT_PARTY_ID('main')固定の実質シングルトンで、**全プレイヤーが1行を奪い合っていた**。
+  //   単一プレイヤー('local'固定)だった間は実害が無かったが、PvPで複数プレイヤーを
+  //   同時に扱うようになった瞬間、後から作成したプレイヤーの saveParty が
+  //   `ON CONFLICT(id)` で先行プレイヤーの行を書き換えてしまい、編成が別プレイヤーの
+  //   ものに化ける(最悪、互いの編成を上書きし合う)実データ破損バグとして表面化した。
+  //   主キーを (player_id, id) の複合キーへ直す。SQLite は主キーの直接変更ができないため
+  //   テーブルを作り直す(id が重複するのは元々このバグの結果そのものなので、
+  //   移行時点のデータは「最後に書いた1行」しか残っておらず、失われるのはその1行だけ)。
+  (db) => {
+    db.exec(`
+      CREATE TABLE parties_v8 (
+        id         TEXT NOT NULL,
+        player_id  TEXT NOT NULL,
+        name       TEXT NOT NULL,
+        members    TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (player_id, id),
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      );
+      INSERT INTO parties_v8 (id, player_id, name, members, updated_at)
+        SELECT id, player_id, name, members, updated_at FROM parties;
+      DROP TABLE parties;
+      ALTER TABLE parties_v8 RENAME TO parties;
+      CREATE INDEX IF NOT EXISTS idx_parties_player ON parties(player_id);
+    `);
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
