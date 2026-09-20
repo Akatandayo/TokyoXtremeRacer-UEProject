@@ -107,7 +107,12 @@ let html = readFileSync(join(ROOT, 'tools', 'character-forge', 'index.html'), 'u
 const appJs = readFileSync(join(ROOT, 'tools', 'character-forge', 'app.js'), 'utf8');
 const scriptTag = '<script src="app.js"></script>';
 if (!html.includes(scriptTag)) throw new Error('index.html に app.js の読み込みが見つかりません');
-html = html.replace(scriptTag, `<script>\n${appJs}\n</script>`);
+// app.js 内に `</script>` の並びがあると、HTMLパーサがそこでスクリプトを
+// 閉じてしまう(コメントの中にあっても同じ)。JSとしては `<\/script>` と
+// 書いても意味が変わらないので、埋め込むときに機械的に潰す。
+// 実際にコメント内の `</script>` でツールが起動しなくなる事故を起こしている。
+const safeJs = appJs.replace(/<\/script/gi, '<\\/script');
+html = html.replace(scriptTag, () => `<script>\n${safeJs}\n</script>`);
 const marker = '/*__FORGE_DATA__*/null';
 if (!html.includes(marker)) throw new Error(`index.html に ${marker} が見つかりません`);
 // </script> がJSON内にあるとHTMLが壊れるのでエスケープする

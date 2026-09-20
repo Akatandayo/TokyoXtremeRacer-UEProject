@@ -203,7 +203,26 @@ summary{cursor:pointer;font-size:12px;color:var(--fg2);letter-spacing:.06em}
     </div>
 
     <div class="panel">
-      <h2>出力</h2>
+      <h2>ゲームHTMLに直接入れる <span class="jp">いちばん簡単</span></h2>
+      <div class="muted" style="margin-bottom:9px">
+        遊んでいる <span class="mono">akatan-legends.html</span> をここに入れると、
+        作ったキャラを組み込んだHTMLを書き出します。<b>data/ を触らずに済みます。</b>
+      </div>
+      <label class="f">ゲームのHTMLファイル
+        <input type="file" id="inject-file" accept=".html,text/html">
+      </label>
+      <label class="f" style="margin-top:9px">立ち絵(任意・PNG/WEBP/JPG)
+        <input type="file" id="inject-art" accept="image/*">
+        <span class="hint" id="inject-art-note">選ぶと、このキャラ専用の立ち絵として一緒に埋め込みます。</span>
+      </label>
+      <div id="inject-status" style="margin-top:9px"></div>
+      <button class="btn primary" id="btn-inject" style="width:100%;margin-top:9px" disabled>
+        キャラを組み込んでHTMLを書き出す
+      </button>
+    </div>
+
+    <div class="panel">
+      <h2>出力(JSONで入れる場合)</h2>
       <div class="muted" style="margin-bottom:9px">下のファイルをゲームの <span class="mono">data/</span> に入れると反映されます。</div>
       <div id="outputs"></div>
       <button class="btn primary" id="btn-download" style="width:100%;margin-top:9px">まとめてダウンロード</button>

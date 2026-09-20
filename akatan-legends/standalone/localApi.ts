@@ -130,6 +130,66 @@ const progression: ProgressionConfig = {
   battle: { ...DEFAULT_BATTLE_CONFIG, ...(single<ProgressionConfig>('progression.json')?.battle ?? {}) },
 };
 
+/* ============================================================
+ * 追加キャラの取り込み (CHARACTER FORGE)
+ * ------------------------------------------------------------
+ * data/ はビルド時にJSへ埋め込まれるため、出来上がったHTMLに後から
+ * キャラを足すには別の入口が必要になる。そこで `window.__AKATAN_EXTRA__`
+ * を読んで、埋め込み済みデータへマージする。
+ *
+ * CHARACTER FORGE はこのHTMLの </head> の直前に
+ *   <script id="akatan-extra">window.__AKATAN_EXTRA__ = {...}</script>
+ * を差し込むだけでよい。バンドル済みJSを書き換えないので壊れにくい。
+ *
+ * 同じIDが既にある場合は「後から入れた方」で置き換える(作り直しを許す)。
+ * ========================================================== */
+
+interface AkatanExtra {
+  characters?: CharacterDef[];
+  skills?: Skill[];
+  aiProfiles?: AiProfile[];
+  combos?: ComboDef[];
+  /** 立ち絵の data URL。キーは CharacterArt.portrait と同じ */
+  portraits?: Record<string, string>;
+}
+
+declare global {
+  interface Window {
+    __AKATAN_EXTRA__?: AkatanExtra;
+    __AKATAN_PORTRAITS__?: Record<string, string>;
+  }
+}
+
+/** rows を base にマージする(同じidは rows 側で上書き)。戻り値は新しい配列 */
+function mergeById<T extends { id: string }>(base: T[], rows: T[] | undefined): T[] {
+  if (!rows || rows.length === 0) return base;
+  const out = [...base];
+  const index = new Map(out.map((r, i) => [r.id, i]));
+  for (const row of rows) {
+    if (!row || typeof row.id !== 'string') continue;
+    const at = index.get(row.id);
+    if (at === undefined) { index.set(row.id, out.length); out.push(row); }
+    else out[at] = row;
+  }
+  return out;
+}
+
+{
+  const extra = typeof window !== 'undefined' ? window.__AKATAN_EXTRA__ : undefined;
+  if (extra) {
+    const before = characters.length;
+    // 配列そのものを差し替える(以降の Map 構築より前に実行されること)
+    characters.splice(0, characters.length, ...mergeById(characters, extra.characters));
+    skills.splice(0, skills.length, ...mergeById(skills, extra.skills));
+    aiProfiles.splice(0, aiProfiles.length, ...mergeById(aiProfiles, extra.aiProfiles));
+    combos.splice(0, combos.length, ...mergeById(combos, extra.combos));
+    if (extra.portraits && typeof window !== 'undefined') {
+      window.__AKATAN_PORTRAITS__ = { ...(window.__AKATAN_PORTRAITS__ ?? {}), ...extra.portraits };
+    }
+    console.info(`[akatan] 追加データを読み込みました: キャラ ${characters.length - before} 体 / スキル ${extra.skills?.length ?? 0} 件`);
+  }
+}
+
 const charById = new Map(characters.map((c) => [c.id, c]));
 const enemyById = new Map(enemies.map((e) => [e.id, e]));
 const skillById = new Map(skills.map((s) => [s.id, s]));

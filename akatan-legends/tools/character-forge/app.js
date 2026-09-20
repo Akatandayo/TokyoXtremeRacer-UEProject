@@ -578,5 +578,147 @@ function loadExisting() {
   alert('読み込みました。IDは空にしてあるので、新しいIDを付けてください(既存キャラを上書きしないため)。');
 }
 
-renderStatic(); wire(); render();
+
+/* ============================================================
+ * ゲームHTMLへの直接組み込み
+ * ------------------------------------------------------------
+ * 単体版HTMLの </head> 直前に
+ *   <script id="akatan-extra">window.__AKATAN_EXTRA__ = {...}</script>
+ * を差し込む。localApi 側がこれを読んで埋め込み済みデータにマージする。
+ * バンドル済みJSには一切触らないので壊れにくい。
+ * 既に同じ <script id="akatan-extra"> があれば中身をマージして置き換える
+ * (何度でも追加・作り直しできるようにするため)。
+ * ========================================================== */
+const EXTRA_ID = 'akatan-extra';
+const EXTRA_OPEN = `<script id="${EXTRA_ID}">window.__AKATAN_EXTRA__=`;
+const EXTRA_CLOSE = '<\/script>';
+let uploadedHtml = null;
+let uploadedName = '';
+let uploadedArt = null;
+
+function statusBox(level, msg) {
+  return el('div', { class:`issue ${level}` }, (level === 'err' ? '✗ ' : level === 'warn' ? '⚠ ' : '✓ ') + msg);
+}
+
+function readExistingExtra(html) {
+  const at = html.indexOf(EXTRA_OPEN);
+  if (at < 0) return { extra:null, start:-1, end:-1 };
+  const from = at + EXTRA_OPEN.length;
+  const end = html.indexOf(EXTRA_CLOSE, from);
+  if (end < 0) return { extra:null, start:-1, end:-1 };
+  const body = html.slice(from, end).replace(/;\s*$/, '');
+  try { return { extra:JSON.parse(body), start:at, end:end + EXTRA_CLOSE.length }; }
+  catch { return { extra:null, start:at, end:end + EXTRA_CLOSE.length }; }
+}
+
+function describeUpload() {
+  const box = $('inject-status'); box.innerHTML = '';
+  $('btn-inject').disabled = !uploadedHtml;
+  if (!uploadedHtml) return;
+  if (!uploadedHtml.includes('__AKATAN_PORTRAITS__') && !uploadedHtml.includes('AKATAN')) {
+    box.appendChild(statusBox('err', 'あかたんLegends のHTMLではなさそうです。読み込むファイルを確認してください。'));
+    $('btn-inject').disabled = true; return;
+  }
+  if (!uploadedHtml.includes('</head>')) {
+    box.appendChild(statusBox('err', 'このHTMLには </head> がありません。組み込み位置が決められません。'));
+    $('btn-inject').disabled = true; return;
+  }
+  box.appendChild(statusBox('ok', `読み込みました: ${uploadedName} (${Math.round(uploadedHtml.length / 1024)} KB)`));
+  const { extra } = readExistingExtra(uploadedHtml);
+  const names = (extra?.characters ?? []).map((c) => c.name || c.id);
+  if (names.length) {
+    box.appendChild(statusBox('warn', `このHTMLには既に追加キャラがいます: ${names.join(' / ')}。今回のキャラを足した形で書き出します(同じIDなら差し替え)。`));
+  }
+  if (uploadedArt && !M.portrait) {
+    box.appendChild(statusBox('warn', '立ち絵を選びましたが、キャラの「立ち絵」欄が未設定です。自動で専用キーを付けます。'));
+  }
+}
+
+async function doInject() {
+  const errs = validate().filter((i) => i.level === 'err');
+  if (errs.length) { alert('チェック結果にエラーが残っています。先に直してください。'); return; }
+  const btn = $('btn-inject');
+  btn.disabled = true; btn.textContent = '組み込み中…';
+  try {
+    const c = buildCharacter();
+    const skills = buildSkills();
+    const ai = buildAi();
+
+    // 立ち絵: 画像を選んでいれば data URL にして専用キーで入れる
+    let portraits;
+    if (uploadedArt) {
+      const key = M.portrait || `forge_${c.id}`;
+      c.art.portrait = key;
+      portraits = { [key]: uploadedArt };
+    }
+
+    const { extra, start, end } = readExistingExtra(uploadedHtml);
+    const merged = {
+      characters: mergeRows(extra?.characters, [c]),
+      skills: mergeRows(extra?.skills, skills),
+      aiProfiles: mergeRows(extra?.aiProfiles, ai ? [ai] : []),
+      combos: extra?.combos ?? [],
+      portraits: { ...(extra?.portraits ?? {}), ...(portraits ?? {}) },
+    };
+    // JSON内の </script> でHTMLが壊れないようにエスケープする
+    const json = JSON.stringify(merged).replace(/<\//g, '<\\/');
+    const tag = `${EXTRA_OPEN}${json};${EXTRA_CLOSE}`;
+
+    let out;
+    if (start >= 0) out = uploadedHtml.slice(0, start) + tag + uploadedHtml.slice(end);
+    else out = uploadedHtml.replace('</head>', `${tag}\n</head>`);
+
+    const base = uploadedName.replace(/\.html?$/i, '');
+    downloadHtml(`${base}-${c.id}.html`, out);
+
+    const box = $('inject-status');
+    box.appendChild(statusBox('ok', `書き出しました。追加キャラ ${merged.characters.length} 体入りのHTMLです。`));
+  } catch (e) {
+    $('inject-status').appendChild(statusBox('err', '組み込みに失敗しました: ' + (e && e.message ? e.message : String(e))));
+  } finally {
+    btn.disabled = false; btn.textContent = 'キャラを組み込んでHTMLを書き出す';
+  }
+}
+
+function mergeRows(base, rows) {
+  const out = [...(base ?? [])];
+  const idx = new Map(out.map((r, i) => [r.id, i]));
+  for (const r of rows) {
+    const at = idx.get(r.id);
+    if (at === undefined) { idx.set(r.id, out.length); out.push(r); } else out[at] = r;
+  }
+  return out;
+}
+
+function downloadHtml(name, body) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([body], { type:'text/html' }));
+  a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+function wireInject() {
+  $('inject-file').addEventListener('change', async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) { uploadedHtml = null; describeUpload(); return; }
+    uploadedName = f.name;
+    uploadedHtml = await f.text();
+    describeUpload();
+  });
+  $('inject-art').addEventListener('change', async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) { uploadedArt = null; describeUpload(); return; }
+    uploadedArt = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result));
+      r.onerror = () => rej(new Error('画像を読めませんでした'));
+      r.readAsDataURL(f);
+    });
+    $('inject-art-note').textContent = `${f.name} を埋め込みます (${Math.round(uploadedArt.length / 1024)} KB)`;
+    describeUpload();
+  });
+  $('btn-inject').addEventListener('click', () => { void doInject(); });
+}
+
+renderStatic(); wire(); wireInject(); render();
 })();
