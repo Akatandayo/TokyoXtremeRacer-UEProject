@@ -81,6 +81,12 @@ for (const f of readdirSync(join(DATA, 'characters')).filter((f) => f.endsWith('
 const skills = readJsonDir('skills');
 const aiProfiles = readJsonDir('ai');
 const combos = readJsonDir('combos');
+const banners = readJsonDir('gacha').filter((b) => !b.equipment).map((b) => ({
+  id: b.id, name: b.name,
+  hasPool: Array.isArray(b.pool),
+  currency: b.cost?.currency ?? 'GOLD',
+  ticketId: b.cost?.ticketId ?? null,
+}));
 
 const portraitsDir = join(ROOT, 'client', 'public', 'portraits');
 const portraits = existsSync(portraitsDir)
@@ -96,6 +102,7 @@ const payload = {
     skills: (a.rules ?? []).map((r) => r.skill),
   })),
   combos: combos.map((c) => ({ id: c.id, name: c.name })),
+  banners,
   portraits,
   fxKeys: [...new Set(skills.map((s) => s.fx).filter(Boolean))].sort(),
   builtAt: new Date().toISOString().slice(0, 10),
@@ -124,6 +131,7 @@ const out = join(OUT_DIR, 'character-forge.html');
 writeFileSync(out, html, 'utf8');
 
 console.log('CHARACTER FORGE をビルドしました');
+console.log(`  バナー ${banners.length} 件`);
 console.log(`  既存キャラ ${characters.length} / スキル ${skills.length} / AI ${aiProfiles.length} / コンボ ${combos.length} / 立ち絵 ${portraits.length}`);
 console.log(`  列挙子: 属性${schema.elements.length} ロール${schema.roles.length} 状態異常${schema.statusTypes.length} 効果${schema.effectTypes.length} AI条件${schema.aiConditions.length}`);
 console.log(`  ${out}  (${Math.round(Buffer.byteLength(html) / 1024)} KB)`);

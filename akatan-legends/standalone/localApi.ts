@@ -151,6 +151,12 @@ interface AkatanExtra {
   combos?: ComboDef[];
   /** 立ち絵の data URL。キーは CharacterArt.portrait と同じ */
   portraits?: Record<string, string>;
+  /**
+   * ガチャバナーの排出プールへの追加。`{ バナーID: 追加するキャラID[] }`。
+   * バナーは pool を明示しているものがほとんどで、そこに入れない限り
+   * 追加キャラは永久に出ない。キャラを足しただけでは引けないので必ず要る。
+   */
+  gachaPools?: Record<string, string[]>;
 }
 
 declare global {
@@ -183,6 +189,13 @@ function mergeById<T extends { id: string }>(base: T[], rows: T[] | undefined): 
     skills.splice(0, skills.length, ...mergeById(skills, extra.skills));
     aiProfiles.splice(0, aiProfiles.length, ...mergeById(aiProfiles, extra.aiProfiles));
     combos.splice(0, combos.length, ...mergeById(combos, extra.combos));
+    // 排出プールへの追加。pool を持たないバナーは「全キャラ対象」なので触らない。
+    for (const [bannerId, ids] of Object.entries(extra.gachaPools ?? {})) {
+      const banner = gachaBanners.find((b) => b.id === bannerId);
+      if (!banner || !Array.isArray(ids)) continue;
+      if (!banner.pool) continue;
+      for (const id of ids) if (!banner.pool.includes(id)) banner.pool.push(id);
+    }
     if (extra.portraits && typeof window !== 'undefined') {
       window.__AKATAN_PORTRAITS__ = { ...(window.__AKATAN_PORTRAITS__ ?? {}), ...extra.portraits };
     }

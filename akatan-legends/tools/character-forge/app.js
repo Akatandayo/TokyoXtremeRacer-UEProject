@@ -595,6 +595,19 @@ const EXTRA_CLOSE = '<\/script>';
 let uploadedHtml = null;
 let uploadedName = '';
 let uploadedArt = null;
+/** どのバナーに入れるか。既定は pool を持つ GOLD バナー(常設) */
+let bannerPick = new Set((FORGE.banners ?? []).filter((b) => b.hasPool && b.currency === 'GOLD').map((b) => b.id));
+
+function renderBannerPicker() {
+  const box = $('inject-banners'); if (!box) return;
+  box.innerHTML = '';
+  for (const b of (FORGE.banners ?? [])) {
+    const on = bannerPick.has(b.id);
+    const note = b.currency === 'TICKET' ? ' (チケット専用)' : '';
+    box.appendChild(el('span', { class:`chip ${on ? 'on' : ''}`, text:b.name + note,
+      onclick:() => { if (bannerPick.has(b.id)) bannerPick.delete(b.id); else bannerPick.add(b.id); renderBannerPicker(); describeUpload(); } }));
+  }
+}
 
 function statusBox(level, msg) {
   return el('div', { class:`issue ${level}` }, (level === 'err' ? '✗ ' : level === 'warn' ? '⚠ ' : '✓ ') + msg);
@@ -629,6 +642,12 @@ function describeUpload() {
   if (names.length) {
     box.appendChild(statusBox('warn', `このHTMLには既に追加キャラがいます: ${names.join(' / ')}。今回のキャラを足した形で書き出します(同じIDなら差し替え)。`));
   }
+  if (bannerPick.size === 0 && !M.limited) {
+    box.appendChild(statusBox('warn', 'ガチャが1つも選ばれていません。このままだとガチャからは出ません(ダンジョンのキャラドロップからは出ます)。'));
+  }
+  if (M.limited && bannerPick.size === 0) {
+    box.appendChild(statusBox('warn', '限定キャラなのにバナーが未選択です。このままだと入手手段がありません。'));
+  }
   if (uploadedArt && !M.portrait) {
     box.appendChild(statusBox('warn', '立ち絵を選びましたが、キャラの「立ち絵」欄が未設定です。自動で専用キーを付けます。'));
   }
@@ -652,6 +671,9 @@ async function doInject() {
       portraits = { [key]: uploadedArt };
     }
 
+    const pools = {};
+    for (const id of bannerPick) pools[id] = [c.id];
+
     const { extra, start, end } = readExistingExtra(uploadedHtml);
     const merged = {
       characters: mergeRows(extra?.characters, [c]),
@@ -659,6 +681,7 @@ async function doInject() {
       aiProfiles: mergeRows(extra?.aiProfiles, ai ? [ai] : []),
       combos: extra?.combos ?? [],
       portraits: { ...(extra?.portraits ?? {}), ...(portraits ?? {}) },
+      gachaPools: mergePools(extra?.gachaPools, pools),
     };
     // JSON内の </script> でHTMLが壊れないようにエスケープする
     const json = JSON.stringify(merged).replace(/<\//g, '<\\/');
@@ -678,6 +701,17 @@ async function doInject() {
   } finally {
     btn.disabled = false; btn.textContent = 'キャラを組み込んでHTMLを書き出す';
   }
+}
+
+/** バナーごとのキャラID配列をマージする(重複は入れない) */
+function mergePools(base, add) {
+  const out = {};
+  for (const [k, v] of Object.entries(base ?? {})) out[k] = [...v];
+  for (const [k, v] of Object.entries(add ?? {})) {
+    out[k] = out[k] ?? [];
+    for (const id of v) if (!out[k].includes(id)) out[k].push(id);
+  }
+  return out;
 }
 
 function mergeRows(base, rows) {
@@ -720,5 +754,5 @@ function wireInject() {
   $('btn-inject').addEventListener('click', () => { void doInject(); });
 }
 
-renderStatic(); wire(); wireInject(); render();
+renderStatic(); wire(); wireInject(); renderBannerPicker(); render();
 })();

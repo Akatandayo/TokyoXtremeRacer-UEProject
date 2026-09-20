@@ -215,6 +215,10 @@ summary{cursor:pointer;font-size:12px;color:var(--fg2);letter-spacing:.06em}
         <input type="file" id="inject-art" accept="image/*">
         <span class="hint" id="inject-art-note">選ぶと、このキャラ専用の立ち絵として一緒に埋め込みます。</span>
       </label>
+      <label class="f" style="margin-top:9px">このキャラを出すガチャ
+        <div class="chips" id="inject-banners"></div>
+        <span class="hint">選ばないと<b>どのガチャからも出ません</b>(ダンジョンのキャラドロップからは出ます)。</span>
+      </label>
       <div id="inject-status" style="margin-top:9px"></div>
       <button class="btn primary" id="btn-inject" style="width:100%;margin-top:9px" disabled>
         キャラを組み込んでHTMLを書き出す
