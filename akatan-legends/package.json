@@ -16,7 +16,8 @@
     "validate:data": "node scripts/validate-data.mjs",
     "build:standalone": "node tools/build-standalone.mjs",
     "smoke": "node tools/smoke.mjs",
-    "typecheck:standalone": "tsc -p standalone/tsconfig.json --noEmit"
+    "typecheck:standalone": "tsc -p standalone/tsconfig.json --noEmit",
+    "build:forge": "node tools/build-character-forge.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>あかたんLegends — CHARACTER FORGE</title>
+<style>
+:root{
+  --bg:#0a0d14; --panel:#121724; --panel2:#0e131f; --line:#243049;
+  --fg:#e8eefc; --fg2:#9fb0cc; --muted:#6d7f9c;
+  --cyan:#5ad7ff; --magenta:#ff5ad4; --ok:#57e39b; --warn:#ffcc5a; --err:#ff6b6b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6}
+a{color:var(--cyan)}
+header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,#0b101b,#0b101bee);
+  border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header h1{font-size:15px;margin:0;letter-spacing:.14em}
+header .sub{font-size:11px;color:var(--muted)}
+.wrap{max-width:1180px;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.panel > h2{font-size:12px;letter-spacing:.16em;color:var(--cyan);margin:0 0 10px;
+  border-bottom:1px solid var(--line);padding-bottom:7px;display:flex;justify-content:space-between;align-items:center}
+.panel > h2 .jp{color:var(--muted);letter-spacing:0;font-weight:400;font-size:11px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--fg2)}
+input,select,textarea{background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+  border-radius:6px;padding:7px 8px;font:inherit;font-size:13px;width:100%}
+textarea{resize:vertical;min-height:62px;line-height:1.5}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cyan)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--panel2);color:var(--fg2);border-radius:999px;
+  padding:4px 11px;font-size:12px;cursor:pointer;user-select:none}
+.chip.on{background:var(--cyan);color:#04121b;border-color:var(--cyan);font-weight:700}
+.btn{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:6px;
+  padding:7px 13px;font:inherit;font-size:13px;cursor:pointer}
+.btn:hover{border-color:var(--cyan)}
+.btn.primary{background:var(--cyan);color:#04121b;border-color:var(--cyan);font-weight:700}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn.danger{border-color:#5b2230;color:#ff9aa5}
+.muted{color:var(--muted);font-size:12px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.issue{display:flex;gap:7px;padding:6px 8px;border-radius:6px;margin-bottom:5px;font-size:12px;align-items:flex-start}
+.issue.err{background:#2a1218;color:#ffb3b3;border:1px solid #5b2230}
+.issue.warn{background:#2a2412;color:#ffe3a3;border:1px solid #5b4a22}
+.issue.ok{background:#12291f;color:#9ef0c4;border:1px solid #235b3c}
+.sticky{position:sticky;top:60px}
+.skill{border:1px solid var(--line);border-radius:8px;padding:11px;margin-bottom:10px;background:var(--panel2)}
+.skill h3{font-size:12px;margin:0 0 8px;color:var(--magenta);letter-spacing:.1em;
+  display:flex;justify-content:space-between;align-items:center;gap:8px}
+.eff{border:1px dashed var(--line);border-radius:6px;padding:8px;margin-top:7px}
+pre.out{background:#070a11;border:1px solid var(--line);border-radius:8px;padding:11px;
+  overflow:auto;max-height:340px;font-size:11.5px;line-height:1.5;white-space:pre;color:#cfe3ff}
+table.ref{width:100%;border-collapse:collapse;font-size:11.5px}
+table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:4px 5px;text-align:right}
+table.ref th:first-child,table.ref td:first-child{text-align:left}
+table.ref th{color:var(--muted);font-weight:400}
+.bar{height:5px;border-radius:3px;background:#1b2436;overflow:hidden;margin-top:3px}
+.bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--magenta))}
+details{border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:10px;background:var(--panel2)}
+summary{cursor:pointer;font-size:12px;color:var(--fg2);letter-spacing:.06em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tag-in{display:flex;gap:6px}
+.hint{font-size:11px;color:var(--muted);margin-top:3px}
+.swatch{width:100%;height:26px;border-radius:5px;border:1px solid var(--line);margin-top:4px}
+.step{display:flex;gap:8px;align-items:baseline;margin-bottom:7px;font-size:12.5px}
+.step b{color:var(--cyan);font-family:ui-monospace,monospace}
+</style>
+</head>
+<body>
+<header>
+  <h1>CHARACTER FORGE</h1>
+  <span class="sub">あかたんLegends — キャラクター作成ツール</span>
+  <span style="flex:1"></span>
+  <button class="btn sm" id="btn-load">既存キャラを読み込んで編集</button>
+  <button class="btn sm" id="btn-sample">お手本を入れる</button>
+  <button class="btn sm danger" id="btn-reset">最初から</button>
+</header>
+
+<div class="wrap">
+<main>
+
+  <div class="panel">
+    <h2>基本情報 <span class="jp">ここだけ埋めれば形にはなります</span></h2>
+    <div class="row">
+      <label class="f">ID(半角英数と _ のみ)
+        <input id="c-id" placeholder="例: mikage">
+        <span class="hint">ファイル名になります: data/characters/<b id="idPreview">…</b>.json</span>
+      </label>
+      <label class="f">名前<input id="c-name" placeholder="例: 御影 灯"></label>
+      <label class="f">肩書き(任意)<input id="c-title" placeholder="例: MIKAGE AKARI / 灯火の守り手"></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="f">レアリティ<select id="c-rarity"></select></label>
+      <label class="f">属性<select id="c-element"></select></label>
+      <label class="f">立ち絵(任意)<select id="c-portrait"></select>
+        <span class="hint">client/public/portraits/ にある画像から選べます</span>
+      </label>
+    </div>
+    <label class="f" style="margin-top:10px">ロール(1つ以上)
+      <div class="chips" id="c-roles"></div>
+    </label>
+    <label class="f" style="margin-top:10px">説明<textarea id="c-description" placeholder="どんなキャラか。図鑑に出ます。"></textarea></label>
+    <label class="f" style="margin-top:10px">タグ(任意・コンボ条件などに使う)
+      <div class="tag-in"><input id="c-tag-input" placeholder="例: 探索者"><button class="btn sm" id="c-tag-add">追加</button></div>
+      <div class="chips" id="c-tags" style="margin-top:6px"></div>
+    </label>
+    <label class="f" style="margin-top:10px">
+      <span><input type="checkbox" id="c-limited" style="width:auto;margin-right:6px">限定キャラにする</span>
+      <span class="hint">通常のガチャ・ドロップから除外されます(専用バナー限定にしたいとき)</span>
+    </label>
+  </div>
+
+  <div class="panel">
+    <h2>ステータス <span class="jp">右の「バランスの目安」を見ながら</span></h2>
+    <div class="row" id="c-baseStats"></div>
+    <h2 style="margin-top:16px">成長値 <span class="jp">1レベルごとの上昇量</span></h2>
+    <div class="row" id="c-growth"></div>
+  </div>
+
+  <div class="panel">
+    <h2>スキル <span class="jp">通常攻撃は必須。アクティブと必殺は任意</span></h2>
+    <div id="skills"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn sm" data-addskill="ACTIVE">+ アクティブスキル</button>
+      <button class="btn sm" data-addskill="ULTIMATE">+ 必殺技</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>覚醒(AWAKENING) <span class="jp">必須。条件を満たすと強化されます</span></h2>
+    <div class="row">
+      <label class="f">覚醒名<input id="a-name" placeholder="例: 灯火"></label>
+      <label class="f">発動条件<select id="a-cond"></select></label>
+      <label class="f" id="a-val-wrap">条件の値<input id="a-value" type="number" value="50"></label>
+    </div>
+    <label class="f" style="margin-top:10px">説明<textarea id="a-description" placeholder="覚醒したとき何が起きるか"></textarea></label>
+    <div style="margin-top:10px">
+      <div class="muted" style="margin-bottom:5px">覚醒時のステータス上昇(入れたいものだけ)</div>
+      <div class="row" id="a-statBonus"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>AI(戦い方) <span class="jp">自動戦闘でどう動くか</span></h2>
+    <div class="row">
+      <label class="f">AIの決め方<select id="ai-mode">
+        <option value="new">このキャラ専用のAIを作る(おすすめ)</option>
+        <option value="existing">既存のAIから選ぶ</option>
+      </select></label>
+      <label class="f" id="ai-existing-wrap" style="display:none">既存AI<select id="ai-existing"></select></label>
+    </div>
+    <div id="ai-rules-wrap">
+      <div class="muted" style="margin:9px 0 5px">上から順に判定され、最初に条件を満たしたものを使います。</div>
+      <div id="ai-rules"></div>
+      <button class="btn sm" id="ai-add">+ ルールを足す</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>見た目 <span class="jp">カードや戦闘画面の色</span></h2>
+    <div class="row">
+      <label class="f">メインカラー<input id="art-primary" type="color" value="#2f6d5c"><div class="swatch" id="sw-primary"></div></label>
+      <label class="f">背景カラー<input id="art-secondary" type="color" value="#12241e"><div class="swatch" id="sw-secondary"></div></label>
+      <label class="f">アクセント<input id="art-accent" type="color" value="#7cffb2"><div class="swatch" id="sw-accent"></div></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="f">紋章(漢字1〜2文字)<input id="art-sigil" maxlength="2" placeholder="例: 灯"></label>
+      <label class="f">模様<select id="art-pattern"></select></label>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>TRPG情報 <span class="jp">元卓の記録。公開範囲に注意</span></h2>
+    <div class="row">
+      <label class="f">出典卓<input id="t-source" placeholder="例: アカルア卓"></label>
+      <label class="f">PL名<input id="t-player" placeholder="例: あかたん"></label>
+      <label class="f">探索者名<input id="t-investigator"></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="f">所属<input id="t-affiliation"></label>
+      <label class="f">公開範囲<select id="t-visibility"></select>
+        <span class="hint">実在のPL名が入るので PRIVATE 推奨</span>
+      </label>
+    </div>
+    <label class="f" style="margin-top:10px">メモ<textarea id="t-note"></textarea></label>
+  </div>
+
+</main>
+
+<aside>
+  <div class="sticky">
+    <div class="panel">
+      <h2>チェック結果 <span class="jp" id="check-count"></span></h2>
+      <div id="issues"></div>
+    </div>
+
+    <div class="panel">
+      <h2>バランスの目安 <span class="jp" id="ref-rarity"></span></h2>
+      <div id="ref"></div>
+    </div>
+
+    <div class="panel">
+      <h2>出力</h2>
+      <div class="muted" style="margin-bottom:9px">下のファイルをゲームの <span class="mono">data/</span> に入れると反映されます。</div>
+      <div id="outputs"></div>
+      <button class="btn primary" id="btn-download" style="width:100%;margin-top:9px">まとめてダウンロード</button>
+      <details style="margin-top:10px">
+        <summary>入れ方(手順)</summary>
+        <div style="margin-top:8px" id="howto"></div>
+      </details>
+    </div>
+  </div>
+</aside>
+</div>
+
+<datalist id="fxlist"></datalist>
+<script>
+const FORGE = /*__FORGE_DATA__*/null;
+if (!FORGE) { document.body.innerHTML = '<p style="padding:24px">データが埋め込まれていません。<code>node tools/build-character-forge.mjs</code> でビルドしてください。</p>'; }
+</script>
+<script src="app.js"></script>
+</body>
+</html>
